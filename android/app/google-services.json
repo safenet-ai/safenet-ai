@@ -1,0 +1,48 @@
+{
+  "project_info": {
+    "project_number": "230545955082",
+    "project_id": "safenet-og",
+    "storage_bucket": "safenet-og.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:230545955082:android:114f679fc1e18fd88782f3",
+        "android_client_info": {
+          "package_name": "com.example.safenetai"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAHc8JQFQ2Lewx3_caFkbWG93gPiY25xBM"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:230545955082:android:4ac6ccb5a2d9f75a8782f3",
+        "android_client_info": {
+          "package_name": "com.main.safenet"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAHc8JQFQ2Lewx3_caFkbWG93gPiY25xBM"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
