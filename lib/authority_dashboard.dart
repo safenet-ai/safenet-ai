@@ -3,6 +3,7 @@ import 'authority_chatwaiting.dart';
 import 'authority_complaint.dart';
 import 'authority_approval.dart';
 import 'authority_servicereq.dart';
+import 'widget/notification_dropdown.dart';
 
 class AuthorityDashboardPage extends StatelessWidget {
   const AuthorityDashboardPage({super.key});
@@ -81,14 +82,7 @@ class AuthorityDashboardPage extends StatelessWidget {
                               ],
                             ),
 
-                            IconButton(
-                              onPressed: () {},
-                              icon: const Icon(
-                                Icons.notifications_none_outlined,
-                                size: 24,
-                                color: Colors.black87,
-                              ),
-                            ),
+                            NotificationDropdown(role: "authority"),
                           ],
                         ),
 
@@ -144,9 +138,10 @@ class AuthorityDashboardPage extends StatelessWidget {
                                     // Navigator.push(context, MaterialPageRoute(builder: (context) => PendingApprovalPage()));
                                   },
                                   child: DashboardTile(
-                                    color: Color(0xFFE9DCF8),
-                                    icon: Icons.campaign_outlined,
-                                    title: "announcements",
+                                   // color: Color(0xFFE9DCF8),
+                                    color: Color(0xFFCCF1E6),
+                                    icon: Icons.recycling_outlined,
+                                    title: "waste manage",
                                   ),
                                 ),
                               ),
@@ -240,8 +235,11 @@ class AuthorityDashboardPage extends StatelessWidget {
                                   // Navigator.push(context, MaterialPageRoute(builder: (context) => GenerateReportPage()));
                                 },
                                 child: const FullWidthButtonTile(
-                                  color: Color(0xFFCCF1E6),
-                                  text: "Generate Report",
+                                  //color: Color(0xFFCCF1E6),
+                                  //text: "Generate Report",
+                                  color: Color(0xFFE9DCF8),
+                                    icon: Icons.campaign_outlined,
+                                    title: "announcements",
                                 ),
                               ),
                             ),
@@ -294,24 +292,26 @@ class DashboardTile extends StatelessWidget {
           ),
         ],
       ),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-        child: Row(
-          children: [
-            Icon(icon, size: 30, color: Colors.black54),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Text(
-                title,
-                style: const TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w700,
-                  color: Colors.black87,
-                  height: 1.2,
+      child: Center(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+          child: Row(
+            children: [
+              Icon(icon, size: 30, color: Colors.black54),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  title,
+                  style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w700,
+                    color: Colors.black87,
+                    height: 1.2,
+                  ),
                 ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
@@ -320,12 +320,16 @@ class DashboardTile extends StatelessWidget {
 
 class FullWidthButtonTile extends StatelessWidget {
   final Color color;
-  final String text;
+  final IconData icon;
+  //final String text;
+  final String title;
 
   const FullWidthButtonTile({
     super.key,
     required this.color,
-    required this.text,
+    //required this.text,
+    required this.icon,
+    required this.title,
   });
 
   @override
@@ -348,16 +352,26 @@ class FullWidthButtonTile extends StatelessWidget {
           ),
         ],
       ),
-      child: Center(
-        child: Text(
-          text,
-          style: const TextStyle(
-            fontSize: 16,
-            fontWeight: FontWeight.w700,
-            color: Colors.black87,
+        child: Center(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 150, vertical: 14),
+            child:Row(
+              children: [Icon(icon, size: 30, color: Colors.black54),
+                Expanded(
+                  child: Text(
+                    title,
+                    style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w700,
+                      color: Colors.black87,
+                      height: 1.2,
+                    ),
+                  ),
+                ), 
+              ],
+            )
           ),
         ),
-      ),
     );
   }
 }

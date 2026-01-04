@@ -8,6 +8,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'widget/profile_sidebar.dart';
 import 'approval_guard.dart';
+import 'widget/notification_dropdown.dart';
 
 
 class ResidentDashboardPage extends StatefulWidget {
@@ -94,17 +95,20 @@ class _ResidentDashboardPageState extends State<ResidentDashboardPage> {
                         ),
 
                         Row(
-                            children: [
-                              _circleIcon(Icons.notifications_none),
-                              const SizedBox(width: 10),
-                              GestureDetector(
-                            onTap: () {
-                              setState(() => _isProfileOpen = true);
-                            },
-                            child: _circleIcon(Icons.person),
-                          ),
-                            ],
-                          ),
+                          children: [
+                            NotificationDropdown(role: "user"),
+
+                            const SizedBox(width: 10),
+
+                            GestureDetector(
+                              onTap: () {
+                                setState(() => _isProfileOpen = true);
+                              },
+                              child: _circleIcon(Icons.person),
+                            ),
+                          ],
+                        ),
+
                       ],
                     ),
 
