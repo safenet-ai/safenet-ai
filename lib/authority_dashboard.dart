@@ -13,31 +13,12 @@ class AuthorityDashboardPage extends StatelessWidget {
     return Scaffold(
       body: Stack(
         children: [
-          // ✅ BACKGROUND IMAGE (ADDED)
-          Container(
-            decoration: const BoxDecoration(
-              image: DecorationImage(
-                image: AssetImage("assets/bg1_img.png"), // ✅ Your background image
-                fit: BoxFit.cover,
-              ),
+          Positioned.fill(
+            child: Image.asset(
+              'assets/bg1_img.png', // your background image
+              fit: BoxFit.cover,
             ),
           ),
-
-              // ✅ SOFT LIGHT OVERLAY (for readability)
-              /*  Container(
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      colors: [
-                        Colors.white.withOpacity(0.90),
-                        Colors.white.withOpacity(0.75),
-                      ],
-                      begin: Alignment.topCenter,
-                      end: Alignment.bottomCenter,
-                    ),
-                  ),
-                ),*/
-
-              // ✅ YOUR ORIGINAL UI — UNTOUCHED
           SafeArea(
             child: SingleChildScrollView(
               physics: const BouncingScrollPhysics(),

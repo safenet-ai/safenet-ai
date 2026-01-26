@@ -56,17 +56,13 @@ class _AuthorityChatPageState extends State<AuthorityChatPage> {
     return Scaffold(
       body: Stack(
         children: [
-          // ✅ BACKGROUND IMAGE
-          Container(
-            decoration: const BoxDecoration(
-              image: DecorationImage(
-                image: AssetImage("assets/bg1_img.png"),
-                fit: BoxFit.cover,
-              ),
+          Positioned.fill(
+            child: Image.asset(
+              'assets/bg1_img.png', // your background image
+              fit: BoxFit.cover,
             ),
           ),
 
-          Container(color: Colors.white.withOpacity(0.18)),
 
           SafeArea(
             child: Column(

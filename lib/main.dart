@@ -25,5 +25,3 @@ class SafeNetApp extends StatelessWidget {
     );
   }
 }
-
-

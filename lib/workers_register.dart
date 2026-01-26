@@ -397,6 +397,8 @@ class _WorkersRegisterPageState extends State<WorkersRegisterPage> {
             "assets/bg1_img.png",
             fit: BoxFit.cover,
           )),
+
+          
           SafeArea(
             child: SingleChildScrollView(
               padding: EdgeInsets.symmetric(horizontal: w * 0.06),

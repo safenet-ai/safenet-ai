@@ -26,18 +26,18 @@ class _NotificationDropdownState extends State<NotificationDropdown> {
   }
 
   OverlayEntry _createOverlay() {
-    final uid = FirebaseAuth.instance.currentUser?.uid;
+  final uid = FirebaseAuth.instance.currentUser?.uid;
 
-    Query query = FirebaseFirestore.instance
-        .collection("notifications")
-        .orderBy("timestamp", descending: true)
-        .limit(6);
+  Query query = FirebaseFirestore.instance
+      .collection("notifications")
+      .orderBy("timestamp", descending: true)
+      .limit(6);
 
-    if (widget.role == "user") {
-      query = query.where("toUid", isEqualTo: uid);
-    } else {
-      query = query.where("target", isEqualTo: "authority");
-    }
+  if (widget.role == "user") {
+    query = query.where("toUid", isEqualTo: uid);
+  } else if (widget.role == "authority") {
+    query = query.where("toRole", isEqualTo: "authority"); // ✅ FIXED
+  }
 
     return OverlayEntry(
       builder: (_) => Stack(
@@ -60,15 +60,33 @@ class _NotificationDropdownState extends State<NotificationDropdown> {
                 child: Container(
                   padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.55),
+                    gradient: LinearGradient(
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                      colors: [
+                        const Color(0xFFBEEBFF).withOpacity(0.75), // aqua light
+                        const Color(0xFFDCF7FF).withOpacity(0.55), // glass shine
+                        const Color(0xFFB4E8F5).withOpacity(0.65), // liquid blue
+                      ],
+                    ),
                     borderRadius: BorderRadius.circular(26),
-                    border: Border.all(color: Colors.white.withOpacity(0.8)),
+                    border: Border.all(
+                      color: Colors.white.withOpacity(0.8),
+                      width: 1.5,
+                    ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.blueAccent.withOpacity(0.25),
+                        blurRadius: 30,
+                        offset: const Offset(0, 12),
+                      ),
+                    ],
                   ),
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       const Text("Notifications",
-                          style: TextStyle(fontWeight: FontWeight.w700,fontSize: 20,color: Colors.black87)),
+                          style: TextStyle(fontWeight: FontWeight.w700,fontSize: 35,color: Colors.black87)),
 
                       const SizedBox(height: 12),
 
@@ -100,16 +118,28 @@ class _NotificationDropdownState extends State<NotificationDropdown> {
                                 margin: const EdgeInsets.only(bottom: 12),
                                 padding: const EdgeInsets.all(14),
                                 decoration: BoxDecoration(
-                                  color: Colors.white.withOpacity(0.65),
+                                  gradient: LinearGradient(
+                                    colors: [
+                                      Colors.white.withOpacity(0.85),
+                                      const Color(0xFFE3F8FF).withOpacity(0.75),
+                                    ],
+                                    begin: Alignment.topLeft,
+                                    end: Alignment.bottomRight,
+                                  ),
                                   borderRadius: BorderRadius.circular(18),
+                                  border: Border.all(
+                                    color: Colors.white.withOpacity(0.7),
+                                    width: 1,
+                                  ),
                                   boxShadow: [
                                     BoxShadow(
-                                      color: Colors.black.withOpacity(0.05),
-                                      blurRadius: 10,
-                                      offset: const Offset(0, 4),
+                                      color: Colors.blueAccent.withOpacity(0.12),
+                                      blurRadius: 12,
+                                      offset: const Offset(0, 6),
                                     ),
                                   ],
                                 ),
+
                                 child: Row(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [

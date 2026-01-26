@@ -22,17 +22,12 @@ class _AuthorityServiceManagementPageState
     return Scaffold(
       body: Stack(
         children: [
-          /// ✅ BACKGROUND IMAGE (SAME AS YOUR THEME)
-          Container(
-            decoration: const BoxDecoration(
-              image: DecorationImage(
-                image: AssetImage("assets/bg1_img.png"),
-                fit: BoxFit.cover,
-              ),
+        Positioned.fill(
+            child: Image.asset(
+              'assets/bg1_img.png', // your background image
+              fit: BoxFit.cover,
             ),
           ),
-
-          Container(color: Colors.white.withOpacity(0.15)),
 
           SafeArea(
             child: Padding(

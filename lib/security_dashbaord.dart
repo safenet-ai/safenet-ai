@@ -22,15 +22,7 @@ class SecurityDashboardPage extends StatelessWidget {
               ),
             ),
 
-            // Blur tint layer
-            Positioned.fill(
-              child: BackdropFilter(
-                filter: ImageFilter.blur(sigmaX: 8, sigmaY: 8),
-                child: Container(
-                  color: Colors.white.withOpacity(0.15),
-                ),
-              ),
-            ),
+            
 
             // WHOLE PAGE SCROLLS
             SafeArea(

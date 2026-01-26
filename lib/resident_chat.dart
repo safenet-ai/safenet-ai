@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'widget/profile_sidebar.dart';
+import 'widget/notification_dropdown.dart';
 
 class SupportChatPage extends StatefulWidget {
   const SupportChatPage({super.key});
@@ -253,15 +254,14 @@ class _SupportChatPageState extends State<SupportChatPage> {
     return Scaffold(
       body: Stack(
         children: [
-          Container(
-            decoration: const BoxDecoration(
-              image: DecorationImage(
-                image: AssetImage("assets/bg1_img.png"),
-                fit: BoxFit.cover,
-              ),
+          Positioned.fill(
+            child: Image.asset(
+              'assets/bg1_img.png', // your background image
+              fit: BoxFit.cover,
             ),
           ),
-          Container(color: Colors.white.withOpacity(0.18)),
+
+          
           SafeArea(
             child: Column(
               children: [
@@ -284,8 +284,10 @@ class _SupportChatPageState extends State<SupportChatPage> {
 
                       Row(
                         children: [
-                          _circleButton(Icons.notifications_none_rounded),
-                          const SizedBox(width: 12),
+                          NotificationDropdown(role: "user"),
+
+                          const SizedBox(width: 15),
+                          
                           GestureDetector(
                           onTap: () {
                             setState(() => _isProfileOpen = true);

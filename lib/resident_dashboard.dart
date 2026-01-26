@@ -52,7 +52,7 @@ class _ResidentDashboardPageState extends State<ResidentDashboardPage> {
       child: Scaffold(
 
         extendBodyBehindAppBar: true,
-        backgroundColor: Colors.transparent,
+        
         body: Stack(
           children: [
             Positioned.fill(
@@ -98,7 +98,7 @@ class _ResidentDashboardPageState extends State<ResidentDashboardPage> {
                           children: [
                             NotificationDropdown(role: "user"),
 
-                            const SizedBox(width: 10),
+                            const SizedBox(width: 15),
 
                             GestureDetector(
                               onTap: () {

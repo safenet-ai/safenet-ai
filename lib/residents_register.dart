@@ -399,9 +399,7 @@ class _ResidentRegisterPageState extends State<ResidentRegisterPage> {
             Positioned.fill(
               child: Image.asset("assets/bg1_img.png", fit: BoxFit.cover),
             ),
-            Positioned.fill(
-              child: Container(color: Colors.white.withOpacity(0.02)),
-            ),
+            
 
             SafeArea(
               child: SingleChildScrollView(

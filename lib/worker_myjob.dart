@@ -394,95 +394,71 @@ class _WorkerMyJobsPageState extends State<WorkerMyJobsPage> {
 
   // ================= JOB CARD =================
   Widget _jobCardFromFirestore(Map<String, dynamic> job) {
-  return Container(
-    margin: const EdgeInsets.only(bottom: 18),
-    padding: const EdgeInsets.all(18),
-    decoration: BoxDecoration(
-      color: Colors.white,
-      borderRadius: BorderRadius.circular(22),
-      boxShadow: [
-        BoxShadow(
-          color: Colors.black.withOpacity(0.06),
-          blurRadius: 14,
-          offset: const Offset(0, 6),
-        ),
-      ],
-    ),
-    child: Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // LEFT DETAILS
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  _infoRow("Req ID", job["service_id"]),
-                  _infoRow("Resident", job["username"]),
-                  _infoRow("Service Type", job["title"]),
-                  _infoRow(
-                    "Worker",
-                    job["assignedWorker"]?["name"] ?? "—",
-                  ),
-                  _infoRow(
-                    "Date",
-                    (job["timestamp"] as Timestamp)
-                        .toDate()
-                        .toString()
-                        .substring(0, 10),
-                  ),
-                ],
-              ),
-            ),
-
-            // STATUS BADGE
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.end,
-              children: [
-                const SizedBox(height: 10),
-                _statusPill(job["status"]),            
-
-              const SizedBox(height: 50),
-
-              // IN PROGRESS TEXT
-              if (job["isStarted"] == true)
-                  Text(
-                    "Work in progress",
-                    style: TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
-                      color: Colors.green.shade700,
-                    ),
-                  ),
-                  ],
-            ),
-          ],
-        ),
-
-        const SizedBox(height: 0),
-
-        // FOOTER TEXT
-        /*Text(
-          job["status"] == "Pending"
-              ? "Awaiting worker assignment"
-              : job["status"] == "Assigned"
-                  ? "Worker assigned"
-                  : "Work in progress",
-          style: const TextStyle(
-            fontSize: 13,
-            color: Colors.black54,
+    return Container(
+      margin: const EdgeInsets.only(bottom: 18),
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.75),
+        borderRadius: BorderRadius.circular(26),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.08),
+            blurRadius: 18,
+            offset: const Offset(0, 8),
           ),
-        ),*/
-      ],
-    ),
-  );
-}
+        ],
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  job["title"] ?? "",
+                  style: const TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  (job["timestamp"] as Timestamp)
+                      .toDate()
+                      .toString()
+                      .substring(0, 16),
+                  style: const TextStyle(color: Colors.black54),
+                ),
+              ],
+            ),
+          ),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              Text("ID: ${job["service_id"]}"),
+              const SizedBox(height: 10),
+              _statusBadge(job["status"]),
 
+              const SizedBox(height: 10),
+
+              if (job["isStarted"] == true)
+                Text(
+                  "Work in progress",
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.green.shade700,
+                  ),
+                ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
 
   // ================= STATUS BADGE =================
-  Widget _statusPill(String status) {
+  Widget _statusBadge(String status) {
     Color color;
     switch (status) {
       case "Assigned":
@@ -779,38 +755,6 @@ class _WorkerMyJobsPageState extends State<WorkerMyJobsPage> {
     }
 
     return const SizedBox.shrink();
-  }
-
-  Widget _infoRow(String label, String value) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 6),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          SizedBox(
-            width: 90,
-            child: Text(
-              "$label:",
-              style: const TextStyle(
-                fontSize: 13,
-                fontWeight: FontWeight.w600,
-                color: Colors.black54,
-              ),
-            ),
-          ),
-          Expanded(
-            child: Text(
-              value,
-              style: const TextStyle(
-                fontSize: 13,
-                fontWeight: FontWeight.w600,
-                color: Colors.black87,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
   }
 }
 

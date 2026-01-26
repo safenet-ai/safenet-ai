@@ -5,6 +5,7 @@ import 'package:file_picker/file_picker.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'widget/profile_sidebar.dart';
+import 'widget/notification_dropdown.dart';
 
 class NewServiceRequestpage extends StatefulWidget {
   const NewServiceRequestpage({super.key});
@@ -21,6 +22,7 @@ class _NewServiceRequestpage extends State<NewServiceRequestpage> {
 
   final TextEditingController titleController = TextEditingController();
   final TextEditingController descController = TextEditingController();
+  final TextEditingController otherCategoryController = TextEditingController();
 
   List<PlatformFile> selectedFiles = [];
 
@@ -108,6 +110,8 @@ class _NewServiceRequestpage extends State<NewServiceRequestpage> {
   }
 
 
+  
+
   // SUBMIT service request (WITHOUT STORAGE FOR NOW)
   Future<void> submitRequest() async {
     if (titleController.text.trim().isEmpty ||
@@ -155,16 +159,20 @@ class _NewServiceRequestpage extends State<NewServiceRequestpage> {
         "service_id": serviceId,          // ✅ NEW
         "title": titleController.text.trim(),
         "description": descController.text.trim(),
-        "category": selectedCategory,
+        "category": selectedCategory == "Other"
+            ? otherCategoryController.text.trim()
+            : selectedCategory,
         "files": files,
         "userId": user.uid,
         "username": username,            // ✅ NEW
         "status": "Pending",
+        "isStarted": false,
         "timestamp": Timestamp.now(),
 
         // ✅ Worker info (unchanged)
         "assignedWorker": selectedWorker != null
             ? {
+                "id": selectedWorker!['id'],
                 "name": selectedWorker!['name'],
                 "rating": selectedWorker!['rating'],
                 "completed": selectedWorker!['completed'],
@@ -191,36 +199,25 @@ class _NewServiceRequestpage extends State<NewServiceRequestpage> {
 
 
   // ---------------- Worker Data (placeholders: Option C) ----------------
-  final List<Map<String, dynamic>> _sampleWorkers = [
-    {
-      "name": "Worker 1",
-      "rating": 4.8,
-      "completed": 12,
-      "role": "Technician",
-      "avatarColor": Color(0xFF90C7FF),
-    },
-    {
-      "name": "Worker 2",
-      "rating": 4.6,
-      "completed": 18,
-      "role": "Technician",
-      "avatarColor": Color(0xFFF7D978),
-    },
-    {
-      "name": "Worker 3",
-      "rating": 4.9,
-      "completed": 9,
-      "role": "Technician",
-      "avatarColor": Color(0xFFB9E6C7),
-    },
-  ];
+  Stream<QuerySnapshot> _workersStream() {
+  Query query = FirebaseFirestore.instance
+      .collection("workers")
+      .where("isActive", isEqualTo: true);
+
+  if (selectedCategory != null && selectedCategory != "Other") {
+    query = query.where("profession", isEqualTo: selectedCategory);
+  }
+
+  return query.snapshots();
+}
+
 
   // open bottom sheet to pick worker
   Future<void> _openWorkerPicker() async {
     final chosen = await showModalBottomSheet<Map<String, dynamic>>(
       context: context,
       isScrollControlled: true,
-      backgroundColor: Colors.white.withOpacity(0.0), // we'll use card inside
+      backgroundColor: Colors.transparent,
       builder: (context) {
         return DraggableScrollableSheet(
           initialChildSize: 0.6,
@@ -232,15 +229,11 @@ class _NewServiceRequestpage extends State<NewServiceRequestpage> {
               decoration: BoxDecoration(
                 color: Colors.white.withOpacity(0.95),
                 borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
-                boxShadow: [
-                  BoxShadow(color: Colors.black.withOpacity(0.08), blurRadius: 12),
-                ],
               ),
               padding: const EdgeInsets.fromLTRB(18, 14, 18, 18),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // header
                   Center(
                     child: Container(
                       width: 48,
@@ -257,16 +250,53 @@ class _NewServiceRequestpage extends State<NewServiceRequestpage> {
                     style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
                   ),
                   const SizedBox(height: 12),
+
                   Expanded(
-                    child: ListView.separated(
-                      controller: controller,
-                      itemCount: _sampleWorkers.length,
-                      separatorBuilder: (_, __) => const SizedBox(height: 12),
-                      itemBuilder: (context, idx) {
-                        final w = _sampleWorkers[idx];
-                        return _workerListTile(w, () {
-                          Navigator.of(context).pop(w);
-                        });
+                    child: StreamBuilder<QuerySnapshot>(
+                      stream: _workersStream(),
+                      builder: (context, snapshot) {
+                        if (!snapshot.hasData) {
+                          return const Center(child: CircularProgressIndicator());
+                        }
+
+                        final docs = snapshot.data!.docs;
+
+                        if (docs.isEmpty) {
+                          return const Center(
+                            child: Text("No workers available"),
+                          );
+                        }
+
+                        return ListView.separated(
+                          controller: controller,
+                          itemCount: docs.length,
+                          separatorBuilder: (_, __) => const SizedBox(height: 12),
+                          itemBuilder: (context, index) {
+                            final data =
+                                docs[index].data() as Map<String, dynamic>;
+
+                            return _workerListTile(
+                              {
+                              "id": docs[index].id,
+                              "name": data["username"] ?? "Worker",
+                              "role": data["profession"] ?? "Unknown",
+                              "rating": (data["rating"] ?? 0).toDouble(),
+                              "completed": data["completedWorks"] ?? 0,
+                              "avatarColor": Colors.blueGrey,
+                              },
+                             () {
+                              Navigator.pop(context, {
+                                "id": docs[index].id,
+                                "name": data["username"],
+                                "role": data["profession"],
+                                "rating": (data["rating"] ?? 0).toDouble(),
+                                "completed": data["completedWorks"] ?? 0,
+                                "avatarColor": Colors.blueGrey,
+                              });
+                             }
+                            );
+                          },
+                        );
                       },
                     ),
                   ),
@@ -279,11 +309,10 @@ class _NewServiceRequestpage extends State<NewServiceRequestpage> {
     );
 
     if (chosen != null && mounted) {
-      setState(() {
-        selectedWorker = chosen;
-      });
+      setState(() => selectedWorker = chosen);
     }
   }
+
 
   // single worker tile used in bottom sheet
   Widget _workerListTile(Map<String, dynamic> w, VoidCallback onTap) {
@@ -327,13 +356,28 @@ class _NewServiceRequestpage extends State<NewServiceRequestpage> {
                     style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800),
                   ),
                   const SizedBox(height: 6),
-                  Row(
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Icon(Icons.star, size: 14, color: Colors.orange),
-                      const SizedBox(width: 6),
-                      Text("${w['rating']}"),
-                      const SizedBox(width: 12),
-                      Text("${w['completed']} completed", style: TextStyle(color: Colors.black54)),
+                      Text(
+                        w['role'], // 👈 profession
+                        style: const TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.black54,
+                        ),
+                      ),
+                      const SizedBox(height: 6),
+                      Row(
+                        children: [
+                          const Icon(Icons.star, size: 14, color: Colors.orange),
+                          const SizedBox(width: 6),
+                          Text("${w['rating']}"),
+                          const SizedBox(width: 12),
+                          Text("${w['completed']} work completed",
+                              style: TextStyle(color: Colors.black54)),
+                        ],
+                      ),
                     ],
                   )
                 ],
@@ -352,19 +396,11 @@ class _NewServiceRequestpage extends State<NewServiceRequestpage> {
     return Scaffold(
       body: Stack(
         children: [
-          // BACKGROUND IMAGE
-          Container(
-            decoration: const BoxDecoration(
-              image: DecorationImage(
-                image: AssetImage("assets/bg1_img.png"),
-                fit: BoxFit.cover,
-              ),
+          Positioned.fill(
+            child: Image.asset(
+              'assets/bg1_img.png', // your background image
+              fit: BoxFit.cover,
             ),
-          ),
-
-          // OVERLAY
-          Container(
-            color: Colors.white.withOpacity(0.15),
           ),
 
           SafeArea(
@@ -390,8 +426,10 @@ class _NewServiceRequestpage extends State<NewServiceRequestpage> {
 
                       Row(
                         children: [
-                          _circleButton(Icons.notifications_none_rounded),
+                          NotificationDropdown(role: "user"),
+
                           const SizedBox(width: 12),
+                          
                           GestureDetector(
                           onTap: () {
                             setState(() => _isProfileOpen = true);
@@ -458,18 +496,37 @@ class _NewServiceRequestpage extends State<NewServiceRequestpage> {
                         isExpanded: true,
                         hint: const Text("Category"),
                         items: const [
-                          DropdownMenuItem(value: "Electrecian", child: Text("Electrecian")),
-                          DropdownMenuItem(value: "Plumber", child: Text("Plumber")),
-                          DropdownMenuItem(value: "Maintenance", child: Text("Maintenance")),
+                          DropdownMenuItem(value: "Electrician", child: Text("Electrical")),
+                          DropdownMenuItem(value: "Plumber", child: Text("Plumbing")),
+                          DropdownMenuItem(value: "Carpenter", child: Text("Furnishing")),
                           DropdownMenuItem(value: "Security", child: Text("Security")),
-                          DropdownMenuItem(value: "Cleanliness", child: Text("Cleanliness")),
+                          DropdownMenuItem(value: "Cleaner", child: Text("Cleaning")),
+                          DropdownMenuItem(value: "Other", child: Text("Other")),
                         ],
                         onChanged: (value) {
-                          setState(() => selectedCategory = value);
+                          setState(() {
+                            selectedCategory = value;
+                            selectedWorker = null; //  reset worker
+                          });
                         },
                       ),
                     ),
                   ),
+                  if (selectedCategory == "Other") ...[
+                    const SizedBox(height: 14),
+
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 8),
+                      decoration: _fieldDecoration(),
+                      child: TextField(
+                        controller: otherCategoryController,
+                        decoration: const InputDecoration(
+                          hintText: "Enter custom category",
+                          border: InputBorder.none,
+                        ),
+                      ),
+                    ),
+                  ],
 
                   const SizedBox(height: 18),
 
@@ -524,7 +581,7 @@ class _NewServiceRequestpage extends State<NewServiceRequestpage> {
                                 const SizedBox(height: 6),
                                 Text(
                                   selectedWorker != null
-                                      ? "${selectedWorker!['completed']} Completed"
+                                      ? "${selectedWorker!['role']} • ${selectedWorker!['completed']} Completed"
                                       : "Choose a worker for this request",
                                   style: TextStyle(
                                     fontSize: 13,
@@ -604,48 +661,73 @@ class _NewServiceRequestpage extends State<NewServiceRequestpage> {
                       runSpacing: 12,
                       children: List.generate(selectedFiles.length, (index) {
                         final file = selectedFiles[index];
-
                         final isImage = ["png", "jpg", "jpeg"]
                             .contains(file.extension?.toLowerCase());
 
-                        final isVideo = ["mp4", "mov"]
-                            .contains(file.extension?.toLowerCase());
-
-                        return Stack(
+                        return Column(
+                          mainAxisSize: MainAxisSize.min,
                           children: [
-                            Container(
-                              width: 90,
-                              height: 90,
-                              decoration: BoxDecoration(
-                                color: Colors.white,
-                                borderRadius: BorderRadius.circular(12),
-                                boxShadow: [
-                                  BoxShadow(color: Colors.black12, blurRadius: 5),
-                                ],
-                              ),
-                              child: ClipRRect(
-                                borderRadius: BorderRadius.circular(12),
-                                child: isImage
-                                    ? Image.memory(file.bytes!, fit: BoxFit.cover)
-                                    : isVideo
-                                        ? const Center(child: Icon(Icons.videocam, size: 40))
-                                        : const Center(child: Icon(Icons.description, size: 40)),
-                              ),
+                            Stack(
+                              children: [
+                                Container(
+                                  width: 90,
+                                  height: 90,
+                                  decoration: BoxDecoration(
+                                    color: Colors.white,
+                                    borderRadius: BorderRadius.circular(12),
+                                    boxShadow: const [
+                                      BoxShadow(color: Colors.black12, blurRadius: 5),
+                                    ],
+                                  ),
+                                  child: ClipRRect(
+                                    borderRadius: BorderRadius.circular(12),
+                                    child: isImage
+                                        ? Image.memory(
+                                            file.bytes!,
+                                            fit: BoxFit.cover,
+                                          )
+                                        : const Center(
+                                            child: Icon(Icons.description, size: 40),
+                                          ),
+                                  ),
+                                ),
+
+                                // ✅ FIXED REMOVE BUTTON
+                                Positioned(
+                                  right: 4,
+                                  top: 4,
+                                  child: GestureDetector(
+                                    onTap: () => removeFile(index),
+                                    child: Container(
+                                      padding: const EdgeInsets.all(4),
+                                      decoration: const BoxDecoration(
+                                        color: Colors.red,
+                                        shape: BoxShape.circle,
+                                      ),
+                                      child: const Icon(
+                                        Icons.close,
+                                        size: 14,
+                                        color: Colors.white,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ],
                             ),
 
-                            Positioned(
-                              right: -8,
-                              top: -8,
-                              child: GestureDetector(
-                                onTap: () => removeFile(index),
-                                child: Container(
-                                  padding: const EdgeInsets.all(4),
-                                  decoration: const BoxDecoration(
-                                    color: Colors.red,
-                                    shape: BoxShape.circle,
-                                  ),
-                                  child: const Icon(Icons.close,
-                                      size: 16, color: Colors.white),
+                            const SizedBox(height: 6),
+
+                            // ✅ FILE NAME
+                            SizedBox(
+                              width: 90,
+                              child: Text(
+                                file.name,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                textAlign: TextAlign.center,
+                                style: const TextStyle(
+                                  fontSize: 11,
+                                  color: Colors.black54,
                                 ),
                               ),
                             ),
@@ -655,6 +737,8 @@ class _NewServiceRequestpage extends State<NewServiceRequestpage> {
                     ),
 
                   const SizedBox(height: 30),
+
+                  
 
                   // SUBMIT BUTTON
                   SizedBox(

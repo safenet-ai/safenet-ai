@@ -4,6 +4,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'servicerequest.dart';
 import 'widget/profile_sidebar.dart';
 import 'widget/filter_tabs.dart';
+import 'widget/notification_dropdown.dart';
 
 
 class ServiceRequestpage extends StatefulWidget {
@@ -26,27 +27,10 @@ class _ServiceRequestpageState extends State<ServiceRequestpage> {
     return Scaffold(
       body: Stack(
         children: [
-          // Background image
-          Container(
-            decoration: const BoxDecoration(
-              image: DecorationImage(
-                image: AssetImage("assets/bg1_img.png"),
-                fit: BoxFit.cover,
-              ),
-            ),
-          ),
-
-          // Soft overlay
-          Container(
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: [
-                  Colors.white.withOpacity(0.35),
-                  Colors.white.withOpacity(0.10),
-                ],
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
-              ),
+          Positioned.fill(
+            child: Image.asset(
+              'assets/bg1_img.png', // your background image
+              fit: BoxFit.cover,
             ),
           ),
 
@@ -67,8 +51,10 @@ class _ServiceRequestpageState extends State<ServiceRequestpage> {
                       ),
                       Row(
                         children: [
-                          _circleIcon(Icons.notifications_none),
+                          NotificationDropdown(role: "user"),
+
                           const SizedBox(width: 15),
+
                           GestureDetector(
                           onTap: () {
                             setState(() => _isProfileOpen = true);

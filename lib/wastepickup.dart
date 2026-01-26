@@ -5,6 +5,7 @@ import 'package:file_picker/file_picker.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'widget/profile_sidebar.dart';
+import 'widget/notification_dropdown.dart';
 
 class NewWastePickupRequestPage extends StatefulWidget {
   const NewWastePickupRequestPage({super.key});
@@ -205,19 +206,11 @@ Future<void> pickTime() async {
     return Scaffold(
       body: Stack(
         children: [
-          // BACKGROUND IMAGE
-          Container(
-            decoration: const BoxDecoration(
-              image: DecorationImage(
-                image: AssetImage("assets/bg1_img.png"),
-                fit: BoxFit.cover,
-              ),
+          Positioned.fill(
+            child: Image.asset(
+              'assets/bg1_img.png', // your background image
+              fit: BoxFit.cover,
             ),
-          ),
-
-          // OVERLAY
-          Container(
-            color: Colors.white.withOpacity(0.15),
           ),
 
           SafeArea(
@@ -244,8 +237,9 @@ Future<void> pickTime() async {
 
                       Row(
                         children: [
-                          _circleButton(Icons.notifications_none_rounded),
-                          const SizedBox(width: 12),
+                          NotificationDropdown(role: "user"),
+
+                          const SizedBox(width: 15),
                           GestureDetector(
                           onTap: () {
                             setState(() => _isProfileOpen = true);

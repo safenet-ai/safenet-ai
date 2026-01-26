@@ -2,8 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'widget/profile_sidebar.dart';
+import 'widget/notification_dropdown.dart';
 import 'approval_guard.dart';
-
+//import 'worker_myjob.dart';
+import 'test.dart';
 
 class WorkerDashboardPage extends StatefulWidget {
   const WorkerDashboardPage({super.key});
@@ -88,8 +90,8 @@ class _WorkerDashboardPageState extends State<WorkerDashboardPage> {
 
                       Row(
                         children: [
-                          _roundIcon(Icons.notifications_none),
-                          const SizedBox(width: 10),
+                          NotificationDropdown(role: "worker"),
+                          const SizedBox(width: 15),
                           GestureDetector(
                             onTap: () {
                               setState(() => _isProfileOpen = true);
@@ -163,46 +165,71 @@ class _WorkerDashboardPageState extends State<WorkerDashboardPage> {
 
                     // ------------------ TILES ------------------
                     Row(
-                      children: const [
+                      children: [
                         Expanded(
-                          child: WorkerTile(
-                            color: Color(0xFFCFF6F2),
-                            icon: Icons.construction,
-                            title: "My Jobs",
-                            subtitle: "Manage your assigned tasks.",
+                          child: GestureDetector(
+                            onTap: () {
+                              // TODO: Navigate to Worker My Jobs page
+                              Navigator.push(context, MaterialPageRoute(builder: (_) => WorkerMyJobsPage()));
+                            },
+                            child: WorkerTile(
+                              color: const Color(0xFFCFF6F2),
+                              icon: Icons.construction,
+                              title: "My Jobs",
+                              subtitle: "Manage your assigned tasks.",
+                            ),
                           ),
                         ),
-                        SizedBox(width: 20),
+                        const SizedBox(width: 20),
                         Expanded(
-                          child: WorkerTile(
-                            color: Color(0xFFE7DFFC),
-                            icon: Icons.notifications_active_outlined,
-                            title: "New Requests",
-                            subtitle: "Incoming requests to approve.",
+                          child: GestureDetector(
+                            onTap: () {
+                              // TODO: Navigate to New Requests page
+                              //Navigator.push(context, MaterialPageRoute(builder: (_) => MyComplaintsPage()));
+                            },
+                            child: WorkerTile(
+                              color: const Color(0xFFE7DFFC),
+                              icon: Icons.notifications_active_outlined,
+                              title: "New Requests",
+                              subtitle: "Incoming requests to approve.",
+                            ),
                           ),
                         ),
                       ],
                     ),
 
+
                     const SizedBox(height: 20),
 
                     Row(
-                      children: const [
+                      children: [
                         Expanded(
-                          child: WorkerTile(
-                            color: Color(0xFFFCE3F1),
-                            icon: Icons.chat_bubble_outline,
-                            title: "Chat",
-                            subtitle: "Talk with authority instantly.",
+                          child: GestureDetector(
+                            onTap: () {
+                              // TODO: Navigate to Worker Chat page
+                              //NaviNavigator.push(context, MaterialPageRoute(builder: (_) => workerchatpage()));
+                            },
+                            child: WorkerTile(
+                              color: const Color(0xFFFCE3F1),
+                              icon: Icons.chat_bubble_outline,
+                              title: "Chat",
+                              subtitle: "Talk with authority instantly.",
+                            ),
                           ),
                         ),
-                        SizedBox(width: 20),
+                        const SizedBox(width: 20),
                         Expanded(
-                          child: WorkerTile(
-                            color: Color(0xFFDAF5E8),
-                            icon: Icons.history,
-                            title: "Work History",
-                            subtitle: "Track completed tasks.",
+                          child: GestureDetector(
+                            onTap: () {
+                              // TODO: Navigate to Work History page
+                              //Navigator.push(context, MaterialPageRoute(builder: (_) => MyComplaintsPage()));
+                            },
+                            child: WorkerTile(
+                              color: const Color(0xFFDAF5E8),
+                              icon: Icons.history,
+                              title: "Work History",
+                              subtitle: "Track completed tasks.",
+                            ),
                           ),
                         ),
                       ],
@@ -246,27 +273,24 @@ class _WorkerDashboardPageState extends State<WorkerDashboardPage> {
   }
 
   // ------------------ ROUND ICON ------------------
-  Widget _roundIcon(IconData icon) {
-    return Container(
-      height: 42,
-      width: 42,
-      decoration: BoxDecoration(
-        color: Colors.white,
-        shape: BoxShape.circle,
-        boxShadow: [
-          BoxShadow(
-            color: Colors.white.withOpacity(0.9),
-            offset: const Offset(-3, -3),
-            blurRadius: 8,
-          ),
-          BoxShadow(
-            color: Colors.black.withOpacity(0.12),
-            offset: const Offset(4, 4),
-            blurRadius: 8,
-          ),
-        ],
+  Widget _roundIcon(IconData icon, {VoidCallback? onTap}) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.all(8),
+        decoration: BoxDecoration(
+          color: Colors.white70,
+          shape: BoxShape.circle,
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.12),
+              blurRadius: 8,
+              offset: const Offset(0, 3),
+            ),
+          ],
+        ),
+        child: Icon(icon, size: 22, color: Colors.black87),
       ),
-      child: Icon(icon, color: Colors.black54, size: 22),
     );
   }
 }

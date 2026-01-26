@@ -5,6 +5,7 @@ import 'package:file_picker/file_picker.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'widget/profile_sidebar.dart';
+import 'widget/notification_dropdown.dart';
 
 class NewComplaintPage extends StatefulWidget {
   const NewComplaintPage({super.key});
@@ -175,17 +176,12 @@ class _NewComplaintPageState extends State<NewComplaintPage> {
     return Scaffold(
       body: Stack(
         children: [
-          // BACKGROUND
-          Container(
-            decoration: const BoxDecoration(
-              image: DecorationImage(
-                image: AssetImage("assets/bg1_img.png"),
-                fit: BoxFit.cover,
-              ),
+          Positioned.fill(
+            child: Image.asset(
+              'assets/bg1_img.png', // your background image
+              fit: BoxFit.cover,
             ),
           ),
-
-          Container(color: Colors.white.withOpacity(0.15)),
 
           SafeArea(
             child: SingleChildScrollView(
@@ -205,8 +201,10 @@ class _NewComplaintPageState extends State<NewComplaintPage> {
                       ),
                       Row(
                         children: [
-                          _circleButton(Icons.notifications_none_rounded),
-                          const SizedBox(width: 12),
+                          NotificationDropdown(role: "user"),
+                          
+                          const SizedBox(width: 15),
+
                           GestureDetector(
                           onTap: () {
                             setState(() => _isProfileOpen = true);
@@ -301,55 +299,85 @@ class _NewComplaintPageState extends State<NewComplaintPage> {
                   // FILE PREVIEW
                   if (selectedFiles.isNotEmpty)
                     Wrap(
-                      spacing: 12,
-                      runSpacing: 12,
-                      children: List.generate(selectedFiles.length, (index) {
-                        final file = selectedFiles[index];
-                        final isImage = ["png", "jpg", "jpeg"]
-                            .contains(file.extension?.toLowerCase());
+  spacing: 12,
+  runSpacing: 12,
+  children: List.generate(selectedFiles.length, (index) {
+    final file = selectedFiles[index];
+    final isImage = ["png", "jpg", "jpeg"]
+        .contains(file.extension?.toLowerCase());
 
-                        return Stack(
-                          children: [
-                            Container(
-                              width: 90,
-                              height: 90,
-                              decoration: BoxDecoration(
-                                color: Colors.white,
-                                borderRadius: BorderRadius.circular(12),
-                                boxShadow: const [
-                                  BoxShadow(
-                                      color: Colors.black12, blurRadius: 5),
-                                ],
-                              ),
-                              child: ClipRRect(
-                                borderRadius: BorderRadius.circular(12),
-                                child: isImage
-                                    ? Image.memory(file.bytes!,
-                                        fit: BoxFit.cover)
-                                    : const Center(
-                                        child:
-                                            Icon(Icons.description, size: 40)),
-                              ),
-                            ),
-                            Positioned(
-                              right: -8,
-                              top: -8,
-                              child: GestureDetector(
-                                onTap: () => removeFile(index),
-                                child: Container(
-                                  padding: const EdgeInsets.all(4),
-                                  decoration: const BoxDecoration(
-                                      color: Colors.red,
-                                      shape: BoxShape.circle),
-                                  child: const Icon(Icons.close,
-                                      size: 16, color: Colors.white),
-                                ),
-                              ),
-                            ),
-                          ],
-                        );
-                      }),
-                    ),
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Stack(
+          children: [
+            Container(
+              width: 90,
+              height: 90,
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(12),
+                boxShadow: const [
+                  BoxShadow(color: Colors.black12, blurRadius: 5),
+                ],
+              ),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(12),
+                child: isImage
+                    ? Image.memory(
+                        file.bytes!,
+                        fit: BoxFit.cover,
+                      )
+                    : const Center(
+                        child: Icon(Icons.description, size: 40),
+                      ),
+              ),
+            ),
+
+            // ✅ FIXED REMOVE BUTTON
+            Positioned(
+              right: 4,
+              top: 4,
+              child: GestureDetector(
+                onTap: () => removeFile(index),
+                child: Container(
+                  padding: const EdgeInsets.all(4),
+                  decoration: const BoxDecoration(
+                    color: Colors.red,
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(
+                    Icons.close,
+                    size: 14,
+                    color: Colors.white,
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+
+        const SizedBox(height: 6),
+
+        // ✅ FILE NAME
+        SizedBox(
+          width: 90,
+          child: Text(
+            file.name,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            textAlign: TextAlign.center,
+            style: const TextStyle(
+              fontSize: 11,
+              color: Colors.black54,
+            ),
+          ),
+        ),
+      ],
+    );
+  }),
+),
+
 
                   const SizedBox(height: 30),
 

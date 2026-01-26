@@ -4,6 +4,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'complaint.dart';
 import 'widget/profile_sidebar.dart';
 import 'widget/filter_tabs.dart';
+import 'widget/notification_dropdown.dart';
 
 class MyComplaintsPage extends StatefulWidget {
   const MyComplaintsPage({super.key});
@@ -37,27 +38,13 @@ class _MyComplaintsPageState extends State<MyComplaintsPage> {
     return Scaffold(
       body: Stack(
         children: [
-          Container(
-            decoration: const BoxDecoration(
-              image: DecorationImage(
-                image: AssetImage("assets/bg1_img.png"),
-                fit: BoxFit.cover,
-              ),
+          Positioned.fill(
+            child: Image.asset(
+              'assets/bg1_img.png', // your background image
+              fit: BoxFit.cover,
             ),
           ),
-
-          Container(
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: [
-                  Colors.white.withOpacity(0.35),
-                  Colors.white.withOpacity(0.10),
-                ],
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
-              ),
-            ),
-          ),
+          
 
           SafeArea(
             child: Column(
@@ -76,8 +63,10 @@ class _MyComplaintsPageState extends State<MyComplaintsPage> {
                       ),
                       Row(
                         children: [
-                          _circleIcon(Icons.notifications_none),
-                          const SizedBox(width: 15),
+                            NotificationDropdown(role: "user"),
+
+                            const SizedBox(width: 15),
+
                           GestureDetector(
                           onTap: () {
                             setState(() => _isProfileOpen = true);
