@@ -70,10 +70,46 @@ class _WorkerMyJobsPageState extends State<WorkerMyJobsPage> {
     }
 
     return urls;
+  } */
+  
+  void _showFullScreenImage(BuildContext context, String imageUrl) {
+    showDialog(
+      context: context,
+      builder: (context) => Stack(
+        children: [
+          // The Image
+          Positioned.fill(
+            child: GestureDetector(
+              onTap: () => Navigator.pop(context),
+              child: InteractiveViewer( // Allows pinching to zoom
+                child: Image.network(
+                  imageUrl,
+                  fit: BoxFit.contain,
+                ),
+              ),
+            ),
+          ),
+          // The Close Button
+          Positioned(
+            top: 40,
+            right: 20,
+            child: GestureDetector(
+              onTap: () => Navigator.pop(context),
+              child: Container(
+                padding: const EdgeInsets.all(8),
+                decoration: const BoxDecoration(
+                  color: Colors.black54,
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(Icons.close, color: Colors.white, size: 28),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
   }
-  */
-
-
+  
 
   void _showJobDetailsPopup(
     BuildContext context, {
@@ -99,50 +135,63 @@ class _WorkerMyJobsPageState extends State<WorkerMyJobsPage> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       // -------- TITLE --------
-                      Text(
-                        job["title"] ?? "",
-                        style: const TextStyle(
-                          fontSize: 22,
-                          fontWeight: FontWeight.w900,
+                      Center(
+                        child: Text(
+                          job["title"] ?? "No Title",
+                          textAlign: TextAlign.center, // Center for long titles
+                          style: const TextStyle(
+                            fontSize: 32, // Slightly reduced to fit better
+                            fontWeight: FontWeight.w900,
+                          ),
                         ),
                       ),
 
-                      const SizedBox(height: 6),
-                      Text(
-                        "Service ID: ${job["service_id"]}",
-                        style: const TextStyle(color: Colors.black54),
+                      const SizedBox(height: 20),
+                      
+                      _popupInfoRow("Service ID", job["service_id"] ?? ""),
+                      const SizedBox(height: 12),
+                      _popupInfoRow("Resident", job["username"] ?? ""),
+                      const SizedBox(height: 12),
+
+                      // -------- DESCRIPTION (FIXED OVERFLOW) --------
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.start, // Align label to top
+                        children: [
+                          const SizedBox(
+                            width: 100, // Fixed width for labels
+                            child: Text(
+                              "Description :",
+                              style: TextStyle(
+                                fontWeight: FontWeight.w700,
+                                fontSize: 16,
+                                color: Colors.black,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 5),
+                          Expanded( // ✅ FIX: This forces the text to wrap to the next line
+                            child: Text(
+                              job["description"] ?? "No description provided.",
+                              style: const TextStyle(
+                                fontSize: 15,
+                                color: Colors.black87,
+                                height: 1.4, // Better readability
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
 
-                      const SizedBox(height: 14),
+                      const SizedBox(height: 20),
 
-                      // -------- USER INFO --------
-                      Text(
-                        "Resident",
-                        style: TextStyle(
-                          fontWeight: FontWeight.w700,
-                          color: Colors.blueGrey.shade700,
-                        ),
-                      ),
-                      Text(job["username"] ?? ""),
-                      const SizedBox(height: 10),
-
-                      // -------- DESCRIPTION --------
-                      const Text(
-                        "Description",
-                        style: TextStyle(fontWeight: FontWeight.w700),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(job["description"] ?? ""),
-
-                      const SizedBox(height: 16),
-
-                      // -------- FILES (IMAGES / VIDEOS) --------
-                      if (job["files"] != null && job["files"].isNotEmpty) ...[
+                      // -------- ATTACHMENTS (FIXED IMAGE VISIBILITY) --------
+                      if (job["files"] != null && (job["files"] as List).isNotEmpty) ...[
                         const Text(
                           "Attachments",
-                          style: TextStyle(fontWeight: FontWeight.w700),
+                          style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16),
                         ),
-                        const SizedBox(height: 10),
+                        const SizedBox(height: 12),
+         
                         Wrap(
                           spacing: 10,
                           runSpacing: 10,
@@ -150,31 +199,43 @@ class _WorkerMyJobsPageState extends State<WorkerMyJobsPage> {
                             job["files"].length,
                             (index) {
                               final url = job["files"][index];
-                              return ClipRRect(
-                                borderRadius: BorderRadius.circular(12),
-                                child: Image.network(
-                                  url,
-                                  width: 90,
-                                  height: 90,
-                                  fit: BoxFit.cover,
+                              return GestureDetector(
+                                onTap: () => _showFullScreenImage(context, url), // ✅ TAP TO ENLARGE
+                                child: ClipRRect(
+                                  borderRadius: BorderRadius.circular(12),
+                                  child: Image.network(
+                                    url,
+                                    width: 80,
+                                    height: 80,
+                                    fit: BoxFit.cover,
+                                    loadingBuilder: (context, child, loadingProgress) {
+                                      if (loadingProgress == null) return child;
+                                      return Container(
+                                        width: 80, height: 80, color: Colors.grey[200],
+                                        child: const Center(child: CircularProgressIndicator(strokeWidth: 2)),
+                                      );
+                                    },
+                                    errorBuilder: (context, error, stackTrace) => Container(
+                                      width: 80, height: 80, color: Colors.grey[300],
+                                      child: const Icon(Icons.broken_image, color: Colors.grey),
+                                    ),
+                                  ),
                                 ),
                               );
                             },
                           ),
                         ),
+                        const SizedBox(height: 20),
                       ],
 
                       const SizedBox(height: 24),
-
-                      // -------- ACTION BUTTONS --------
                       _jobActionButtons(jobId, job, dialogSetState),
-
-                      const SizedBox(height: 10),
+                      const SizedBox(height: 14),
 
                       Center(
                         child: TextButton(
                           onPressed: () => Navigator.pop(context),
-                          child: const Text("Close"),
+                          child: const Text("Close", style: TextStyle(color: Colors.black54)),
                         ),
                       ),
                     ],
@@ -185,6 +246,28 @@ class _WorkerMyJobsPageState extends State<WorkerMyJobsPage> {
           },
         );
       }
+    );
+  }
+
+  // Helper widget for clean popup rows
+  Widget _popupInfoRow(String label, String value) {
+    return Row(
+      children: [
+        SizedBox(
+          width: 100,
+          child: Text(
+            "$label   :",
+            style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 16),
+          ),
+        ),
+        const SizedBox(width: 5),
+        Expanded(
+          child: Text(
+            value,
+            style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 16, color: Colors.black54),
+          ),
+        ),
+      ],
     );
   }
 
@@ -394,71 +477,83 @@ class _WorkerMyJobsPageState extends State<WorkerMyJobsPage> {
 
   // ================= JOB CARD =================
   Widget _jobCardFromFirestore(Map<String, dynamic> job) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 18),
-      padding: const EdgeInsets.all(18),
-      decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.75),
-        borderRadius: BorderRadius.circular(26),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.08),
-            blurRadius: 18,
-            offset: const Offset(0, 8),
-          ),
-        ],
-      ),
-      child: Row(
-        children: [
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  job["title"] ?? "",
-                  style: const TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.w800,
+  return Container(
+    margin: const EdgeInsets.only(bottom: 18),
+    padding: const EdgeInsets.all(18),
+    decoration: BoxDecoration(
+      color: Colors.white,
+      borderRadius: BorderRadius.circular(22),
+      boxShadow: [
+        BoxShadow(
+          color: Colors.black.withOpacity(0.06),
+          blurRadius: 14,
+          offset: const Offset(0, 6),
+        ),
+      ],
+    ),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // LEFT DETAILS
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _infoRow("Req ID", job["service_id"]),
+                  _infoRow("Resident", job["username"]),
+                  _infoRow("Service Type", job["title"]),
+                  _infoRow(
+                    "Worker",
+                    job["assignedWorker"]?["name"] ?? "—",
                   ),
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  (job["timestamp"] as Timestamp)
-                      .toDate()
-                      .toString()
-                      .substring(0, 16),
-                  style: const TextStyle(color: Colors.black54),
-                ),
-              ],
+                  _infoRow(
+                    "Date",
+                    (job["timestamp"] as Timestamp)
+                        .toDate()
+                        .toString()
+                        .substring(0, 10),
+                  ),
+                ],
+              ),
             ),
-          ),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: [
-              Text("ID: ${job["service_id"]}"),
-              const SizedBox(height: 10),
-              _statusBadge(job["status"]),
 
-              const SizedBox(height: 10),
+            // STATUS BADGE
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                const SizedBox(height: 10),
+                _statusPill(job["status"]),            
 
+              const SizedBox(height: 50),
+
+              // IN PROGRESS TEXT
               if (job["isStarted"] == true)
-                Text(
-                  "Work in progress",
-                  style: TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w600,
-                    color: Colors.green.shade700,
+                  Text(
+                    "Work in progress",
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.green.shade700,
+                    ),
                   ),
-                ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
+                  ],
+            ),
+          ],
+        ),
+
+        const SizedBox(height: 0),
+
+      ],
+    ),
+  );
+}
+
 
   // ================= STATUS BADGE =================
-  Widget _statusBadge(String status) {
+  Widget _statusPill(String status) {
     Color color;
     switch (status) {
       case "Assigned":
@@ -549,6 +644,20 @@ class _WorkerMyJobsPageState extends State<WorkerMyJobsPage> {
       return Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
+          Center(
+            child: Text(
+              "UPDATES",
+              style: TextStyle(
+                fontWeight: FontWeight.w700,
+                //decoration: TextDecoration.underline,
+                fontSize: 26,
+                color: Colors.black,
+              )
+            ),
+          ),
+
+          const SizedBox(height: 20),
+
           // WORK DESCRIPTION
           Container(
             margin: const EdgeInsets.only(bottom: 14),
@@ -562,14 +671,16 @@ class _WorkerMyJobsPageState extends State<WorkerMyJobsPage> {
             ),
             child: TextField(
               controller: workDescController,
-              minLines: 3,
-              maxLines: 5,
+              minLines: 4,
+              maxLines: 6,
               decoration: const InputDecoration(
                 hintText: "Work description / notes",
                 border: InputBorder.none,
               ),
             ),
           ),
+
+          const SizedBox(height: 12),
 
           // ATTACH FILE BUTTON (COMMENTED FUNCTIONALITY)
           GestureDetector(
@@ -578,7 +689,7 @@ class _WorkerMyJobsPageState extends State<WorkerMyJobsPage> {
             },
             child: Container(
               margin: const EdgeInsets.only(bottom: 18),
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+              padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
               decoration: BoxDecoration(
                 color: Colors.white.withOpacity(0.85),
                 borderRadius: BorderRadius.circular(30),
@@ -590,7 +701,7 @@ class _WorkerMyJobsPageState extends State<WorkerMyJobsPage> {
                 mainAxisSize: MainAxisSize.min,
                 children: const [
                   Icon(Icons.attach_file, size: 18),
-                  SizedBox(width: 8),
+                  SizedBox(width: 10),
                   Text(
                     "Attach Work Files",
                     style: TextStyle(fontWeight: FontWeight.w600),
@@ -600,7 +711,7 @@ class _WorkerMyJobsPageState extends State<WorkerMyJobsPage> {
             ),
           ),
 
-          const SizedBox(height: 12),
+          const SizedBox(height: 0),
 
           // FILE PREVIEW
           if (selectedFiles.isNotEmpty)
@@ -756,6 +867,36 @@ class _WorkerMyJobsPageState extends State<WorkerMyJobsPage> {
 
     return const SizedBox.shrink();
   }
+
+  Widget _infoRow(String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 6),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(
+            width: 90,
+            child: Text(
+              "$label:",
+              style: const TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+                color: Colors.black54,
+              ),
+            ),
+          ),
+          Expanded(
+            child: Text(
+              value,
+              style: const TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+                color: Colors.black87,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 }
-
-

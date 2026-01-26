@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
+//import 'dart:io';
+import 'dart:typed_data';
 import 'package:file_picker/file_picker.dart';
-// Uncomment these when Firebase Storage is enabled
-// import 'package:firebase_storage/firebase_storage.dart';
+import 'package:firebase_storage/firebase_storage.dart';
+import 'package:flutter_image_compress/flutter_image_compress.dart';
+//import 'package:path_provider/path_provider.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'widget/profile_sidebar.dart';
@@ -28,6 +31,19 @@ class _NewServiceRequestpage extends State<NewServiceRequestpage> {
 
   // NEW: selected worker (null when none chosen)
   Map<String, dynamic>? selectedWorker;
+
+  // --- COMPRESSION HELPER ---
+  Future<Uint8List?> _compressFile(PlatformFile file) async {
+    final isImage = ["png", "jpg", "jpeg"].contains(file.extension?.toLowerCase());
+    if (!isImage || file.bytes == null) return file.bytes;
+
+    return await FlutterImageCompress.compressWithList(
+      file.bytes!,
+      minHeight: 1024,
+      minWidth: 1024,
+      quality: 70, // 70 is the sweet spot for Blaze plan savings
+    );
+  }
 
   // PICK FILES (max 4)
   Future<void> pickFile() async {
@@ -64,19 +80,32 @@ class _NewServiceRequestpage extends State<NewServiceRequestpage> {
   }
 
   // ===========================================
-  //  FUTURE STORAGE UPLOAD CODE (DISABLED NOW)
+  //  FUTURE STORAGE UPLOAD CODE (ACTIVATED NOW)
   // ===========================================
-  /*
+  
   Future<List<String>> uploadFiles() async {
     List<String> downloadUrls = [];
 
     for (var file in selectedFiles) {
+
+      //compress file before upload
+      Uint8List? compressedData = await _compressFile(file);
+      if (compressedData == null) continue;
+      
       final ref = FirebaseStorage.instance
           .ref()
           .child("servicerequest")
           .child(DateTime.now().millisecondsSinceEpoch.toString() + "_" + file.name);
 
-      UploadTask uploadTask = ref.putData(file.bytes!);
+
+      // Upload compressed data
+
+      UploadTask uploadTask = ref.putData(
+        compressedData,
+          SettableMetadata(contentType:
+           'image/jpeg'),
+      );
+
       TaskSnapshot snapshot = await uploadTask;
 
       String url = await snapshot.ref.getDownloadURL();
@@ -84,7 +113,7 @@ class _NewServiceRequestpage extends State<NewServiceRequestpage> {
     }
     return downloadUrls;
   }
-  */
+  
   // ===========================================
 
 
@@ -113,6 +142,7 @@ class _NewServiceRequestpage extends State<NewServiceRequestpage> {
   
 
   // SUBMIT service request (WITHOUT STORAGE FOR NOW)
+
   Future<void> submitRequest() async {
     if (titleController.text.trim().isEmpty ||
         descController.text.trim().isEmpty ||
@@ -122,6 +152,15 @@ class _NewServiceRequestpage extends State<NewServiceRequestpage> {
       );
       return;
     }
+
+    //Show loading Spinner
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context)
+      => const Center(
+        child: CircularProgressIndicator(color: Color(0xff6ea7a0))),
+    );        
 
     try {
       final user = FirebaseAuth.instance.currentUser;
@@ -136,13 +175,15 @@ class _NewServiceRequestpage extends State<NewServiceRequestpage> {
       // ✅ 1️⃣ Generate Service ID
       String serviceId = await _generateServiceId();
 
+
       // ✅ 2️⃣ Get USERNAME from users collection
       final userDoc = await FirebaseFirestore.instance
           .collection('users')
           .doc(user.uid)
           .get();
 
-      String username = "Resident";
+      String username = userDoc.data()?['username'] ?? "Resident";
+
       if (userDoc.exists) {
         final data = userDoc.data();
         if (data != null && data['username'] != null) {
@@ -151,8 +192,8 @@ class _NewServiceRequestpage extends State<NewServiceRequestpage> {
       }
 
       // When Storage is ready → replace this line:
-      // List<String> files = await uploadFiles();
-      List<String> files = [];
+       List<String> files = await uploadFiles();
+      //List<String> files = [];
 
       // ✅ 3️⃣ Save Service Request with ID + Username
       await FirebaseFirestore.instance.collection("service_requests").add({
@@ -181,6 +222,8 @@ class _NewServiceRequestpage extends State<NewServiceRequestpage> {
               }
             : null,
       });
+
+      if (mounted) Navigator.pop(context); // close loading
 
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
