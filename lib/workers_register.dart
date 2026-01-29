@@ -26,6 +26,7 @@ class _WorkersRegisterPageState extends State<WorkersRegisterPage> {
   bool _obscure = true;
   bool _confirmObscure = true;
 
+  String _selectedCountryCode = "+91"; // Default India
   String? _selectedProfession;
   final _professions = [
     "Electrician",
@@ -38,8 +39,10 @@ class _WorkersRegisterPageState extends State<WorkersRegisterPage> {
 
   final _otherProfessionCtrl = TextEditingController();
 
-  final List<TextEditingController> _otpControllers =
-      List.generate(6, (index) => TextEditingController());
+  final List<TextEditingController> _otpControllers = List.generate(
+    6,
+    (index) => TextEditingController(),
+  );
   final List<FocusNode> _otpNodes = List.generate(6, (index) => FocusNode());
 
   // Firebase
@@ -111,13 +114,12 @@ class _WorkersRegisterPageState extends State<WorkersRegisterPage> {
       _otpError = false;
     });
 
-    final phoneNumber = phone; // you can prepend country code if needed
+    final phoneNumber = "$_selectedCountryCode$phone"; // Add country code
 
     try {
       if (kIsWeb) {
         // Web: signInWithPhoneNumber (uses reCAPTCHA)
-        _webConfirmationResult =
-            await _auth.signInWithPhoneNumber(phoneNumber);
+        _webConfirmationResult = await _auth.signInWithPhoneNumber(phoneNumber);
 
         setState(() {
           _otpSent = true;
@@ -125,7 +127,7 @@ class _WorkersRegisterPageState extends State<WorkersRegisterPage> {
 
         _startCountdown(seconds: 180);
 
-        _msg("OTP sent!");
+        _msg("OTP sent to $_selectedCountryCode$phone!");
       } else {
         // Mobile: verifyPhoneNumber
         await _auth.verifyPhoneNumber(
@@ -143,7 +145,7 @@ class _WorkersRegisterPageState extends State<WorkersRegisterPage> {
             });
 
             _startCountdown(seconds: 60);
-            _msg("OTP sent");
+            _msg("OTP sent to $_selectedCountryCode$phone");
           },
           codeAutoRetrievalTimeout: (String verificationId) {
             _verificationId = verificationId;
@@ -291,11 +293,11 @@ class _WorkersRegisterPageState extends State<WorkersRegisterPage> {
         "phone": phone,
         "profession": finalProfession,
         "role": "worker",
-        
-         // 🔐 NEW
-        "approvalStatus": "pending",   // Authority must approve
-        "isActive": false,             // Optional safety flag
-        
+
+        // 🔐 NEW
+        "approvalStatus": "pending", // Authority must approve
+        "isActive": false, // Optional safety flag
+
         "created_at": FieldValue.serverTimestamp(),
 
         /* 🔐 Authority approval system
@@ -381,9 +383,10 @@ class _WorkersRegisterPageState extends State<WorkersRegisterPage> {
                 "Worker Registration Page",
                 textAlign: TextAlign.center,
                 style: TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.w600,
-                    color: Colors.black),
+                  fontSize: 20,
+                  fontWeight: FontWeight.w600,
+                  color: Colors.black,
+                ),
               ),
             ),
             const SizedBox(width: 48),
@@ -393,12 +396,9 @@ class _WorkersRegisterPageState extends State<WorkersRegisterPage> {
       body: Stack(
         children: [
           Positioned.fill(
-              child: Image.asset(
-            "assets/bg1_img.png",
-            fit: BoxFit.cover,
-          )),
+            child: Image.asset("assets/bg1_img.png", fit: BoxFit.cover),
+          ),
 
-          
           SafeArea(
             child: SingleChildScrollView(
               padding: EdgeInsets.symmetric(horizontal: w * 0.06),
@@ -410,9 +410,10 @@ class _WorkersRegisterPageState extends State<WorkersRegisterPage> {
                   Text(
                     "Create Your Account",
                     style: TextStyle(
-                        fontSize: 30,
-                        fontWeight: FontWeight.w700,
-                        color: Colors.grey.shade800),
+                      fontSize: 30,
+                      fontWeight: FontWeight.w700,
+                      color: Colors.grey.shade800,
+                    ),
                   ),
                   const SizedBox(height: 20),
 
@@ -437,6 +438,41 @@ class _WorkersRegisterPageState extends State<WorkersRegisterPage> {
 
                   Row(
                     children: [
+                      // Country Code Dropdown
+                      Container(
+                        width: 90,
+                        height: 50,
+                        padding: const EdgeInsets.symmetric(horizontal: 12),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withOpacity(0.45),
+                          borderRadius: BorderRadius.circular(14),
+                          border: Border.all(
+                            color: Colors.white.withOpacity(0.28),
+                          ),
+                        ),
+                        child: DropdownButton<String>(
+                          value: _selectedCountryCode,
+                          isExpanded: true,
+                          underline: const SizedBox(),
+                          items: const [
+                            DropdownMenuItem(value: "+1", child: Text("+1")),
+                            DropdownMenuItem(value: "+44", child: Text("+44")),
+                            DropdownMenuItem(value: "+91", child: Text("+91")),
+                            DropdownMenuItem(value: "+92", child: Text("+92")),
+                            DropdownMenuItem(value: "+93", child: Text("+93")),
+                            DropdownMenuItem(
+                              value: "+880",
+                              child: Text("+880"),
+                            ),
+                          ],
+                          onChanged: (value) {
+                            if (value != null) {
+                              setState(() => _selectedCountryCode = value);
+                            }
+                          },
+                        ),
+                      ),
+                      const SizedBox(width: 8),
                       Expanded(
                         flex: 2,
                         child: _glassField(
@@ -448,7 +484,7 @@ class _WorkersRegisterPageState extends State<WorkersRegisterPage> {
                           ),
                         ),
                       ),
-                      const SizedBox(width: 10),
+                      const SizedBox(width: 8),
                       _otpButton(),
                     ],
                   ),
@@ -466,13 +502,14 @@ class _WorkersRegisterPageState extends State<WorkersRegisterPage> {
                     child: DropdownButtonFormField<String>(
                       value: _selectedProfession,
                       decoration: const InputDecoration(
-                          border: InputBorder.none, isCollapsed: true),
+                        border: InputBorder.none,
+                        isCollapsed: true,
+                      ),
                       hint: const Text("Profession / Work Type"),
                       items: _professions
-                          .map((p) => DropdownMenuItem(
-                                value: p,
-                                child: Text(p),
-                              ))
+                          .map(
+                            (p) => DropdownMenuItem(value: p, child: Text(p)),
+                          )
                           .toList(),
                       onChanged: (value) {
                         setState(() => _selectedProfession = value);
@@ -486,8 +523,9 @@ class _WorkersRegisterPageState extends State<WorkersRegisterPage> {
                     _glassField(
                       child: TextField(
                         controller: _otherProfessionCtrl,
-                        decoration:
-                            _inputDecoration("Enter your profession manually"),
+                        decoration: _inputDecoration(
+                          "Enter your profession manually",
+                        ),
                       ),
                     ),
 
@@ -502,13 +540,10 @@ class _WorkersRegisterPageState extends State<WorkersRegisterPage> {
                         border: InputBorder.none,
                         suffixIcon: IconButton(
                           icon: Icon(
-                            _obscure
-                                ? Icons.visibility
-                                : Icons.visibility_off,
+                            _obscure ? Icons.visibility : Icons.visibility_off,
                             color: Colors.grey.shade600,
                           ),
-                          onPressed: () =>
-                              setState(() => _obscure = !_obscure),
+                          onPressed: () => setState(() => _obscure = !_obscure),
                         ),
                       ),
                     ),
@@ -527,9 +562,11 @@ class _WorkersRegisterPageState extends State<WorkersRegisterPage> {
                             _confirmObscure
                                 ? Icons.visibility
                                 : Icons.visibility_off,
-                            color: Colors.grey.shade600),
+                            color: Colors.grey.shade600,
+                          ),
                           onPressed: () => setState(
-                              () => _confirmObscure = !_confirmObscure),
+                            () => _confirmObscure = !_confirmObscure,
+                          ),
                         ),
                       ),
                     ),
@@ -542,20 +579,23 @@ class _WorkersRegisterPageState extends State<WorkersRegisterPage> {
                     width: double.infinity,
                     decoration: BoxDecoration(
                       gradient: const LinearGradient(
-                          colors: [Color(0xFF3CBDB0), Color(0xFF128071)]),
+                        colors: [Color(0xFF3CBDB0), Color(0xFF128071)],
+                      ),
                       borderRadius: BorderRadius.circular(16),
                     ),
                     child: ElevatedButton(
                       onPressed: _registerWorker,
                       style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.transparent,
-                          shadowColor: Colors.transparent),
+                        backgroundColor: Colors.transparent,
+                        shadowColor: Colors.transparent,
+                      ),
                       child: const Text(
                         "Register",
                         style: TextStyle(
-                            fontSize: 20,
-                            fontWeight: FontWeight.w700,
-                            color: Colors.white),
+                          fontSize: 20,
+                          fontWeight: FontWeight.w700,
+                          color: Colors.white,
+                        ),
                       ),
                     ),
                   ),
@@ -612,8 +652,10 @@ class _WorkersRegisterPageState extends State<WorkersRegisterPage> {
         textAlign: TextAlign.center,
         maxLength: 1,
         keyboardType: TextInputType.number,
-        decoration:
-            const InputDecoration(counterText: "", border: InputBorder.none),
+        decoration: const InputDecoration(
+          counterText: "",
+          border: InputBorder.none,
+        ),
         onChanged: (value) {
           if (value.isNotEmpty && index < 5) {
             FocusScope.of(context).requestFocus(_otpNodes[index + 1]);
@@ -635,7 +677,8 @@ class _WorkersRegisterPageState extends State<WorkersRegisterPage> {
       height: 46,
       decoration: BoxDecoration(
         gradient: const LinearGradient(
-            colors: [Color(0xFF3CBDB0), Color(0xFF128071)]),
+          colors: [Color(0xFF3CBDB0), Color(0xFF128071)],
+        ),
         borderRadius: BorderRadius.circular(14),
       ),
       child: TextButton(
