@@ -5,7 +5,8 @@ import 'widget/profile_sidebar.dart';
 import 'widget/notification_dropdown.dart';
 import 'approval_guard.dart';
 import 'worker_myjob.dart';
-//import 'test.dart';
+import 'worker_work_history.dart';
+import 'test.dart';
 
 class WorkerDashboardPage extends StatefulWidget {
   const WorkerDashboardPage({super.key});
@@ -211,7 +212,7 @@ class _WorkerDashboardPageState extends State<WorkerDashboardPage> {
                             child: GestureDetector(
                               onTap: () {
                                 // TODO: Navigate to Worker Chat page
-                                //NaviNavigator.push(context, MaterialPageRoute(builder: (_) => workerchatpage()));
+                                Navigator.push(context, MaterialPageRoute(builder: (_) => WorkerHistoryPage()));
                               },
                               child: WorkerTile(
                                 color: const Color(0xFFFCE3F1),
@@ -226,7 +227,7 @@ class _WorkerDashboardPageState extends State<WorkerDashboardPage> {
                             child: GestureDetector(
                               onTap: () {
                                 // TODO: Navigate to Work History page
-                                //Navigator.push(context, MaterialPageRoute(builder: (_) => MyComplaintsPage()));
+                                Navigator.push(context, MaterialPageRoute(builder: (_) => WorkerWorkHistoryPage()));
                               },
                               child: WorkerTile(
                                 color: const Color(0xFFDAF5E8),
