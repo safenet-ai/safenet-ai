@@ -882,7 +882,8 @@ class _WorkerMyJobsPageState extends State<WorkerMyJobsPage> {
                           .update({
                             "status": "Completed",
                             "workDescription": workDescController.text.trim(),
-                            "workFiles": workFiles, // ✅ STORED
+                            "completionFiles": workFiles,
+                            "completedAt": FieldValue.serverTimestamp(),
                           });
                       Navigator.pop(context);
 

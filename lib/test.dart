@@ -108,37 +108,65 @@ class _WorkerHistoryPageState extends State<WorkerHistoryPage> {
                   // -------- ORIGINAL REQUEST DETAILS --------
                   const Text(
                     "Request Details",
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.blueGrey),
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.blueGrey,
+                    ),
                   ),
                   const SizedBox(height: 15),
                   _popupInfoRow("Service ID", job["service_id"] ?? ""),
                   const SizedBox(height: 8),
                   _popupInfoRow("Resident", job["username"] ?? ""),
                   const SizedBox(height: 8),
-                  _popupInfoRow("Date", (job["timestamp"] as Timestamp?)?.toDate().toString().substring(0, 10) ?? ""),
+                  _popupInfoRow(
+                    "Date",
+                    (job["timestamp"] as Timestamp?)
+                            ?.toDate()
+                            .toString()
+                            .substring(0, 10) ??
+                        "",
+                  ),
                   const SizedBox(height: 15),
-                  
+
                   // Description
-                   Row(
+                  Row(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       const SizedBox(
-                        width: 110, 
-                        child: Text("Description:", style: TextStyle(fontWeight: FontWeight.w700, fontSize: 15)),
+                        width: 110,
+                        child: Text(
+                          "Description:",
+                          style: TextStyle(
+                            fontWeight: FontWeight.w700,
+                            fontSize: 15,
+                          ),
+                        ),
                       ),
                       Expanded(
                         child: Text(
                           job["description"] ?? "No description.",
-                          style: const TextStyle(fontSize: 15, color: Colors.black87, height: 1.4),
+                          style: const TextStyle(
+                            fontSize: 15,
+                            color: Colors.black87,
+                            height: 1.4,
+                          ),
                         ),
                       ),
                     ],
                   ),
 
                   // Resident Attachments
-                  if (job["files"] != null && (job["files"] as List).isNotEmpty) ...[
+                  if (job["files"] != null &&
+                      (job["files"] as List).isNotEmpty) ...[
                     const SizedBox(height: 15),
-                    const Text("Resident Attachments:", style: TextStyle(fontWeight: FontWeight.w700, fontSize: 15)),
+                    const Text(
+                      "Resident Attachments:",
+                      style: TextStyle(
+                        fontWeight: FontWeight.w700,
+                        fontSize: 15,
+                      ),
+                    ),
                     const SizedBox(height: 10),
                     _buildImageGrid(job["files"]),
                   ],
@@ -148,7 +176,11 @@ class _WorkerHistoryPageState extends State<WorkerHistoryPage> {
                   // -------- WORKER COMPLETION DETAILS --------
                   const Text(
                     "Work Completion Report",
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.green),
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.green,
+                    ),
                   ),
                   const SizedBox(height: 15),
 
@@ -158,30 +190,59 @@ class _WorkerHistoryPageState extends State<WorkerHistoryPage> {
                     children: [
                       const SizedBox(
                         width: 110,
-                        child: Text("Work Notes:", style: TextStyle(fontWeight: FontWeight.w700, fontSize: 15)),
+                        child: Text(
+                          "Work Notes:",
+                          style: TextStyle(
+                            fontWeight: FontWeight.w700,
+                            fontSize: 15,
+                          ),
+                        ),
                       ),
                       Expanded(
                         child: Text(
                           job["workDescription"] ?? "No notes added.",
-                          style: const TextStyle(fontSize: 15, color: Colors.black87, fontStyle: FontStyle.italic, height: 1.4),
+                          style: const TextStyle(
+                            fontSize: 15,
+                            color: Colors.black87,
+                            fontStyle: FontStyle.italic,
+                            height: 1.4,
+                          ),
                         ),
                       ),
                     ],
                   ),
 
-                  // Completion Proof Images (The new feature)
-                  if (job["completionFiles"] != null && (job["completionFiles"] as List).isNotEmpty) ...[
-                    const SizedBox(height: 20),
-                    const Text("Proof of Work:", style: TextStyle(fontWeight: FontWeight.w700, fontSize: 15)),
-                    const SizedBox(height: 10),
-                    _buildImageGrid(job["completionFiles"]),
-                  ] else ...[
-                     const SizedBox(height: 20),
-                     const Text("No proof images attached.", style: TextStyle(color: Colors.grey, fontSize: 13)),
-                  ],
+                  // Completion Proof Images (check both new and old field names)
+                  ...(() {
+                    final proofImages =
+                        job["completionFiles"] ?? job["workFiles"];
+                    if (proofImages != null &&
+                        (proofImages as List).isNotEmpty) {
+                      return [
+                        const SizedBox(height: 20),
+                        const Text(
+                          "Proof of Work:",
+                          style: TextStyle(
+                            fontWeight: FontWeight.w700,
+                            fontSize: 15,
+                          ),
+                        ),
+                        const SizedBox(height: 10),
+                        _buildImageGrid(proofImages),
+                      ];
+                    } else {
+                      return [
+                        const SizedBox(height: 20),
+                        const Text(
+                          "No proof images attached.",
+                          style: TextStyle(color: Colors.grey, fontSize: 13),
+                        ),
+                      ];
+                    }
+                  })(),
 
                   const SizedBox(height: 30),
-                  
+
                   // Close Button
                   SizedBox(
                     width: double.infinity,
@@ -189,10 +250,18 @@ class _WorkerHistoryPageState extends State<WorkerHistoryPage> {
                     child: ElevatedButton(
                       style: ElevatedButton.styleFrom(
                         backgroundColor: Colors.black87,
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(18),
+                        ),
                       ),
                       onPressed: () => Navigator.pop(context),
-                      child: const Text("Close History", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                      child: const Text(
+                        "Close History",
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
                     ),
                   ),
                 ],
@@ -209,28 +278,29 @@ class _WorkerHistoryPageState extends State<WorkerHistoryPage> {
     return Wrap(
       spacing: 10,
       runSpacing: 10,
-      children: List.generate(
-        urls.length,
-        (index) {
-          final url = urls[index];
-          return GestureDetector(
-            onTap: () => _showFullScreenImage(context, url),
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(12),
-              child: Container(
-                color: Colors.grey[200],
-                child: Image.network(
-                  url,
-                  width: 70,
-                  height: 70,
-                  fit: BoxFit.cover,
-                  errorBuilder: (context, error, stackTrace) => const Icon(Icons.broken_image, size: 40, color: Colors.grey),
+      children: List.generate(urls.length, (index) {
+        final url = urls[index];
+        return GestureDetector(
+          onTap: () => _showFullScreenImage(context, url),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(12),
+            child: Container(
+              color: Colors.grey[200],
+              child: Image.network(
+                url,
+                width: 70,
+                height: 70,
+                fit: BoxFit.cover,
+                errorBuilder: (context, error, stackTrace) => const Icon(
+                  Icons.broken_image,
+                  size: 40,
+                  color: Colors.grey,
                 ),
               ),
             ),
-          );
-        },
-      ),
+          ),
+        );
+      }),
     );
   }
 
@@ -240,10 +310,20 @@ class _WorkerHistoryPageState extends State<WorkerHistoryPage> {
       children: [
         SizedBox(
           width: 110,
-          child: Text("$label:", style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15)),
+          child: Text(
+            "$label:",
+            style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15),
+          ),
         ),
         Expanded(
-          child: Text(value, style: const TextStyle(fontWeight: FontWeight.w500, fontSize: 15, color: Colors.black87)),
+          child: Text(
+            value,
+            style: const TextStyle(
+              fontWeight: FontWeight.w500,
+              fontSize: 15,
+              color: Colors.black87,
+            ),
+          ),
         ),
       ],
     );
@@ -257,10 +337,7 @@ class _WorkerHistoryPageState extends State<WorkerHistoryPage> {
         children: [
           // BACKGROUND IMAGE
           Positioned.fill(
-            child: Image.asset(
-              'assets/bg1_img.png', 
-              fit: BoxFit.cover,
-            ),
+            child: Image.asset('assets/bg1_img.png', fit: BoxFit.cover),
           ),
 
           SafeArea(
@@ -268,7 +345,10 @@ class _WorkerHistoryPageState extends State<WorkerHistoryPage> {
               children: [
                 // ================= TOP BAR =================
                 Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 20,
+                    vertical: 8,
+                  ),
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
@@ -325,12 +405,17 @@ class _WorkerHistoryPageState extends State<WorkerHistoryPage> {
                           stream: FirebaseFirestore.instance
                               .collection("service_requests")
                               .where("assignedWorker.id", isEqualTo: workerId)
-                              .where("status", isEqualTo: "Completed") // ONLY COMPLETED
+                              .where(
+                                "status",
+                                isEqualTo: "Completed",
+                              ) // ONLY COMPLETED
                               .orderBy("timestamp", descending: true)
                               .snapshots(),
                           builder: (context, snapshot) {
                             if (!snapshot.hasData) {
-                              return const Center(child: CircularProgressIndicator());
+                              return const Center(
+                                child: CircularProgressIndicator(),
+                              );
                             }
 
                             final docs = snapshot.data!.docs;
@@ -340,11 +425,18 @@ class _WorkerHistoryPageState extends State<WorkerHistoryPage> {
                                 child: Column(
                                   mainAxisAlignment: MainAxisAlignment.center,
                                   children: [
-                                    Icon(Icons.history, size: 80, color: Colors.grey[400]),
+                                    Icon(
+                                      Icons.history,
+                                      size: 80,
+                                      color: Colors.grey[400],
+                                    ),
                                     const SizedBox(height: 20),
                                     Text(
                                       "No completed jobs yet.",
-                                      style: TextStyle(color: Colors.grey[600], fontSize: 16),
+                                      style: TextStyle(
+                                        color: Colors.grey[600],
+                                        fontSize: 16,
+                                      ),
                                     ),
                                   ],
                                 ),
@@ -353,11 +445,14 @@ class _WorkerHistoryPageState extends State<WorkerHistoryPage> {
 
                             return ListView.builder(
                               physics: const BouncingScrollPhysics(),
-                              padding: const EdgeInsets.symmetric(horizontal: 20),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 20,
+                              ),
                               itemCount: docs.length,
                               itemBuilder: (context, index) {
-                                final job = docs[index].data() as Map<String, dynamic>;
-                                
+                                final job =
+                                    docs[index].data() as Map<String, dynamic>;
+
                                 return GestureDetector(
                                   onTap: () => _showHistoryPopup(context, job),
                                   child: _historyCard(job),
@@ -444,17 +539,21 @@ class _WorkerHistoryPageState extends State<WorkerHistoryPage> {
                 const SizedBox(height: 6),
                 Text(
                   "ID: ${job["service_id"] ?? "—"}",
-                  style: TextStyle(fontSize: 13, color: Colors.grey[600], fontWeight: FontWeight.w600),
+                  style: TextStyle(
+                    fontSize: 13,
+                    color: Colors.grey[600],
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  "Completed: ${(job["completedAt"] as Timestamp?)?.toDate().toString().substring(0, 16) ?? "Date unknown"}",
+                  "Completed: ${_formatCompletedDate(job["completedAt"])}",
                   style: TextStyle(fontSize: 12, color: Colors.grey[500]),
                 ),
               ],
             ),
           ),
-          
+
           // Arrow
           const Icon(Icons.arrow_forward_ios, size: 16, color: Colors.grey),
         ],
@@ -481,5 +580,30 @@ class _WorkerHistoryPageState extends State<WorkerHistoryPage> {
         child: Icon(icon, size: 22, color: Colors.black87),
       ),
     );
+  }
+
+  String _formatCompletedDate(dynamic completedAt) {
+    if (completedAt == null) return "Date unknown";
+
+    try {
+      final date = (completedAt as Timestamp).toDate();
+      final months = [
+        "Jan",
+        "Feb",
+        "Mar",
+        "Apr",
+        "May",
+        "Jun",
+        "Jul",
+        "Aug",
+        "Sep",
+        "Oct",
+        "Nov",
+        "Dec",
+      ];
+      return "${date.day} ${months[date.month - 1]} ${date.year}, ${date.hour.toString().padLeft(2, '0')}:${date.minute.toString().padLeft(2, '0')}";
+    } catch (e) {
+      return "Date unknown";
+    }
   }
 }
