@@ -415,6 +415,7 @@ class _AuthorityServiceManagementPageState
                                 FilterTabItem("All", Icons.apps),
                                 FilterTabItem("Pending", Icons.access_time),
                                 FilterTabItem("Assigned", Icons.work),
+                                FilterTabItem("In Progress", Icons.build),
                                 FilterTabItem("Completed", Icons.check_circle),
                               ],
                               onChanged: (index, label) {
@@ -440,6 +441,7 @@ class _AuthorityServiceManagementPageState
                                     0 => "All",
                                     1 => "Pending",
                                     2 => "Assigned",
+                                    3 => "In Progress",
                                     _ => "Completed",
                                   };
                                 });
@@ -448,6 +450,7 @@ class _AuthorityServiceManagementPageState
                                 _firestoreList("All"),
                                 _firestoreList("Pending"),
                                 _firestoreList("Assigned"),
+                                _firestoreList("In Progress"),
                                 _firestoreList("Completed"),
                               ],
                             ),
@@ -504,7 +507,17 @@ class _AuthorityServiceManagementPageState
   Widget _firestoreList(String filter) {
     Query query = FirebaseFirestore.instance.collection("service_requests");
 
-    if (filter != "All") {
+    if (filter == "In Progress") {
+      // Show requests that are Assigned and have been started
+      query = query
+          .where("status", isEqualTo: "Assigned")
+          .where("isStarted", isEqualTo: true);
+    } else if (filter == "Assigned") {
+      // Show only assigned but not started
+      query = query
+          .where("status", isEqualTo: "Assigned")
+          .where("isStarted", isEqualTo: false);
+    } else if (filter != "All") {
       query = query.where("status", isEqualTo: filter);
     }
 
@@ -517,17 +530,26 @@ class _AuthorityServiceManagementPageState
 
         final docs = snapshot.data!.docs;
 
-        if (docs.isEmpty) {
+        // For "Assigned" filter, also filter out null isStarted
+        List<QueryDocumentSnapshot> filteredDocs = docs;
+        if (filter == "Assigned") {
+          filteredDocs = docs.where((doc) {
+            final data = doc.data() as Map<String, dynamic>;
+            return data["isStarted"] != true;
+          }).toList();
+        }
+
+        if (filteredDocs.isEmpty) {
           return const Center(child: Text("No service requests found"));
         }
 
         return ListView.separated(
           physics: const BouncingScrollPhysics(),
-          itemCount: docs.length,
+          itemCount: filteredDocs.length,
           separatorBuilder: (_, __) => const SizedBox(height: 18),
           itemBuilder: (context, index) {
-            final data = docs[index].data() as Map<String, dynamic>;
-            final docId = docs[index].id;
+            final data = filteredDocs[index].data() as Map<String, dynamic>;
+            final docId = filteredDocs[index].id;
 
             return GestureDetector(
               onTap: () => _showServiceDetails(context, docId, data),
@@ -536,7 +558,10 @@ class _AuthorityServiceManagementPageState
                 name: data["username"],
                 category: data["category"],
                 date: _formatDate(data["timestamp"]),
-                status: data["status"],
+                status:
+                    data["status"] == "Assigned" && data["isStarted"] == true
+                    ? "In Progress"
+                    : data["status"],
                 worker: data["assignedWorker"] != null
                     ? data["assignedWorker"]["name"]
                     : null,
@@ -559,12 +584,16 @@ class _AuthorityServiceManagementPageState
   }) {
     Color statusColor = status == "Pending"
         ? const Color(0xFFFFE680)
+        : status == "In Progress"
+        ? const Color(0xFFFFB74D)
         : status == "Assigned"
         ? const Color(0xFFBEE7E8)
         : const Color(0xFFBBF3C1);
 
     String footerText = status == "Pending"
         ? "Awaiting worker assignment"
+        : status == "In Progress"
+        ? "Worker ${worker ?? ""} is working on this"
         : status == "Assigned"
         ? "Worker ${worker ?? ""} assigned"
         : "Work completed by Worker ${worker ?? ""}";
