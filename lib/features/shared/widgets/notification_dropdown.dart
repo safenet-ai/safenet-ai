@@ -169,231 +169,240 @@ class _NotificationDropdownState extends State<NotificationDropdown> {
             top: 70,
             right: 16,
             width: 330,
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(26),
-              child: BackdropFilter(
-                filter: ImageFilter.blur(sigmaX: 18, sigmaY: 18),
-                child: Container(
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                      colors: [
-                        const Color(0xFFBEEBFF).withOpacity(0.75), // aqua light
-                        const Color(
-                          0xFFDCF7FF,
-                        ).withOpacity(0.55), // glass shine
-                        const Color(
-                          0xFFB4E8F5,
-                        ).withOpacity(0.65), // liquid blue
+            child: ConstrainedBox(
+              constraints: BoxConstraints(
+                maxHeight: MediaQuery.of(context).size.height * 0.7,
+              ),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(26),
+                child: BackdropFilter(
+                  filter: ImageFilter.blur(sigmaX: 18, sigmaY: 18),
+                  child: Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                        colors: [
+                          const Color(
+                            0xFFBEEBFF,
+                          ).withOpacity(0.75), // aqua light
+                          const Color(
+                            0xFFDCF7FF,
+                          ).withOpacity(0.55), // glass shine
+                          const Color(
+                            0xFFB4E8F5,
+                          ).withOpacity(0.65), // liquid blue
+                        ],
+                      ),
+                      borderRadius: BorderRadius.circular(26),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.blueAccent.withOpacity(0.25),
+                          blurRadius: 30,
+                          offset: const Offset(0, 12),
+                        ),
                       ],
                     ),
-                    borderRadius: BorderRadius.circular(26),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.blueAccent.withOpacity(0.25),
-                        blurRadius: 30,
-                        offset: const Offset(0, 12),
-                      ),
-                    ],
-                  ),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      const Center(
-                        child: Text(
-                          "Notifications",
-                          style: TextStyle(
-                            fontWeight: FontWeight.w700,
-                            fontSize: 26,
-                            color: Colors.black87,
-                            decoration: TextDecoration.none,
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Center(
+                          child: Text(
+                            "Notifications",
+                            style: TextStyle(
+                              fontWeight: FontWeight.w700,
+                              fontSize: 26,
+                              color: Colors.black87,
+                              decoration: TextDecoration.none,
+                            ),
                           ),
                         ),
-                      ),
 
-                      const SizedBox(height: 12),
+                        const SizedBox(height: 12),
 
-                      Center(
-                        child: GestureDetector(
-                          onTap: _clearAllNotifications,
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 16,
-                              vertical: 8,
-                            ),
-                            decoration: BoxDecoration(
-                              color: Colors.red.shade50,
-                              borderRadius: BorderRadius.circular(12),
-                              border: Border.all(
-                                color: Colors.red.shade200,
-                                width: 1,
+                        Center(
+                          child: GestureDetector(
+                            onTap: _clearAllNotifications,
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 16,
+                                vertical: 8,
                               ),
-                            ),
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Icon(
-                                  Icons.clear_all,
-                                  size: 16,
-                                  color: Colors.red.shade700,
+                              decoration: BoxDecoration(
+                                color: Colors.red.shade50,
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(
+                                  color: Colors.red.shade200,
+                                  width: 1,
                                 ),
-                                const SizedBox(width: 6),
-                                Text(
-                                  "Clear All",
-                                  style: TextStyle(
-                                    fontSize: 13,
-                                    fontWeight: FontWeight.w600,
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(
+                                    Icons.clear_all,
+                                    size: 16,
                                     color: Colors.red.shade700,
                                   ),
-                                ),
-                              ],
+                                  const SizedBox(width: 6),
+                                  Text(
+                                    "Clear All",
+                                    style: TextStyle(
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.w600,
+                                      color: Colors.red.shade700,
+                                    ),
+                                  ),
+                                ],
+                              ),
                             ),
                           ),
                         ),
-                      ),
 
-                      const SizedBox(height: 12),
+                        const SizedBox(height: 12),
 
-                      StreamBuilder<QuerySnapshot>(
-                        stream: query.snapshots(),
-                        builder: (_, snap) {
-                          if (!snap.hasData) {
-                            return const Padding(
-                              padding: EdgeInsets.all(20),
-                              child: CircularProgressIndicator(),
-                            );
-                          }
+                        Expanded(
+                          child: StreamBuilder<QuerySnapshot>(
+                            stream: query.snapshots(),
+                            builder: (_, snap) {
+                              if (!snap.hasData) {
+                                return const Padding(
+                                  padding: EdgeInsets.all(20),
+                                  child: CircularProgressIndicator(),
+                                );
+                              }
 
-                          final docs = snap.data!.docs; // ✅ ADD THIS LINE
+                              final docs = snap.data!.docs; // ✅ ADD THIS LINE
 
-                          if (docs.isEmpty) {
-                            return const Padding(
-                              padding: EdgeInsets.all(20),
-                              child: Text(
-                                "No notifications",
-                                style: TextStyle(
-                                  fontSize: 14,
-                                  color: Colors.black54,
-                                ),
-                              ),
-                            );
-                          }
-
-                          return Column(
-                            children: docs.map((doc) {
-                              final data = doc.data() as Map<String, dynamic>;
-                              final isRead = data["isRead"] ?? false;
-
-                              return Opacity(
-                                opacity: isRead ? 0.5 : 1.0,
-                                child: Container(
-                                  margin: const EdgeInsets.only(bottom: 12),
-                                  padding: const EdgeInsets.all(14),
-                                  decoration: BoxDecoration(
-                                    gradient: LinearGradient(
-                                      colors: [
-                                        Colors.white.withOpacity(0.85),
-                                        const Color(
-                                          0xFFE3F8FF,
-                                        ).withOpacity(0.75),
-                                      ],
-                                      begin: Alignment.topLeft,
-                                      end: Alignment.bottomRight,
+                              if (docs.isEmpty) {
+                                return const Padding(
+                                  padding: EdgeInsets.all(20),
+                                  child: Text(
+                                    "No notifications",
+                                    style: TextStyle(
+                                      fontSize: 14,
+                                      color: Colors.black54,
                                     ),
-                                    borderRadius: BorderRadius.circular(18),
-                                    boxShadow: [
-                                      BoxShadow(
-                                        color: Colors.blueAccent.withOpacity(
-                                          0.12,
-                                        ),
-                                        blurRadius: 12,
-                                        offset: const Offset(0, 6),
-                                      ),
-                                    ],
                                   ),
+                                );
+                              }
 
-                                  child: Row(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: [
-                                      Container(
-                                        width: 36,
-                                        height: 36,
-                                        decoration: BoxDecoration(
-                                          color: Colors.blueGrey.withOpacity(
-                                            0.1,
+                              return ListView(
+                                shrinkWrap: true,
+                                children: docs.map((doc) {
+                                  final data =
+                                      doc.data() as Map<String, dynamic>;
+                                  final isRead = data["isRead"] ?? false;
+
+                                  return Opacity(
+                                    opacity: isRead ? 0.5 : 1.0,
+                                    child: Container(
+                                      margin: const EdgeInsets.only(bottom: 12),
+                                      padding: const EdgeInsets.all(14),
+                                      decoration: BoxDecoration(
+                                        gradient: LinearGradient(
+                                          colors: [
+                                            Colors.white.withOpacity(0.85),
+                                            const Color(
+                                              0xFFE3F8FF,
+                                            ).withOpacity(0.75),
+                                          ],
+                                          begin: Alignment.topLeft,
+                                          end: Alignment.bottomRight,
+                                        ),
+                                        borderRadius: BorderRadius.circular(18),
+                                        boxShadow: [
+                                          BoxShadow(
+                                            color: Colors.blueAccent
+                                                .withOpacity(0.12),
+                                            blurRadius: 12,
+                                            offset: const Offset(0, 6),
                                           ),
-                                          shape: BoxShape.circle,
-                                        ),
-                                        child: Icon(
-                                          isRead
-                                              ? Icons.notifications_outlined
-                                              : Icons.notifications_active,
-                                          size: 18,
-                                          color: isRead
-                                              ? Colors.grey
-                                              : Colors.blueGrey,
-                                        ),
+                                        ],
                                       ),
 
-                                      const SizedBox(width: 12),
+                                      child: Row(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
+                                          Container(
+                                            width: 36,
+                                            height: 36,
+                                            decoration: BoxDecoration(
+                                              color: Colors.blueGrey
+                                                  .withOpacity(0.1),
+                                              shape: BoxShape.circle,
+                                            ),
+                                            child: Icon(
+                                              isRead
+                                                  ? Icons.notifications_outlined
+                                                  : Icons.notifications_active,
+                                              size: 18,
+                                              color: isRead
+                                                  ? Colors.grey
+                                                  : Colors.blueGrey,
+                                            ),
+                                          ),
 
-                                      Expanded(
-                                        child: Column(
-                                          crossAxisAlignment:
-                                              CrossAxisAlignment.start,
-                                          children: [
-                                            Row(
+                                          const SizedBox(width: 12),
+
+                                          Expanded(
+                                            child: Column(
+                                              crossAxisAlignment:
+                                                  CrossAxisAlignment.start,
                                               children: [
-                                                if (!isRead) ...[
-                                                  Container(
-                                                    width: 8,
-                                                    height: 8,
-                                                    decoration:
-                                                        const BoxDecoration(
-                                                          color: Colors.red,
-                                                          shape:
-                                                              BoxShape.circle,
+                                                Row(
+                                                  children: [
+                                                    if (!isRead) ...[
+                                                      Container(
+                                                        width: 8,
+                                                        height: 8,
+                                                        decoration:
+                                                            const BoxDecoration(
+                                                              color: Colors.red,
+                                                              shape: BoxShape
+                                                                  .circle,
+                                                            ),
+                                                      ),
+                                                      const SizedBox(width: 8),
+                                                    ],
+                                                    Expanded(
+                                                      child: Text(
+                                                        data["title"] ??
+                                                            "Notification",
+                                                        style: const TextStyle(
+                                                          fontSize: 14,
+                                                          fontWeight:
+                                                              FontWeight.w700,
+                                                          color: Colors.black87,
                                                         ),
-                                                  ),
-                                                  const SizedBox(width: 8),
-                                                ],
-                                                Expanded(
-                                                  child: Text(
-                                                    data["title"] ??
-                                                        "Notification",
-                                                    style: const TextStyle(
-                                                      fontSize: 14,
-                                                      fontWeight:
-                                                          FontWeight.w700,
-                                                      color: Colors.black87,
+                                                      ),
                                                     ),
+                                                  ],
+                                                ),
+                                                const SizedBox(height: 4),
+                                                Text(
+                                                  data["message"] ?? "",
+                                                  style: const TextStyle(
+                                                    fontSize: 13,
+                                                    color: Colors.black54,
                                                   ),
                                                 ),
                                               ],
                                             ),
-                                            const SizedBox(height: 4),
-                                            Text(
-                                              data["message"] ?? "",
-                                              style: const TextStyle(
-                                                fontSize: 13,
-                                                color: Colors.black54,
-                                              ),
-                                            ),
-                                          ],
-                                        ),
+                                          ),
+                                        ],
                                       ),
-                                    ],
-                                  ),
-                                ),
+                                    ),
+                                  );
+                                }).toList(),
                               );
-                            }).toList(),
-                          );
-                        },
-                      ),
-                    ],
+                            },
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                 ),
               ),

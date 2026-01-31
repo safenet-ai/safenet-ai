@@ -20,18 +20,23 @@ class FilterTabs extends StatelessWidget {
         color: Colors.white.withOpacity(0.35),
         borderRadius: BorderRadius.circular(30),
       ),
-      child: Row(
-        children: tabs.asMap().entries.map((entry) {
-          final index = entry.key;
-          final tab = entry.value;
-          final bool isSelected = tab.label == selected;
+      child: SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        child: Row(
+          children: tabs.asMap().entries.map((entry) {
+            final index = entry.key;
+            final tab = entry.value;
+            final bool isSelected = tab.label == selected;
 
-          return Expanded(
-            child: GestureDetector(
+            return GestureDetector(
               onTap: () => onChanged(index, tab.label),
               child: AnimatedContainer(
                 duration: const Duration(milliseconds: 200),
-                padding: const EdgeInsets.symmetric(vertical: 12),
+                margin: const EdgeInsets.symmetric(horizontal: 4),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 12,
+                ),
                 decoration: BoxDecoration(
                   color: isSelected
                       ? const Color.fromARGB(255, 168, 231, 184)
@@ -43,12 +48,13 @@ class FilterTabs extends StatelessWidget {
                             color: Colors.black12,
                             blurRadius: 6,
                             offset: Offset(2, 2),
-                          )
+                          ),
                         ]
                       : [],
                 ),
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.center,
+                  mainAxisSize: MainAxisSize.min,
                   children: [
                     Icon(
                       tab.icon,
@@ -56,26 +62,21 @@ class FilterTabs extends StatelessWidget {
                       color: isSelected ? Colors.black : Colors.grey,
                     ),
                     const SizedBox(width: 6),
-                    Flexible(
-                      child: Text(
-                        tab.label,
-                        maxLines: 1,
-                        overflow: isSelected
-                            ? TextOverflow.visible   // 👈 Selected shows full text
-                            : TextOverflow.ellipsis, // 👈 Others get "..."
-                        style: TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w600,
-                          color: isSelected ? Colors.black : Colors.grey,
-                        ),
+                    Text(
+                      tab.label,
+                      maxLines: 1,
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                        color: isSelected ? Colors.black : Colors.grey,
                       ),
                     ),
                   ],
                 ),
               ),
-            ),
-          );
-        }).toList(),
+            );
+          }).toList(),
+        ),
       ),
     );
   }

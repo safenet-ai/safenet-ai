@@ -375,6 +375,17 @@ class _WorkerMyJobsPageState extends State<WorkerMyJobsPage> {
     if (confirm != true) return;
 
     try {
+      // Get worker name
+      final workerDoc = await FirebaseFirestore.instance
+          .collection("workers")
+          .doc(FirebaseAuth.instance.currentUser?.uid)
+          .get();
+      final workerName = workerDoc.data()?["username"] ?? "Worker";
+
+      // Extract service info before update
+      final serviceTitle = job["title"] ?? job["category"] ?? "Unknown";
+      final serviceId = job["service_id"] ?? "N/A";
+
       // Update service request to Pending and remove worker
       await FirebaseFirestore.instance
           .collection("service_requests")
@@ -388,7 +399,8 @@ class _WorkerMyJobsPageState extends State<WorkerMyJobsPage> {
       // Send notification to authority
       await FirebaseFirestore.instance.collection("notifications").add({
         "title": "Job Rejected",
-        "message": "Worker rejected service request '${job["title"]}'.",
+        "message":
+            "Worker $workerName rejected service request '$serviceTitle' (ID: $serviceId).",
         "toRole": "authority",
         "isRead": false,
         "timestamp": Timestamp.now(),
@@ -398,7 +410,7 @@ class _WorkerMyJobsPageState extends State<WorkerMyJobsPage> {
       await FirebaseFirestore.instance.collection("notifications").add({
         "title": "Service Update",
         "message":
-            "Your service request '${job["title"]}' is back to pending. A new worker will be assigned soon.",
+            "Worker $workerName rejected your service request '$serviceTitle' (ID: $serviceId). A new worker will be assigned soon.",
         "toUid": job["userId"],
         "isRead": false,
         "timestamp": Timestamp.now(),
