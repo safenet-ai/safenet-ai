@@ -15,11 +15,10 @@ class NewWastePickupRequestPage extends StatefulWidget {
       _NewWastePickupRequestPageState();
 }
 
-class _NewWastePickupRequestPageState  extends State<NewWastePickupRequestPage> {
-      
-    bool _isProfileOpen = false;
+class _NewWastePickupRequestPageState extends State<NewWastePickupRequestPage> {
+  bool _isProfileOpen = false;
 
- String? selectedWasteType;
+  String? selectedWasteType;
   final TextEditingController dateController = TextEditingController();
   final TextEditingController timeController = TextEditingController();
   final TextEditingController noteController = TextEditingController();
@@ -30,9 +29,7 @@ class _NewWastePickupRequestPageState  extends State<NewWastePickupRequestPage> 
   Future<void> pickFile() async {
     if (selectedFiles.length >= 4) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text("You can only attach up to 4 files."),
-        ),
+        const SnackBar(content: Text("You can only attach up to 4 files.")),
       );
       return;
     }
@@ -86,8 +83,9 @@ class _NewWastePickupRequestPageState  extends State<NewWastePickupRequestPage> 
 
   // ✅ GENERATE PICKUP ID (PICK-1001)
   Future<String> _generatePickupId() async {
-    final counterRef =
-        FirebaseFirestore.instance.collection('counters').doc('wastepickups');
+    final counterRef = FirebaseFirestore.instance
+        .collection('counters')
+        .doc('wastepickups');
 
     return FirebaseFirestore.instance.runTransaction((transaction) async {
       final snapshot = await transaction.get(counterRef);
@@ -139,8 +137,8 @@ class _NewWastePickupRequestPageState  extends State<NewWastePickupRequestPage> 
 
       // ✅ 3. Save to Firestore with ID + Username
       await FirebaseFirestore.instance.collection("waste_pickups").add({
-        "pickup_id": pickupId,                 // ✅ NEW
-        "username": username,                  // ✅ NEW
+        "pickup_id": pickupId, // ✅ NEW
+        "username": username, // ✅ NEW
         "wasteType": selectedWasteType,
         "date": dateController.text,
         "time": timeController.text,
@@ -160,46 +158,43 @@ class _NewWastePickupRequestPageState  extends State<NewWastePickupRequestPage> 
 
       await Future.delayed(const Duration(seconds: 2));
       if (mounted) Navigator.pop(context);
-
     } catch (e) {
-      ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text("Error: $e")));
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text("Error: $e")));
     }
   }
 
-
   // DATE PICKER
-Future<void> pickDate() async {
-  DateTime? picked = await showDatePicker(
-    context: context,
-    initialDate: DateTime.now(),
-    firstDate: DateTime.now(),
-    lastDate: DateTime(2100),
-  );
+  Future<void> pickDate() async {
+    DateTime? picked = await showDatePicker(
+      context: context,
+      initialDate: DateTime.now(),
+      firstDate: DateTime.now(),
+      lastDate: DateTime(2100),
+    );
 
-  if (picked != null) {
-    setState(() {
-      dateController.text =
-          "${picked.day}/${picked.month}/${picked.year}";
-    });
+    if (picked != null) {
+      setState(() {
+        dateController.text = "${picked.day}/${picked.month}/${picked.year}";
+      });
+    }
   }
-}
 
-// TIME PICKER
-Future<void> pickTime() async {
-  TimeOfDay? picked = await showTimePicker(
-    context: context,
-    initialTime: TimeOfDay.now(),
-  );
+  // TIME PICKER
+  Future<void> pickTime() async {
+    TimeOfDay? picked = await showTimePicker(
+      context: context,
+      initialTime: TimeOfDay.now(),
+    );
 
-  if (picked != null) {
-    final formattedTime = picked.format(context);
-    setState(() {
-      timeController.text = formattedTime;
-    });
+    if (picked != null) {
+      final formattedTime = picked.format(context);
+      setState(() {
+        timeController.text = formattedTime;
+      });
+    }
   }
-}
-
 
   @override
   Widget build(BuildContext context) {
@@ -219,13 +214,14 @@ Future<void> pickTime() async {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-
                   // TOP BAR
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      _circleButton(Icons.arrow_back,
-                          onTap: () => Navigator.pop(context)),
+                      _circleButton(
+                        Icons.arrow_back,
+                        onTap: () => Navigator.pop(context),
+                      ),
 
                       const Text(
                         "SafeNet AI",
@@ -241,11 +237,11 @@ Future<void> pickTime() async {
 
                           const SizedBox(width: 15),
                           GestureDetector(
-                          onTap: () {
-                            setState(() => _isProfileOpen = true);
-                          },
-                          child: _circleButton(Icons.person_outline_rounded),
-                        ),
+                            onTap: () {
+                              setState(() => _isProfileOpen = true);
+                            },
+                            child: _circleButton(Icons.person_outline_rounded),
+                          ),
                         ],
                       ),
                     ],
@@ -266,8 +262,7 @@ Future<void> pickTime() async {
 
                   // WASTE TYPE
                   Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 18),
+                    padding: const EdgeInsets.symmetric(horizontal: 18),
                     decoration: _fieldDecoration(),
                     child: DropdownButtonHideUnderline(
                       child: DropdownButton<String>(
@@ -275,12 +270,21 @@ Future<void> pickTime() async {
                         isExpanded: true,
                         hint: const Text("Select the waste type"),
                         items: const [
-                          DropdownMenuItem(value: "Regular", child: Text("Regular")),
-                          DropdownMenuItem(value: "Recyclable", child: Text("Recyclable")),
-                          DropdownMenuItem(value: "Organic", child: Text("Organic")),
-                        ],    
-                                 
-                       onChanged: (value) {
+                          DropdownMenuItem(
+                            value: "Regular",
+                            child: Text("Regular"),
+                          ),
+                          DropdownMenuItem(
+                            value: "Recyclable",
+                            child: Text("Recyclable"),
+                          ),
+                          DropdownMenuItem(
+                            value: "Organic",
+                            child: Text("Organic"),
+                          ),
+                        ],
+
+                        onChanged: (value) {
                           setState(() => selectedWasteType = value);
                         },
                       ),
@@ -294,7 +298,10 @@ Future<void> pickTime() async {
                     onTap: pickDate,
                     child: AbsorbPointer(
                       child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 8),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 18,
+                          vertical: 8,
+                        ),
                         decoration: _fieldDecoration(),
                         child: TextField(
                           controller: dateController,
@@ -308,15 +315,17 @@ Future<void> pickTime() async {
                     ),
                   ),
 
-
                   const SizedBox(height: 18),
 
-                 // TIME PICKER FIELD
+                  // TIME PICKER FIELD
                   GestureDetector(
                     onTap: pickTime,
                     child: AbsorbPointer(
                       child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 8),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 18,
+                          vertical: 8,
+                        ),
                         decoration: _fieldDecoration(),
                         child: TextField(
                           controller: timeController,
@@ -335,7 +344,9 @@ Future<void> pickTime() async {
                   // NOTE
                   Container(
                     padding: const EdgeInsets.symmetric(
-                        horizontal: 18, vertical: 14),
+                      horizontal: 18,
+                      vertical: 14,
+                    ),
                     decoration: _fieldDecoration(),
                     child: TextField(
                       controller: noteController,
@@ -355,7 +366,9 @@ Future<void> pickTime() async {
                     onTap: pickFile,
                     child: Container(
                       padding: const EdgeInsets.symmetric(
-                          horizontal: 14, vertical: 10),
+                        horizontal: 14,
+                        vertical: 10,
+                      ),
                       decoration: BoxDecoration(
                         color: Colors.white.withOpacity(0.85),
                         borderRadius: BorderRadius.circular(30),
@@ -401,7 +414,9 @@ Future<void> pickTime() async {
                       child: const Text(
                         "Submit Request",
                         style: TextStyle(
-                            fontSize: 18, fontWeight: FontWeight.w600),
+                          fontSize: 18,
+                          fontWeight: FontWeight.w600,
+                        ),
                       ),
                     ),
                   ),
@@ -412,8 +427,7 @@ Future<void> pickTime() async {
                     child: Text(
                       "Your pickup request will be processed\nby the waste management team.",
                       textAlign: TextAlign.center,
-                      style:
-                          TextStyle(fontSize: 14, color: Colors.black54),
+                      style: TextStyle(fontSize: 14, color: Colors.black54),
                     ),
                   ),
 
@@ -437,14 +451,13 @@ Future<void> pickTime() async {
               top: 0,
               bottom: 0,
               right: 0,
-              width: MediaQuery.of(context).size.width * 0.33,
+              width: 280,
               child: ProfileSidebar(
                 userCollection: "users",
                 onClose: () => setState(() => _isProfileOpen = false),
               ),
             ),
           ],
-
         ],
       ),
     );

@@ -16,8 +16,6 @@ class _AuthorityComplaintsPageState extends State<AuthorityComplaintsPage> {
   bool _isProfileOpen = false;
   final PageController _pageController = PageController();
 
-  
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -36,18 +34,22 @@ class _AuthorityComplaintsPageState extends State<AuthorityComplaintsPage> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-
                   //  FIXED TOP BAR (NON-SCROLL)
                   const SizedBox(height: 10),
 
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      _circleIcon(Icons.arrow_back,
-                          onTap: () => Navigator.pop(context)),
+                      _circleIcon(
+                        Icons.arrow_back,
+                        onTap: () => Navigator.pop(context),
+                      ),
                       const Text(
                         "SafeNet AI",
-                        style: TextStyle(fontSize: 22, fontWeight: FontWeight.w700),
+                        style: TextStyle(
+                          fontSize: 22,
+                          fontWeight: FontWeight.w700,
+                        ),
                       ),
                       Row(
                         children: [
@@ -64,7 +66,7 @@ class _AuthorityComplaintsPageState extends State<AuthorityComplaintsPage> {
                     ],
                   ),
 
-                    const SizedBox(height: 45),
+                  const SizedBox(height: 45),
                   //  EVERYTHING BELOW WILL SCROLL
                   Expanded(
                     child: SingleChildScrollView(
@@ -92,7 +94,7 @@ class _AuthorityComplaintsPageState extends State<AuthorityComplaintsPage> {
                               selected: selectedFilter,
                               tabs: [
                                 FilterTabItem("All", Icons.apps),
-                                FilterTabItem("Pending", Icons.access_time), 
+                                FilterTabItem("Pending", Icons.access_time),
                                 FilterTabItem("In Progress", Icons.autorenew),
                                 FilterTabItem("Resolved", Icons.check_circle),
                               ],
@@ -106,7 +108,6 @@ class _AuthorityComplaintsPageState extends State<AuthorityComplaintsPage> {
                               },
                             ),
                           ),
-
 
                           const SizedBox(height: 25),
 
@@ -130,7 +131,6 @@ class _AuthorityComplaintsPageState extends State<AuthorityComplaintsPage> {
                                 _firestoreList("In Progress"),
                                 _firestoreList("Resolved"),
                               ],
-
                             ),
                           ),
 
@@ -158,9 +158,7 @@ class _AuthorityComplaintsPageState extends State<AuthorityComplaintsPage> {
             Positioned.fill(
               child: GestureDetector(
                 onTap: () => setState(() => _isProfileOpen = false),
-                child: Container(
-                  color: Colors.black.withOpacity(0.35),
-                ),
+                child: Container(color: Colors.black.withOpacity(0.35)),
               ),
             ),
 
@@ -171,7 +169,7 @@ class _AuthorityComplaintsPageState extends State<AuthorityComplaintsPage> {
               top: 0,
               bottom: 0,
               right: 0,
-              width: MediaQuery.of(context).size.width * 0.33,
+              width: 280,
               child: ProfileSidebar(
                 onClose: () => setState(() => _isProfileOpen = false),
                 userCollection: "workers",
@@ -183,9 +181,8 @@ class _AuthorityComplaintsPageState extends State<AuthorityComplaintsPage> {
     );
   }
 
-
   ///  READY FOR FIRESTORE (ENABLE LATER)
-  
+
   Widget _firestoreList(String filter) {
     Query query = FirebaseFirestore.instance.collection("complaints");
 
@@ -205,7 +202,8 @@ class _AuthorityComplaintsPageState extends State<AuthorityComplaintsPage> {
         return ListView.separated(
           physics: const BouncingScrollPhysics(),
           itemCount: docs.length,
-          separatorBuilder: (_, __) => const SizedBox(height: 18), //  SPACE BETWEEN CARDS
+          separatorBuilder: (_, __) =>
+              const SizedBox(height: 18), //  SPACE BETWEEN CARDS
           itemBuilder: (context, index) {
             final data = docs[index].data() as Map<String, dynamic>;
 
@@ -216,13 +214,11 @@ class _AuthorityComplaintsPageState extends State<AuthorityComplaintsPage> {
               date: _formatDate(data["timestamp"]),
               status: data["status"],
             );
-
           },
         );
       },
     );
   }
-  
 
   //  COMPLAINT CARD
   Widget _complaintCard({
@@ -235,25 +231,26 @@ class _AuthorityComplaintsPageState extends State<AuthorityComplaintsPage> {
     Color statusColor = status == "Pending"
         ? const Color(0xFFFFE680)
         : status == "In Progress"
-            ? const Color(0xFFBEE7E8)
-            : const Color(0xFFBBF3C1);
+        ? const Color(0xFFBEE7E8)
+        : const Color(0xFFBBF3C1);
 
-    return Padding( //  ADDED SPACE AROUND CARD
-    padding: const EdgeInsets.symmetric(horizontal: 14),
-    child: Container(
-      padding: const EdgeInsets.all(16), //  slightly reduced height
-      decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.88),
-        borderRadius: BorderRadius.circular(26),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black12.withOpacity(0.15),
-            blurRadius: 2,
-            offset: const Offset(4, 2),
-          ),
-        ],
-      ),
-      child: Column(
+    return Padding(
+      //  ADDED SPACE AROUND CARD
+      padding: const EdgeInsets.symmetric(horizontal: 14),
+      child: Container(
+        padding: const EdgeInsets.all(16), //  slightly reduced height
+        decoration: BoxDecoration(
+          color: Colors.white.withOpacity(0.88),
+          borderRadius: BorderRadius.circular(26),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black12.withOpacity(0.15),
+              blurRadius: 2,
+              offset: const Offset(4, 2),
+            ),
+          ],
+        ),
+        child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             /// TITLE + STATUS
@@ -284,15 +281,21 @@ class _AuthorityComplaintsPageState extends State<AuthorityComplaintsPage> {
                 ),
 
                 Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 14,
+                    vertical: 6,
+                  ),
                   decoration: BoxDecoration(
                     color: statusColor,
                     borderRadius: BorderRadius.circular(20),
                   ),
-                  child: Text(status,
-                      style: const TextStyle(
-                          fontWeight: FontWeight.bold, fontSize: 12)),
+                  child: Text(
+                    status,
+                    style: const TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 12,
+                    ),
+                  ),
                 ),
               ],
             ),
@@ -307,7 +310,7 @@ class _AuthorityComplaintsPageState extends State<AuthorityComplaintsPage> {
 
             const SizedBox(height: 8),
 
-           /* const Align(
+            /* const Align(
               alignment: Alignment.centerRight,
               child: Text("View Details",
                   style: TextStyle(
@@ -319,31 +322,38 @@ class _AuthorityComplaintsPageState extends State<AuthorityComplaintsPage> {
     );
   }
 
-
-
   //  CIRCLE ICON
   Widget _circleIcon(IconData icon, {VoidCallback? onTap}) {
     return GestureDetector(
-        onTap: onTap,
-        child: Container(
+      onTap: onTap,
+      child: Container(
         padding: const EdgeInsets.all(8),
         decoration: const BoxDecoration(
           color: Colors.white70,
           shape: BoxShape.circle,
-          boxShadow: [
-            BoxShadow(color: Colors.black12, blurRadius: 8),
-          ],
+          boxShadow: [BoxShadow(color: Colors.black12, blurRadius: 8)],
         ),
         child: Icon(icon, size: 22),
       ),
     );
   }
 }
+
 String _formatDate(Timestamp timestamp) {
   final date = timestamp.toDate();
   const months = [
-    "Jan", "Feb", "Mar", "Apr", "May", "Jun",
-    "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"
+    "Jan",
+    "Feb",
+    "Mar",
+    "Apr",
+    "May",
+    "Jun",
+    "Jul",
+    "Aug",
+    "Sep",
+    "Oct",
+    "Nov",
+    "Dec",
   ];
   return "${date.day} ${months[date.month - 1]} ${date.year}";
 }

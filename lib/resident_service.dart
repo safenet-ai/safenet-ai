@@ -6,7 +6,6 @@ import 'widget/profile_sidebar.dart';
 import 'widget/filter_tabs.dart';
 import 'widget/notification_dropdown.dart';
 
-
 class ServiceRequestpage extends StatefulWidget {
   const ServiceRequestpage({super.key});
 
@@ -15,12 +14,10 @@ class ServiceRequestpage extends StatefulWidget {
 }
 
 class _ServiceRequestpageState extends State<ServiceRequestpage> {
-
   bool _isProfileOpen = false;
 
   String selectedFilter = "All";
   final PageController _pageController = PageController();
-
 
   @override
   Widget build(BuildContext context) {
@@ -56,11 +53,11 @@ class _ServiceRequestpageState extends State<ServiceRequestpage> {
                           const SizedBox(width: 15),
 
                           GestureDetector(
-                          onTap: () {
-                            setState(() => _isProfileOpen = true);
-                          },
-                          child: _circleIcon(Icons.person),
-                        ),
+                            onTap: () {
+                              setState(() => _isProfileOpen = true);
+                            },
+                            child: _circleIcon(Icons.person),
+                          ),
                         ],
                       ),
                     ],
@@ -97,15 +94,23 @@ class _ServiceRequestpageState extends State<ServiceRequestpage> {
                                 Navigator.push(
                                   context,
                                   MaterialPageRoute(
-                                    builder: (_) => const NewServiceRequestpage(),
+                                    builder: (_) =>
+                                        const NewServiceRequestpage(),
                                   ),
                                 );
                               },
                               child: Container(
                                 width: double.infinity,
-                                padding: const EdgeInsets.symmetric(vertical: 18),
+                                padding: const EdgeInsets.symmetric(
+                                  vertical: 18,
+                                ),
                                 decoration: BoxDecoration(
-                                  color: const Color.fromARGB(255, 117, 213, 251),
+                                  color: const Color.fromARGB(
+                                    255,
+                                    117,
+                                    213,
+                                    251,
+                                  ),
                                   borderRadius: BorderRadius.circular(30),
                                   boxShadow: [
                                     BoxShadow(
@@ -136,7 +141,7 @@ class _ServiceRequestpageState extends State<ServiceRequestpage> {
                             padding: const EdgeInsets.symmetric(horizontal: 12),
                             child: FilterTabs(
                               selected: selectedFilter,
-                              tabs:  [
+                              tabs: [
                                 FilterTabItem("All", Icons.apps),
                                 FilterTabItem("Pending", Icons.access_time),
                                 FilterTabItem("Assigned", Icons.work),
@@ -153,8 +158,6 @@ class _ServiceRequestpageState extends State<ServiceRequestpage> {
                             ),
                           ),
 
-
-
                           const SizedBox(height: 25),
 
                           // ---------- PAGEVIEW WITH STREAM ----------
@@ -164,7 +167,12 @@ class _ServiceRequestpageState extends State<ServiceRequestpage> {
                               controller: _pageController,
                               onPageChanged: (index) {
                                 setState(() {
-                                  selectedFilter = ["All", "Pending", "Assigned", "Completed"][index];
+                                  selectedFilter = [
+                                    "All",
+                                    "Pending",
+                                    "Assigned",
+                                    "Completed",
+                                  ][index];
                                 });
                               },
                               children: [
@@ -181,7 +189,10 @@ class _ServiceRequestpageState extends State<ServiceRequestpage> {
                           const Center(
                             child: Text(
                               "Check the status of your Requests",
-                              style: TextStyle(color: Colors.black54, fontSize: 14),
+                              style: TextStyle(
+                                color: Colors.black54,
+                                fontSize: 14,
+                              ),
                             ),
                           ),
 
@@ -209,19 +220,17 @@ class _ServiceRequestpageState extends State<ServiceRequestpage> {
               top: 0,
               bottom: 0,
               right: 0,
-              width: MediaQuery.of(context).size.width * 0.33,
+              width: 280,
               child: ProfileSidebar(
                 userCollection: "users",
                 onClose: () => setState(() => _isProfileOpen = false),
               ),
             ),
           ],
-
         ],
       ),
     );
   }
-
 
   // CIRCLE ICON (PURE WHITE BACKGROUND)
   Widget _circleIcon(IconData icon) {
@@ -241,7 +250,6 @@ class _ServiceRequestpageState extends State<ServiceRequestpage> {
       child: Icon(icon, color: Colors.black87, size: 22),
     );
   }
-
 
   // Request List
   Widget _requestList(String filter) {
@@ -286,7 +294,7 @@ class _ServiceRequestpageState extends State<ServiceRequestpage> {
                 "${date.day} ${_month(date.month)} ${date.year}";
 
             return _requestCard(
-              serviceId: data["service_id"],   // ✅ IMPORTANT
+              serviceId: data["service_id"], // ✅ IMPORTANT
               title: data["title"],
               desc: data["description"],
               date: formattedDate,
@@ -298,16 +306,23 @@ class _ServiceRequestpageState extends State<ServiceRequestpage> {
     );
   }
 
-
   String _month(int m) {
     const months = [
-      "Jan", "Feb", "Mar", "Apr", "May", "Jun",
-      "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"
+      "Jan",
+      "Feb",
+      "Mar",
+      "Apr",
+      "May",
+      "Jun",
+      "Jul",
+      "Aug",
+      "Sep",
+      "Oct",
+      "Nov",
+      "Dec",
     ];
     return months[m - 1];
   }
-
-
 
   // Request Card (FINAL FIXED STATUS STYLE)
   Widget _requestCard({
@@ -320,8 +335,8 @@ class _ServiceRequestpageState extends State<ServiceRequestpage> {
     Color statusColor = status == "Pending"
         ? const Color(0xFFFFE680)
         : status == "Assigned"
-            ? const Color(0xFFBBD9FF)
-            : const Color(0xFFBBF3C1);
+        ? const Color(0xFFBBD9FF)
+        : const Color(0xFFBBF3C1);
 
     return Center(
       child: SizedBox(
@@ -342,7 +357,6 @@ class _ServiceRequestpageState extends State<ServiceRequestpage> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
@@ -370,8 +384,10 @@ class _ServiceRequestpageState extends State<ServiceRequestpage> {
                   ),
 
                   Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 14,
+                      vertical: 6,
+                    ),
                     decoration: BoxDecoration(
                       color: statusColor,
                       borderRadius: BorderRadius.circular(22),
@@ -379,9 +395,10 @@ class _ServiceRequestpageState extends State<ServiceRequestpage> {
                     child: Text(
                       status,
                       style: const TextStyle(
-                          fontSize: 13,
-                          fontWeight: FontWeight.w700,
-                          color: Colors.black87),
+                        fontSize: 13,
+                        fontWeight: FontWeight.w700,
+                        color: Colors.black87,
+                      ),
                     ),
                   ),
                 ],

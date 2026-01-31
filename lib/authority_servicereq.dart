@@ -22,7 +22,7 @@ class _AuthorityServiceManagementPageState
     return Scaffold(
       body: Stack(
         children: [
-        Positioned.fill(
+          Positioned.fill(
             child: Image.asset(
               'assets/bg1_img.png', // your background image
               fit: BoxFit.cover,
@@ -41,12 +41,16 @@ class _AuthorityServiceManagementPageState
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      _circleIcon(Icons.arrow_back,
-                          onTap: () => Navigator.pop(context)),
+                      _circleIcon(
+                        Icons.arrow_back,
+                        onTap: () => Navigator.pop(context),
+                      ),
                       const Text(
                         "Service Management",
                         style: TextStyle(
-                            fontSize: 22, fontWeight: FontWeight.w700),
+                          fontSize: 22,
+                          fontWeight: FontWeight.w700,
+                        ),
                       ),
                       Row(
                         children: [
@@ -107,7 +111,6 @@ class _AuthorityServiceManagementPageState
                             ),
                           ),
 
-
                           const SizedBox(height: 25),
 
                           SizedBox(
@@ -157,9 +160,7 @@ class _AuthorityServiceManagementPageState
             Positioned.fill(
               child: GestureDetector(
                 onTap: () => setState(() => _isProfileOpen = false),
-                child: Container(
-                  color: Colors.black.withOpacity(0.35),
-                ),
+                child: Container(color: Colors.black.withOpacity(0.35)),
               ),
             ),
 
@@ -170,7 +171,7 @@ class _AuthorityServiceManagementPageState
               top: 0,
               bottom: 0,
               right: 0,
-              width: MediaQuery.of(context).size.width * 0.33,
+              width: 280,
               child: ProfileSidebar(
                 onClose: () => setState(() => _isProfileOpen = false),
                 userCollection: "workers",
@@ -227,97 +228,99 @@ class _AuthorityServiceManagementPageState
   }
 
   /// ✅ SERVICE REQUEST CARD (EXACT UI FROM IMAGE)
-  Widget _serviceCard(
-    {
-      required String id,
-      required String name,
-      required String category,
-      required String date,
-      required String status,
-      String? worker,
-   }
-  ) 
-  {
-        Color statusColor = status == "Pending"
-            ? const Color(0xFFFFE680)
-            : status == "Assigned"
-                ? const Color(0xFFBEE7E8)
-                : const Color(0xFFBBF3C1);
+  Widget _serviceCard({
+    required String id,
+    required String name,
+    required String category,
+    required String date,
+    required String status,
+    String? worker,
+  }) {
+    Color statusColor = status == "Pending"
+        ? const Color(0xFFFFE680)
+        : status == "Assigned"
+        ? const Color(0xFFBEE7E8)
+        : const Color(0xFFBBF3C1);
 
-        String footerText = status == "Pending"
-            ? "Awaiting worker assignment"
-            : status == "Assigned"
-                ? "Worker ${worker ?? ""} assigned"
-                : "Work completed by Worker ${worker ?? ""}";
+    String footerText = status == "Pending"
+        ? "Awaiting worker assignment"
+        : status == "Assigned"
+        ? "Worker ${worker ?? ""} assigned"
+        : "Work completed by Worker ${worker ?? ""}";
 
-        return Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 14),
-            child: Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.88),
-                borderRadius: BorderRadius.circular(26),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black12.withOpacity(0.15),
-                    blurRadius: 2,
-                    offset: const Offset(4, 2),
-                  ),
-                ],
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-
-                  /// ✅ STATUS PILL TOP RIGHT
-                  Row(
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 14),
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: Colors.white.withOpacity(0.88),
+          borderRadius: BorderRadius.circular(26),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black12.withOpacity(0.15),
+              blurRadius: 2,
+              offset: const Offset(4, 2),
+            ),
+          ],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            /// ✅ STATUS PILL TOP RIGHT
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                /// ✅ LEFT SIDE DETAILS (STARTS FROM TOP)
+                Expanded(
+                  child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-
-                      /// ✅ LEFT SIDE DETAILS (STARTS FROM TOP)
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            _rowItem("Req ID:", id),
-                            _rowItem("Resident:", name),
-                            _rowItem("Service Type:", category),
-                            _rowItem("Worker:", worker ?? "-"),
-                            _rowItem("Date:", date),
-                          ],
-                        ),
-                      ),
-
-                      /// ✅ STATUS PILL (RIGHT SIDE – SAME TOP LEVEL)
-                      Container(
-                        margin: const EdgeInsets.only(top: 2),
-                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
-                        decoration: BoxDecoration(
-                          color: statusColor,
-                          borderRadius: BorderRadius.circular(20),
-                        ),
-                        child: Text(
-                          status,
-                          style: const TextStyle(
-                              fontWeight: FontWeight.bold, fontSize: 12),
-                        ),
-                      ),
+                      _rowItem("Req ID:", id),
+                      _rowItem("Resident:", name),
+                      _rowItem("Service Type:", category),
+                      _rowItem("Worker:", worker ?? "-"),
+                      _rowItem("Date:", date),
                     ],
                   ),
+                ),
 
-                const SizedBox(height: 14),
-
-                /// ✅ FOOTER STATUS MESSAGE
-                Text(
-                  footerText,
-                  style: const TextStyle(
-                      fontWeight: FontWeight.w600, color: Colors.black54),
+                /// ✅ STATUS PILL (RIGHT SIDE – SAME TOP LEVEL)
+                Container(
+                  margin: const EdgeInsets.only(top: 2),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 14,
+                    vertical: 6,
+                  ),
+                  decoration: BoxDecoration(
+                    color: statusColor,
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: Text(
+                    status,
+                    style: const TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 12,
+                    ),
+                  ),
                 ),
               ],
             ),
-          ),
-        );
-      }
+
+            const SizedBox(height: 14),
+
+            /// ✅ FOOTER STATUS MESSAGE
+            Text(
+              footerText,
+              style: const TextStyle(
+                fontWeight: FontWeight.w600,
+                color: Colors.black54,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 
   Widget _rowItem(String label, String value) {
     return Padding(
@@ -338,17 +341,13 @@ class _AuthorityServiceManagementPageState
           Expanded(
             child: Text(
               value,
-              style: const TextStyle(
-                fontWeight: FontWeight.w700,
-                fontSize: 15,
-              ),
+              style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15),
             ),
           ),
         ],
       ),
     );
   }
-
 
   /// ✅ CIRCLE ICON
   Widget _circleIcon(IconData icon, {VoidCallback? onTap}) {
@@ -359,9 +358,7 @@ class _AuthorityServiceManagementPageState
         decoration: const BoxDecoration(
           color: Colors.white70,
           shape: BoxShape.circle,
-          boxShadow: [
-            BoxShadow(color: Colors.black12, blurRadius: 8),
-          ],
+          boxShadow: [BoxShadow(color: Colors.black12, blurRadius: 8)],
         ),
         child: Icon(icon, size: 22),
       ),
@@ -373,8 +370,18 @@ class _AuthorityServiceManagementPageState
 String _formatDate(Timestamp timestamp) {
   final date = timestamp.toDate();
   const months = [
-    "Jan", "Feb", "Mar", "Apr", "May", "Jun",
-    "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"
+    "Jan",
+    "Feb",
+    "Mar",
+    "Apr",
+    "May",
+    "Jun",
+    "Jul",
+    "Aug",
+    "Sep",
+    "Oct",
+    "Nov",
+    "Dec",
   ];
   return "${date.day} ${months[date.month - 1]} ${date.year}";
 }

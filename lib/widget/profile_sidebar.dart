@@ -70,7 +70,10 @@ class ProfileSidebar extends StatelessWidget {
             builder: (context, snapshot) {
               return Text(
                 snapshot.data ?? "User",
-                style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w700),
+                style: const TextStyle(
+                  fontSize: 22,
+                  fontWeight: FontWeight.w700,
+                ),
               );
             },
           ),
@@ -90,21 +93,26 @@ class ProfileSidebar extends StatelessWidget {
   Widget _btn(String text, IconData icon, {bool danger = false}) {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.symmetric(vertical: 12),
+      padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
       decoration: BoxDecoration(
         color: danger ? Colors.red.shade50 : Colors.grey.shade100,
         borderRadius: BorderRadius.circular(14),
       ),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.center,
+        mainAxisSize: MainAxisSize.min,
         children: [
           Icon(icon, size: 18, color: danger ? Colors.red : Colors.black54),
           const SizedBox(width: 8),
-          Text(
-            text,
-            style: TextStyle(
-              fontWeight: FontWeight.w600,
-              color: danger ? Colors.red : Colors.black87,
+          Flexible(
+            child: Text(
+              text,
+              style: TextStyle(
+                fontWeight: FontWeight.w600,
+                color: danger ? Colors.red : Colors.black87,
+              ),
+              overflow: TextOverflow.ellipsis,
+              textAlign: TextAlign.center,
             ),
           ),
         ],

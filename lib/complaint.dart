@@ -15,7 +15,6 @@ class NewComplaintPage extends StatefulWidget {
 }
 
 class _NewComplaintPageState extends State<NewComplaintPage> {
-
   bool _isProfileOpen = false;
 
   final TextEditingController titleController = TextEditingController();
@@ -27,9 +26,7 @@ class _NewComplaintPageState extends State<NewComplaintPage> {
   Future<void> pickFile() async {
     if (selectedFiles.length >= 4) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text("You can only attach up to 4 files."),
-        ),
+        const SnackBar(content: Text("You can only attach up to 4 files.")),
       );
       return;
     }
@@ -83,8 +80,9 @@ class _NewComplaintPageState extends State<NewComplaintPage> {
 
   // GENERATE COMPLAINT ID
   Future<String> _generateComplaintId() async {
-    final counterRef =
-        FirebaseFirestore.instance.collection('counters').doc('complaints');
+    final counterRef = FirebaseFirestore.instance
+        .collection('counters')
+        .doc('complaints');
 
     return FirebaseFirestore.instance.runTransaction((transaction) async {
       final snapshot = await transaction.get(counterRef);
@@ -106,9 +104,9 @@ class _NewComplaintPageState extends State<NewComplaintPage> {
   Future<void> submitComplaint() async {
     if (titleController.text.trim().isEmpty ||
         descController.text.trim().isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("All fields are required")),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text("All fields are required")));
       return;
     }
 
@@ -117,7 +115,9 @@ class _NewComplaintPageState extends State<NewComplaintPage> {
 
       if (user == null) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("User not logged in. Please login again.")),
+          const SnackBar(
+            content: Text("User not logged in. Please login again."),
+          ),
         );
         return;
       }
@@ -149,7 +149,7 @@ class _NewComplaintPageState extends State<NewComplaintPage> {
         "description": descController.text.trim(),
         "files": files,
         "userId": user.uid,
-        "username": username,      // ✅🔥 REAL USERNAME SAVED HERE
+        "username": username, // ✅🔥 REAL USERNAME SAVED HERE
         "status": "Pending",
         "timestamp": Timestamp.now(),
       });
@@ -164,12 +164,11 @@ class _NewComplaintPageState extends State<NewComplaintPage> {
       await Future.delayed(const Duration(seconds: 2));
       if (mounted) Navigator.pop(context);
     } catch (e) {
-      ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text("Error: $e")));
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text("Error: $e")));
     }
   }
-
-
 
   @override
   Widget build(BuildContext context) {
@@ -193,24 +192,29 @@ class _NewComplaintPageState extends State<NewComplaintPage> {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      _circleButton(Icons.arrow_back,
-                          onTap: () => Navigator.pop(context)),
+                      _circleButton(
+                        Icons.arrow_back,
+                        onTap: () => Navigator.pop(context),
+                      ),
                       const Text(
                         "SafeNet AI",
-                        style: TextStyle(fontSize: 22, fontWeight: FontWeight.w700),
+                        style: TextStyle(
+                          fontSize: 22,
+                          fontWeight: FontWeight.w700,
+                        ),
                       ),
                       Row(
                         children: [
                           NotificationDropdown(role: "user"),
-                          
+
                           const SizedBox(width: 15),
 
                           GestureDetector(
-                          onTap: () {
-                            setState(() => _isProfileOpen = true);
-                          },
-                          child: _circleButton(Icons.person_outline_rounded),
-                        ),
+                            onTap: () {
+                              setState(() => _isProfileOpen = true);
+                            },
+                            child: _circleButton(Icons.person_outline_rounded),
+                          ),
                         ],
                       ),
                     ],
@@ -221,17 +225,20 @@ class _NewComplaintPageState extends State<NewComplaintPage> {
                   const Text(
                     "New Complaint",
                     style: TextStyle(
-                        fontSize: 26,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.black87),
+                      fontSize: 26,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.black87,
+                    ),
                   ),
 
                   const SizedBox(height: 25),
 
                   // TITLE
                   Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 18, vertical: 8),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 18,
+                      vertical: 8,
+                    ),
                     decoration: _fieldDecoration(),
                     child: TextField(
                       controller: titleController,
@@ -247,7 +254,9 @@ class _NewComplaintPageState extends State<NewComplaintPage> {
                   // DESCRIPTION
                   Container(
                     padding: const EdgeInsets.symmetric(
-                        horizontal: 18, vertical: 14),
+                      horizontal: 18,
+                      vertical: 14,
+                    ),
                     decoration: _fieldDecoration(),
                     child: TextField(
                       controller: descController,
@@ -267,7 +276,9 @@ class _NewComplaintPageState extends State<NewComplaintPage> {
                     onTap: pickFile,
                     child: Container(
                       padding: const EdgeInsets.symmetric(
-                          horizontal: 14, vertical: 10),
+                        horizontal: 14,
+                        vertical: 10,
+                      ),
                       decoration: BoxDecoration(
                         color: Colors.white.withOpacity(0.85),
                         borderRadius: BorderRadius.circular(30),
@@ -287,7 +298,9 @@ class _NewComplaintPageState extends State<NewComplaintPage> {
                           Text(
                             "Attach Image",
                             style: TextStyle(
-                                fontSize: 15, fontWeight: FontWeight.w600),
+                              fontSize: 15,
+                              fontWeight: FontWeight.w600,
+                            ),
                           ),
                         ],
                       ),
@@ -299,85 +312,93 @@ class _NewComplaintPageState extends State<NewComplaintPage> {
                   // FILE PREVIEW
                   if (selectedFiles.isNotEmpty)
                     Wrap(
-  spacing: 12,
-  runSpacing: 12,
-  children: List.generate(selectedFiles.length, (index) {
-    final file = selectedFiles[index];
-    final isImage = ["png", "jpg", "jpeg"]
-        .contains(file.extension?.toLowerCase());
+                      spacing: 12,
+                      runSpacing: 12,
+                      children: List.generate(selectedFiles.length, (index) {
+                        final file = selectedFiles[index];
+                        final isImage = [
+                          "png",
+                          "jpg",
+                          "jpeg",
+                        ].contains(file.extension?.toLowerCase());
 
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Stack(
-          children: [
-            Container(
-              width: 90,
-              height: 90,
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(12),
-                boxShadow: const [
-                  BoxShadow(color: Colors.black12, blurRadius: 5),
-                ],
-              ),
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(12),
-                child: isImage
-                    ? Image.memory(
-                        file.bytes!,
-                        fit: BoxFit.cover,
-                      )
-                    : const Center(
-                        child: Icon(Icons.description, size: 40),
-                      ),
-              ),
-            ),
+                        return Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Stack(
+                              children: [
+                                Container(
+                                  width: 90,
+                                  height: 90,
+                                  decoration: BoxDecoration(
+                                    color: Colors.white,
+                                    borderRadius: BorderRadius.circular(12),
+                                    boxShadow: const [
+                                      BoxShadow(
+                                        color: Colors.black12,
+                                        blurRadius: 5,
+                                      ),
+                                    ],
+                                  ),
+                                  child: ClipRRect(
+                                    borderRadius: BorderRadius.circular(12),
+                                    child: isImage
+                                        ? Image.memory(
+                                            file.bytes!,
+                                            fit: BoxFit.cover,
+                                          )
+                                        : const Center(
+                                            child: Icon(
+                                              Icons.description,
+                                              size: 40,
+                                            ),
+                                          ),
+                                  ),
+                                ),
 
-            // ✅ FIXED REMOVE BUTTON
-            Positioned(
-              right: 4,
-              top: 4,
-              child: GestureDetector(
-                onTap: () => removeFile(index),
-                child: Container(
-                  padding: const EdgeInsets.all(4),
-                  decoration: const BoxDecoration(
-                    color: Colors.red,
-                    shape: BoxShape.circle,
-                  ),
-                  child: const Icon(
-                    Icons.close,
-                    size: 14,
-                    color: Colors.white,
-                  ),
-                ),
-              ),
-            ),
-          ],
-        ),
+                                // ✅ FIXED REMOVE BUTTON
+                                Positioned(
+                                  right: 4,
+                                  top: 4,
+                                  child: GestureDetector(
+                                    onTap: () => removeFile(index),
+                                    child: Container(
+                                      padding: const EdgeInsets.all(4),
+                                      decoration: const BoxDecoration(
+                                        color: Colors.red,
+                                        shape: BoxShape.circle,
+                                      ),
+                                      child: const Icon(
+                                        Icons.close,
+                                        size: 14,
+                                        color: Colors.white,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
 
-        const SizedBox(height: 6),
+                            const SizedBox(height: 6),
 
-        // ✅ FILE NAME
-        SizedBox(
-          width: 90,
-          child: Text(
-            file.name,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            textAlign: TextAlign.center,
-            style: const TextStyle(
-              fontSize: 11,
-              color: Colors.black54,
-            ),
-          ),
-        ),
-      ],
-    );
-  }),
-),
-
+                            // ✅ FILE NAME
+                            SizedBox(
+                              width: 90,
+                              child: Text(
+                                file.name,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                textAlign: TextAlign.center,
+                                style: const TextStyle(
+                                  fontSize: 11,
+                                  color: Colors.black54,
+                                ),
+                              ),
+                            ),
+                          ],
+                        );
+                      }),
+                    ),
 
                   const SizedBox(height: 30),
 
@@ -395,8 +416,10 @@ class _NewComplaintPageState extends State<NewComplaintPage> {
                       ),
                       child: const Text(
                         "Submit Complaint",
-                        style:
-                            TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.w600,
+                        ),
                       ),
                     ),
                   ),
@@ -407,8 +430,7 @@ class _NewComplaintPageState extends State<NewComplaintPage> {
                     child: Text(
                       "Your complaint will be sent to\nauthority for review.",
                       textAlign: TextAlign.center,
-                      style:
-                          TextStyle(fontSize: 14, color: Colors.black54),
+                      style: TextStyle(fontSize: 14, color: Colors.black54),
                     ),
                   ),
 
@@ -432,14 +454,13 @@ class _NewComplaintPageState extends State<NewComplaintPage> {
               top: 0,
               bottom: 0,
               right: 0,
-              width: MediaQuery.of(context).size.width * 0.33,
+              width: 280,
               child: ProfileSidebar(
                 userCollection: "users",
                 onClose: () => setState(() => _isProfileOpen = false),
               ),
             ),
           ],
-
         ],
       ),
     );
@@ -454,9 +475,7 @@ class _NewComplaintPageState extends State<NewComplaintPage> {
         decoration: BoxDecoration(
           color: Colors.white70,
           shape: BoxShape.circle,
-          boxShadow: const [
-            BoxShadow(color: Colors.black26, blurRadius: 8),
-          ],
+          boxShadow: const [BoxShadow(color: Colors.black26, blurRadius: 8)],
         ),
         child: Icon(icon, size: 22),
       ),
@@ -468,9 +487,7 @@ class _NewComplaintPageState extends State<NewComplaintPage> {
     return BoxDecoration(
       color: Colors.white.withOpacity(0.9),
       borderRadius: BorderRadius.circular(16),
-      boxShadow: const [
-        BoxShadow(color: Colors.black26, blurRadius: 8),
-      ],
+      boxShadow: const [BoxShadow(color: Colors.black26, blurRadius: 8)],
     );
   }
 }

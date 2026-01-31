@@ -11,12 +11,11 @@ class WorkerMyJobsPage extends StatefulWidget {
 
   @override
   State<WorkerMyJobsPage> createState() => _WorkerMyJobsPageState();
-
 }
 
 class _WorkerMyJobsPageState extends State<WorkerMyJobsPage> {
   bool _isProfileOpen = false;
-  
+
   final TextEditingController workDescController = TextEditingController();
   List<PlatformFile> selectedFiles = []; // placeholder for now
 
@@ -24,9 +23,7 @@ class _WorkerMyJobsPageState extends State<WorkerMyJobsPage> {
   Future<void> pickFile(void Function(VoidCallback fn) dialogSetState) async {
     if (selectedFiles.length >= 4) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text("You can only attach up to 4 files."),
-        ),
+        const SnackBar(content: Text("You can only attach up to 4 files.")),
       );
       return;
     }
@@ -71,7 +68,7 @@ class _WorkerMyJobsPageState extends State<WorkerMyJobsPage> {
 
     return urls;
   } */
-  
+
   void _showFullScreenImage(BuildContext context, String imageUrl) {
     showDialog(
       context: context,
@@ -81,11 +78,9 @@ class _WorkerMyJobsPageState extends State<WorkerMyJobsPage> {
           Positioned.fill(
             child: GestureDetector(
               onTap: () => Navigator.pop(context),
-              child: InteractiveViewer( // Allows pinching to zoom
-                child: Image.network(
-                  imageUrl,
-                  fit: BoxFit.contain,
-                ),
+              child: InteractiveViewer(
+                // Allows pinching to zoom
+                child: Image.network(imageUrl, fit: BoxFit.contain),
               ),
             ),
           ),
@@ -109,7 +104,6 @@ class _WorkerMyJobsPageState extends State<WorkerMyJobsPage> {
       ),
     );
   }
-  
 
   void _showJobDetailsPopup(
     BuildContext context, {
@@ -147,7 +141,7 @@ class _WorkerMyJobsPageState extends State<WorkerMyJobsPage> {
                       ),
 
                       const SizedBox(height: 20),
-                      
+
                       _popupInfoRow("Service ID", job["service_id"] ?? ""),
                       const SizedBox(height: 12),
                       _popupInfoRow("Resident", job["username"] ?? ""),
@@ -155,7 +149,8 @@ class _WorkerMyJobsPageState extends State<WorkerMyJobsPage> {
 
                       // -------- DESCRIPTION (FIXED OVERFLOW) --------
                       Row(
-                        crossAxisAlignment: CrossAxisAlignment.start, // Align label to top
+                        crossAxisAlignment:
+                            CrossAxisAlignment.start, // Align label to top
                         children: [
                           const SizedBox(
                             width: 100, // Fixed width for labels
@@ -169,7 +164,8 @@ class _WorkerMyJobsPageState extends State<WorkerMyJobsPage> {
                             ),
                           ),
                           const SizedBox(width: 5),
-                          Expanded( // ✅ FIX: This forces the text to wrap to the next line
+                          Expanded(
+                            // ✅ FIX: This forces the text to wrap to the next line
                             child: Text(
                               job["description"] ?? "No description provided.",
                               style: const TextStyle(
@@ -185,45 +181,63 @@ class _WorkerMyJobsPageState extends State<WorkerMyJobsPage> {
                       const SizedBox(height: 20),
 
                       // -------- ATTACHMENTS (FIXED IMAGE VISIBILITY) --------
-                      if (job["files"] != null && (job["files"] as List).isNotEmpty) ...[
+                      if (job["files"] != null &&
+                          (job["files"] as List).isNotEmpty) ...[
                         const Text(
                           "Attachments",
-                          style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16),
+                          style: TextStyle(
+                            fontWeight: FontWeight.w700,
+                            fontSize: 16,
+                          ),
                         ),
                         const SizedBox(height: 12),
-         
+
                         Wrap(
                           spacing: 10,
                           runSpacing: 10,
-                          children: List.generate(
-                            job["files"].length,
-                            (index) {
-                              final url = job["files"][index];
-                              return GestureDetector(
-                                onTap: () => _showFullScreenImage(context, url), // ✅ TAP TO ENLARGE
-                                child: ClipRRect(
-                                  borderRadius: BorderRadius.circular(12),
-                                  child: Image.network(
-                                    url,
-                                    width: 80,
-                                    height: 80,
-                                    fit: BoxFit.cover,
-                                    loadingBuilder: (context, child, loadingProgress) {
-                                      if (loadingProgress == null) return child;
-                                      return Container(
-                                        width: 80, height: 80, color: Colors.grey[200],
-                                        child: const Center(child: CircularProgressIndicator(strokeWidth: 2)),
-                                      );
-                                    },
-                                    errorBuilder: (context, error, stackTrace) => Container(
-                                      width: 80, height: 80, color: Colors.grey[300],
-                                      child: const Icon(Icons.broken_image, color: Colors.grey),
-                                    ),
-                                  ),
+                          children: List.generate(job["files"].length, (index) {
+                            final url = job["files"][index];
+                            return GestureDetector(
+                              onTap: () => _showFullScreenImage(
+                                context,
+                                url,
+                              ), // ✅ TAP TO ENLARGE
+                              child: ClipRRect(
+                                borderRadius: BorderRadius.circular(12),
+                                child: Image.network(
+                                  url,
+                                  width: 80,
+                                  height: 80,
+                                  fit: BoxFit.cover,
+                                  loadingBuilder:
+                                      (context, child, loadingProgress) {
+                                        if (loadingProgress == null)
+                                          return child;
+                                        return Container(
+                                          width: 80,
+                                          height: 80,
+                                          color: Colors.grey[200],
+                                          child: const Center(
+                                            child: CircularProgressIndicator(
+                                              strokeWidth: 2,
+                                            ),
+                                          ),
+                                        );
+                                      },
+                                  errorBuilder: (context, error, stackTrace) =>
+                                      Container(
+                                        width: 80,
+                                        height: 80,
+                                        color: Colors.grey[300],
+                                        child: const Icon(
+                                          Icons.broken_image,
+                                          color: Colors.grey,
+                                        ),
+                                      ),
                                 ),
-                              );
-                            },
-                          ),
+                              ),
+                            );
+                          }),
                         ),
                         const SizedBox(height: 20),
                       ],
@@ -235,7 +249,10 @@ class _WorkerMyJobsPageState extends State<WorkerMyJobsPage> {
                       Center(
                         child: TextButton(
                           onPressed: () => Navigator.pop(context),
-                          child: const Text("Close", style: TextStyle(color: Colors.black54)),
+                          child: const Text(
+                            "Close",
+                            style: TextStyle(color: Colors.black54),
+                          ),
                         ),
                       ),
                     ],
@@ -245,7 +262,7 @@ class _WorkerMyJobsPageState extends State<WorkerMyJobsPage> {
             );
           },
         );
-      }
+      },
     );
   }
 
@@ -264,7 +281,11 @@ class _WorkerMyJobsPageState extends State<WorkerMyJobsPage> {
         Expanded(
           child: Text(
             value,
-            style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 16, color: Colors.black54),
+            style: const TextStyle(
+              fontWeight: FontWeight.w700,
+              fontSize: 16,
+              color: Colors.black54,
+            ),
           ),
         ),
       ],
@@ -277,8 +298,7 @@ class _WorkerMyJobsPageState extends State<WorkerMyJobsPage> {
     // TO RESIDENT
     await FirebaseFirestore.instance.collection("notifications").add({
       "title": "Service Started",
-      "message":
-          "Your service request '${job["title"]}' has been started.",
+      "message": "Your service request '${job["title"]}' has been started.",
       "toUid": job["userId"],
       "target": "user",
       "isRead": false,
@@ -296,7 +316,6 @@ class _WorkerMyJobsPageState extends State<WorkerMyJobsPage> {
     });
   }
 
-
   String? workerId;
 
   Future<void> _loadWorkerId() async {
@@ -304,16 +323,11 @@ class _WorkerMyJobsPageState extends State<WorkerMyJobsPage> {
     setState(() {});
   }
 
-
-
   @override
   void initState() {
     super.initState();
     _loadWorkerId();
   }
-
-
-
 
   @override
   Widget build(BuildContext context) {
@@ -327,13 +341,15 @@ class _WorkerMyJobsPageState extends State<WorkerMyJobsPage> {
             ),
           ),
 
-
           SafeArea(
             child: Column(
               children: [
                 // ================= TOP BAR =================
                 Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 20,
+                    vertical: 8,
+                  ),
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
@@ -375,65 +391,78 @@ class _WorkerMyJobsPageState extends State<WorkerMyJobsPage> {
                       ? const Center(child: CircularProgressIndicator())
                       : StreamBuilder<QuerySnapshot>(
                           stream: FirebaseFirestore.instance
-                          .collection("service_requests")
-                          .where("assignedWorker.id", isEqualTo: workerId)
-                          .where("status", whereIn: ["Pending", "Assigned", "Started"])
-                          .orderBy("timestamp", descending: true)
-                          .snapshots(),
+                              .collection("service_requests")
+                              .where("assignedWorker.id", isEqualTo: workerId)
+                              .where(
+                                "status",
+                                whereIn: ["Pending", "Assigned", "Started"],
+                              )
+                              .orderBy("timestamp", descending: true)
+                              .snapshots(),
 
-                    builder: (context, snapshot) {
-                      if (!snapshot.hasData) {
-                        return const Center(child: CircularProgressIndicator());
-                      }
-
-                      final docs = snapshot.data!.docs;
-
-                      if (docs.isEmpty) {
-                        return const Center(child: Text("No jobs assigned"));
-                      }
-
-                      return ListView.builder(
-                        physics: const BouncingScrollPhysics(),
-                        padding: const EdgeInsets.symmetric(horizontal: 20),
-                        itemCount: docs.length + 1,
-                        itemBuilder: (context, index) {
-                          if (index == 0) {
-                            return const Padding(
-                              padding: EdgeInsets.symmetric(vertical: 40),
-                              child: Center(
-                                child: Text(
-                                  "My Jobs",
-                                  style: TextStyle(
-                                    fontSize: 40,
-                                    fontWeight: FontWeight.w900,
-                                    color: Color.fromARGB(255, 83, 83, 83),
-                                  ),
-                                ),
-                              ),
-                            );
-                          }
-
-                          final job =
-                              docs[index - 1].data() as Map<String, dynamic>;
-                          final docId = docs[index - 1].id;
-
-                          return GestureDetector(
-                            onTap: () {
-                              _showJobDetailsPopup(
-                                context,
-                                job: job,
-                                jobId: docId,
+                          builder: (context, snapshot) {
+                            if (!snapshot.hasData) {
+                              return const Center(
+                                child: CircularProgressIndicator(),
                               );
-                            },
-                            child: _jobCardFromFirestore(job),
-                          ); 
-                        },
-                      );
-                    },
-                  ),
+                            }
+
+                            final docs = snapshot.data!.docs;
+
+                            if (docs.isEmpty) {
+                              return const Center(
+                                child: Text("No jobs assigned"),
+                              );
+                            }
+
+                            return ListView.builder(
+                              physics: const BouncingScrollPhysics(),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 20,
+                              ),
+                              itemCount: docs.length + 1,
+                              itemBuilder: (context, index) {
+                                if (index == 0) {
+                                  return const Padding(
+                                    padding: EdgeInsets.symmetric(vertical: 40),
+                                    child: Center(
+                                      child: Text(
+                                        "My Jobs",
+                                        style: TextStyle(
+                                          fontSize: 40,
+                                          fontWeight: FontWeight.w900,
+                                          color: Color.fromARGB(
+                                            255,
+                                            83,
+                                            83,
+                                            83,
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                  );
+                                }
+
+                                final job =
+                                    docs[index - 1].data()
+                                        as Map<String, dynamic>;
+                                final docId = docs[index - 1].id;
+
+                                return GestureDetector(
+                                  onTap: () {
+                                    _showJobDetailsPopup(
+                                      context,
+                                      job: job,
+                                      jobId: docId,
+                                    );
+                                  },
+                                  child: _jobCardFromFirestore(job),
+                                );
+                              },
+                            );
+                          },
+                        ),
                 ),
-
-
 
                 const SizedBox(height: 10),
                 const Text(
@@ -463,7 +492,7 @@ class _WorkerMyJobsPageState extends State<WorkerMyJobsPage> {
               top: 0,
               bottom: 0,
               right: 0,
-              width: MediaQuery.of(context).size.width * 0.33,
+              width: 280,
               child: ProfileSidebar(
                 userCollection: "workers",
                 onClose: () => setState(() => _isProfileOpen = false),
@@ -477,80 +506,75 @@ class _WorkerMyJobsPageState extends State<WorkerMyJobsPage> {
 
   // ================= JOB CARD =================
   Widget _jobCardFromFirestore(Map<String, dynamic> job) {
-  return Container(
-    margin: const EdgeInsets.only(bottom: 18),
-    padding: const EdgeInsets.all(18),
-    decoration: BoxDecoration(
-      color: Colors.white,
-      borderRadius: BorderRadius.circular(22),
-      boxShadow: [
-        BoxShadow(
-          color: Colors.black.withOpacity(0.06),
-          blurRadius: 14,
-          offset: const Offset(0, 6),
-        ),
-      ],
-    ),
-    child: Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // LEFT DETAILS
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+    return Container(
+      margin: const EdgeInsets.only(bottom: 18),
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(22),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.06),
+            blurRadius: 14,
+            offset: const Offset(0, 6),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // LEFT DETAILS
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _infoRow("Req ID", job["service_id"]),
+                    _infoRow("Resident", job["username"]),
+                    _infoRow("Service Type", job["title"]),
+                    _infoRow("Worker", job["assignedWorker"]?["name"] ?? "—"),
+                    _infoRow(
+                      "Date",
+                      (job["timestamp"] as Timestamp)
+                          .toDate()
+                          .toString()
+                          .substring(0, 10),
+                    ),
+                  ],
+                ),
+              ),
+
+              // STATUS BADGE
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
-                  _infoRow("Req ID", job["service_id"]),
-                  _infoRow("Resident", job["username"]),
-                  _infoRow("Service Type", job["title"]),
-                  _infoRow(
-                    "Worker",
-                    job["assignedWorker"]?["name"] ?? "—",
-                  ),
-                  _infoRow(
-                    "Date",
-                    (job["timestamp"] as Timestamp)
-                        .toDate()
-                        .toString()
-                        .substring(0, 10),
-                  ),
+                  const SizedBox(height: 10),
+                  _statusPill(job["status"]),
+
+                  const SizedBox(height: 50),
+
+                  // IN PROGRESS TEXT
+                  if (job["isStarted"] == true)
+                    Text(
+                      "Work in progress",
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                        color: Colors.green.shade700,
+                      ),
+                    ),
                 ],
               ),
-            ),
+            ],
+          ),
 
-            // STATUS BADGE
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.end,
-              children: [
-                const SizedBox(height: 10),
-                _statusPill(job["status"]),            
-
-              const SizedBox(height: 50),
-
-              // IN PROGRESS TEXT
-              if (job["isStarted"] == true)
-                  Text(
-                    "Work in progress",
-                    style: TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
-                      color: Colors.green.shade700,
-                    ),
-                  ),
-                  ],
-            ),
-          ],
-        ),
-
-        const SizedBox(height: 0),
-
-      ],
-    ),
-  );
-}
-
+          const SizedBox(height: 0),
+        ],
+      ),
+    );
+  }
 
   // ================= STATUS BADGE =================
   Widget _statusPill(String status) {
@@ -604,8 +628,11 @@ class _WorkerMyJobsPageState extends State<WorkerMyJobsPage> {
     );
   }
 
-  Widget _jobActionButtons(String jobId, Map<String, dynamic> job, 
-  void Function(VoidCallback fn) dialogSetState,) {
+  Widget _jobActionButtons(
+    String jobId,
+    Map<String, dynamic> job,
+    void Function(VoidCallback fn) dialogSetState,
+  ) {
     final status = job["status"];
 
     // START JOB
@@ -652,7 +679,7 @@ class _WorkerMyJobsPageState extends State<WorkerMyJobsPage> {
                 //decoration: TextDecoration.underline,
                 fontSize: 26,
                 color: Colors.black,
-              )
+              ),
             ),
           ),
 
@@ -685,7 +712,7 @@ class _WorkerMyJobsPageState extends State<WorkerMyJobsPage> {
           // ATTACH FILE BUTTON (COMMENTED FUNCTIONALITY)
           GestureDetector(
             onTap: () {
-               pickFile(dialogSetState); // 🔒 ENABLE LATER
+              pickFile(dialogSetState); // 🔒 ENABLE LATER
             },
             child: Container(
               margin: const EdgeInsets.only(bottom: 18),
@@ -720,8 +747,11 @@ class _WorkerMyJobsPageState extends State<WorkerMyJobsPage> {
               runSpacing: 12,
               children: List.generate(selectedFiles.length, (index) {
                 final file = selectedFiles[index];
-                final isImage = ["png", "jpg", "jpeg"]
-                    .contains(file.extension?.toLowerCase());
+                final isImage = [
+                  "png",
+                  "jpg",
+                  "jpeg",
+                ].contains(file.extension?.toLowerCase());
 
                 return Column(
                   mainAxisSize: MainAxisSize.min,
@@ -741,10 +771,7 @@ class _WorkerMyJobsPageState extends State<WorkerMyJobsPage> {
                           child: ClipRRect(
                             borderRadius: BorderRadius.circular(12),
                             child: isImage
-                                ? Image.memory(
-                                    file.bytes!,
-                                    fit: BoxFit.cover,
-                                  )
+                                ? Image.memory(file.bytes!, fit: BoxFit.cover)
                                 : const Center(
                                     child: Icon(Icons.description, size: 40),
                                   ),
@@ -799,7 +826,7 @@ class _WorkerMyJobsPageState extends State<WorkerMyJobsPage> {
               }),
             ),
 
-            const SizedBox(height: 30),
+          const SizedBox(height: 30),
 
           // ACTION BUTTONS
           Row(
@@ -821,10 +848,10 @@ class _WorkerMyJobsPageState extends State<WorkerMyJobsPage> {
                           .collection("service_requests")
                           .doc(jobId)
                           .update({
-                        "status": "Completed",
-                        "workDescription": workDescController.text.trim(),
-                        // "workFiles": await uploadWorkFiles(), // 🔒 LATER
-                      });
+                            "status": "Completed",
+                            "workDescription": workDescController.text.trim(),
+                            // "workFiles": await uploadWorkFiles(), // 🔒 LATER
+                          });
                       Navigator.pop(context);
                     },
                     child: const Text("Completed"),
@@ -849,10 +876,10 @@ class _WorkerMyJobsPageState extends State<WorkerMyJobsPage> {
                           .collection("service_requests")
                           .doc(jobId)
                           .update({
-                        "isStarted": false,
-                        "workDescription": workDescController.text.trim(),
-                        // "workFiles": await uploadWorkFiles(), // 🔒 LATER
-                      });
+                            "isStarted": false,
+                            "workDescription": workDescController.text.trim(),
+                            // "workFiles": await uploadWorkFiles(), // 🔒 LATER
+                          });
                       Navigator.pop(context);
                     },
                     child: const Text("Uncompleted"),

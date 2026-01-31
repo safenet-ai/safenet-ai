@@ -35,14 +35,14 @@ class _PendingApprovalPageState extends State<PendingApprovalPage> {
         .snapshots()
         .map((snap) => snap.docs.length);
   }
-  
-
-
 
   Future<void> _approveUser(String uid) async {
     final collection = selectedTab == "Residents" ? "users" : "workers";
 
-    final doc = await FirebaseFirestore.instance.collection(collection).doc(uid).get();
+    final doc = await FirebaseFirestore.instance
+        .collection(collection)
+        .doc(uid)
+        .get();
     final data = doc.data()!;
 
     await FirebaseFirestore.instance.collection(collection).doc(uid).update({
@@ -61,16 +61,18 @@ class _PendingApprovalPageState extends State<PendingApprovalPage> {
     await _sendNotification(
       uid: uid,
       title: "Account Approved",
-      message: "Your SafeNet ${selectedTab.toLowerCase()} account has been approved. You can now use the app.",
+      message:
+          "Your SafeNet ${selectedTab.toLowerCase()} account has been approved. You can now use the app.",
     );
   }
-
-
 
   Future<void> _rejectUser(String uid) async {
     final collection = selectedTab == "Residents" ? "users" : "workers";
 
-    final doc = await FirebaseFirestore.instance.collection(collection).doc(uid).get();
+    final doc = await FirebaseFirestore.instance
+        .collection(collection)
+        .doc(uid)
+        .get();
     final data = doc.data()!;
 
     await FirebaseFirestore.instance.collection(collection).doc(uid).update({
@@ -89,11 +91,10 @@ class _PendingApprovalPageState extends State<PendingApprovalPage> {
     await _sendNotification(
       uid: uid,
       title: "Account Rejected",
-      message: "Your SafeNet ${selectedTab.toLowerCase()} account was rejected by the authority.",
+      message:
+          "Your SafeNet ${selectedTab.toLowerCase()} account was rejected by the authority.",
     );
   }
-
-
 
   Future<void> _logApprovalAction({
     required String uid,
@@ -101,8 +102,7 @@ class _PendingApprovalPageState extends State<PendingApprovalPage> {
     required String email,
     required String role,
     required String action,
-  }) 
-  async {
+  }) async {
     final admin = FirebaseFirestore.instance.collection("approval_logs").doc();
 
     await admin.set({
@@ -131,22 +131,14 @@ class _PendingApprovalPageState extends State<PendingApprovalPage> {
     });
   }
 
-
-
-
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       body: Stack(
         children: [
-
           // Background
           Positioned.fill(
-            child: Image.asset(
-              "assets/bg1_img.png",
-              fit: BoxFit.cover,
-            ),
+            child: Image.asset("assets/bg1_img.png", fit: BoxFit.cover),
           ),
 
           SafeArea(
@@ -156,10 +148,12 @@ class _PendingApprovalPageState extends State<PendingApprovalPage> {
                 height: MediaQuery.of(context).size.height,
                 child: Column(
                   children: [
-
                     // ---------------- TOP BAR ----------------
                     Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 18,
+                        vertical: 10,
+                      ),
                       child: Row(
                         children: [
                           GestureDetector(
@@ -187,14 +181,13 @@ class _PendingApprovalPageState extends State<PendingApprovalPage> {
                           _circleIcon(Icons.notifications_none),
 
                           const SizedBox(width: 10),
-                          
+
                           GestureDetector(
-                              onTap: () {
-                                setState(() => _isProfileOpen = true);
-                              },
-                              child: _circleIcon(Icons.person),
-                            ),
-                          
+                            onTap: () {
+                              setState(() => _isProfileOpen = true);
+                            },
+                            child: _circleIcon(Icons.person),
+                          ),
                         ],
                       ),
                     ),
@@ -205,8 +198,8 @@ class _PendingApprovalPageState extends State<PendingApprovalPage> {
                       _currentPage == 0
                           ? "Pending Approval\nRequests"
                           : _currentPage == 1
-                              ? "Approved Users"
-                              : "Rejected Users",
+                          ? "Approved Users"
+                          : "Rejected Users",
                       textAlign: TextAlign.center,
                       style: const TextStyle(
                         fontSize: 26,
@@ -214,7 +207,6 @@ class _PendingApprovalPageState extends State<PendingApprovalPage> {
                         color: Colors.black87,
                       ),
                     ),
-
 
                     const SizedBox(height: 20),
 
@@ -226,7 +218,9 @@ class _PendingApprovalPageState extends State<PendingApprovalPage> {
                           onPressed: () {
                             if (_currentPage > 0) {
                               _pageController.previousPage(
-                                  duration: Duration(milliseconds: 300), curve: Curves.ease);
+                                duration: Duration(milliseconds: 300),
+                                curve: Curves.ease,
+                              );
                             }
                           },
                         ),
@@ -235,30 +229,31 @@ class _PendingApprovalPageState extends State<PendingApprovalPage> {
                           onPressed: () {
                             if (_currentPage < 2) {
                               _pageController.nextPage(
-                                  duration: Duration(milliseconds: 300), curve: Curves.ease);
+                                duration: Duration(milliseconds: 300),
+                                curve: Curves.ease,
+                              );
                             }
                           },
                         ),
                       ],
                     ),
 
-
                     const SizedBox(height: 20),
 
                     // ---------------- SEGMENTED TABS ----------------
                     Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 30),
-                      
-                        child:FilterTabs(
-                          selected: selectedTab,
-                          tabs: [
-                            FilterTabItem("Residents", Icons.people),
-                            FilterTabItem("Workers", Icons.engineering),
-                          ],
-                          onChanged: (i, label) {
-                            setState(() => selectedTab = label);
-                          },
-                        ),
+
+                      child: FilterTabs(
+                        selected: selectedTab,
+                        tabs: [
+                          FilterTabItem("Residents", Icons.people),
+                          FilterTabItem("Workers", Icons.engineering),
+                        ],
+                        onChanged: (i, label) {
+                          setState(() => selectedTab = label);
+                        },
+                      ),
                     ),
 
                     const SizedBox(height: 25),
@@ -316,9 +311,7 @@ class _PendingApprovalPageState extends State<PendingApprovalPage> {
             Positioned.fill(
               child: GestureDetector(
                 onTap: () => setState(() => _isProfileOpen = false),
-                child: Container(
-                  color: Colors.black.withOpacity(0.35),
-                ),
+                child: Container(color: Colors.black.withOpacity(0.35)),
               ),
             ),
 
@@ -329,7 +322,7 @@ class _PendingApprovalPageState extends State<PendingApprovalPage> {
               top: 0,
               bottom: 0,
               right: 0,
-              width: MediaQuery.of(context).size.width * 0.33,
+              width: 280,
               child: ProfileSidebar(
                 onClose: () => setState(() => _isProfileOpen = false),
                 userCollection: "workers",
@@ -349,8 +342,7 @@ class _PendingApprovalPageState extends State<PendingApprovalPage> {
     required String phone,
     required String status,
     String? profession,
-  }) 
-  {
+  }) {
     return Container(
       margin: const EdgeInsets.only(bottom: 18),
       padding: const EdgeInsets.all(18),
@@ -368,7 +360,6 @@ class _PendingApprovalPageState extends State<PendingApprovalPage> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-
           Text(
             name,
             style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w800),
@@ -448,10 +439,7 @@ class _PendingApprovalPageState extends State<PendingApprovalPage> {
         ],
       ),
       child: Center(
-        child: Text(
-          text,
-          style: const TextStyle(fontWeight: FontWeight.w700),
-        ),
+        child: Text(text, style: const TextStyle(fontWeight: FontWeight.w700)),
       ),
     );
   }
@@ -502,17 +490,12 @@ class _PendingApprovalPageState extends State<PendingApprovalPage> {
               ? (data["profession"] ?? "")
               : "";
 
-          final text = (
-            data["username"] +
-            data["email"] +
-            data["phone"] +
-            profession
-          ).toLowerCase();
+          final text =
+              (data["username"] + data["email"] + data["phone"] + profession)
+                  .toLowerCase();
 
           return text.contains(searchText);
         }).toList();
-
-
 
         if (docs.isEmpty) {
           return Center(child: Text("No $status users"));
@@ -528,7 +511,7 @@ class _PendingApprovalPageState extends State<PendingApprovalPage> {
               uid: data["uid"],
               name: data["username"],
               email: data["email"],
-              phone: data["phone"],             
+              phone: data["phone"],
               status: status,
               profession: selectedTab == "Workers" ? data["profession"] : null,
             );
@@ -537,6 +520,4 @@ class _PendingApprovalPageState extends State<PendingApprovalPage> {
       },
     );
   }
-
-
 }

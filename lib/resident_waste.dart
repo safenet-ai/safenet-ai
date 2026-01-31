@@ -14,12 +14,10 @@ class WastePickupPage extends StatefulWidget {
 }
 
 class _WastePickupPageState extends State<WastePickupPage> {
-
   bool _isProfileOpen = false;
 
   String selectedFilter = "All";
   final PageController _pageController = PageController();
-
 
   @override
   Widget build(BuildContext context) {
@@ -55,13 +53,13 @@ class _WastePickupPageState extends State<WastePickupPage> {
                             NotificationDropdown(role: "user"),
 
                             const SizedBox(width: 15),
-                            
+
                             GestureDetector(
-                          onTap: () {
-                            setState(() => _isProfileOpen = true);
-                          },
-                          child: _circleIcon(Icons.person),
-                        ),
+                              onTap: () {
+                                setState(() => _isProfileOpen = true);
+                              },
+                              child: _circleIcon(Icons.person),
+                            ),
                           ],
                         ),
                       ],
@@ -82,7 +80,7 @@ class _WastePickupPageState extends State<WastePickupPage> {
                               blurRadius: 10,
                               color: Colors.black26,
                               offset: Offset(0, 4),
-                            )
+                            ),
                           ],
                         ),
                       ),
@@ -92,17 +90,22 @@ class _WastePickupPageState extends State<WastePickupPage> {
 
                     // REQUEST PICKUP BUTTON
                     Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 6),
-                        child: GestureDetector(
-                          onTap: () {
-                            // TODO: Navigate to New Complaint Page
-                            Navigator.push(context, MaterialPageRoute(builder: (_) => NewWastePickupRequestPage()));
-                          },
-                          child: Container(
-                            width: double.infinity,   // <<< FULL RESPONSIVE WIDTH
-                            padding: const EdgeInsets.symmetric(
-                              vertical: 18,           // perfect height like filter buttons
+                      padding: const EdgeInsets.symmetric(horizontal: 6),
+                      child: GestureDetector(
+                        onTap: () {
+                          // TODO: Navigate to New Complaint Page
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => NewWastePickupRequestPage(),
                             ),
+                          );
+                        },
+                        child: Container(
+                          width: double.infinity, // <<< FULL RESPONSIVE WIDTH
+                          padding: const EdgeInsets.symmetric(
+                            vertical: 18, // perfect height like filter buttons
+                          ),
                           decoration: BoxDecoration(
                             color: const Color(0xffb9efe0),
                             borderRadius: BorderRadius.circular(30),
@@ -132,12 +135,11 @@ class _WastePickupPageState extends State<WastePickupPage> {
 
                     // FILTER TABS
                     // FILTER TABS (match service page style - each tab expands)
-
                     Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 12),
                       child: FilterTabs(
                         selected: selectedFilter,
-                        tabs:  [
+                        tabs: [
                           FilterTabItem("All", Icons.apps),
                           FilterTabItem("Scheduled", Icons.schedule),
                           FilterTabItem("Completed", Icons.check),
@@ -153,8 +155,6 @@ class _WastePickupPageState extends State<WastePickupPage> {
                       ),
                     ),
 
-
-
                     const SizedBox(height: 25),
 
                     SizedBox(
@@ -163,8 +163,11 @@ class _WastePickupPageState extends State<WastePickupPage> {
                         controller: _pageController,
                         onPageChanged: (i) {
                           setState(() {
-                            selectedFilter =
-                                ["All", "Scheduled", "Completed"][i];
+                            selectedFilter = [
+                              "All",
+                              "Scheduled",
+                              "Completed",
+                            ][i];
                           });
                         },
                         children: [
@@ -194,14 +197,13 @@ class _WastePickupPageState extends State<WastePickupPage> {
               top: 0,
               bottom: 0,
               right: 0,
-              width: MediaQuery.of(context).size.width * 0.33,
+              width: 280,
               child: ProfileSidebar(
                 userCollection: "users",
                 onClose: () => setState(() => _isProfileOpen = false),
               ),
             ),
           ],
-
         ],
       ),
     );
@@ -225,7 +227,6 @@ class _WastePickupPageState extends State<WastePickupPage> {
       child: Icon(icon, color: Colors.black87, size: 22),
     );
   }
-
 
   // PICKUP LIST
   Widget _pickupList(String filter) {
@@ -265,18 +266,17 @@ class _WastePickupPageState extends State<WastePickupPage> {
             final data = docs[index].data() as Map<String, dynamic>;
 
             return _pickupCard(
-              id: data["pickup_id"],        // ✅ FIRESTORE PICKUP ID
-              date: data["date"],          // ✅ Scheduled Date
-              time: data["time"],          // ✅ Scheduled Time
-              type: data["wasteType"],     // ✅ Waste Type
-              status: data["status"],      // ✅ Status pill
+              id: data["pickup_id"], // ✅ FIRESTORE PICKUP ID
+              date: data["date"], // ✅ Scheduled Date
+              time: data["time"], // ✅ Scheduled Time
+              type: data["wasteType"], // ✅ Waste Type
+              status: data["status"], // ✅ Status pill
             );
           },
         );
       },
     );
   }
-
 
   // PICKUP CARD
   Widget _pickupCard({
@@ -303,57 +303,62 @@ class _WastePickupPageState extends State<WastePickupPage> {
           ),
         ],
       ),
-      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-
-        /// ✅ TOP ROW (ID + STATUS)
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            const Text(
-              "Pickup ID",
-              style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
-            ),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
-              decoration: BoxDecoration(
-                color: statusColor,
-                borderRadius: BorderRadius.circular(20),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          /// ✅ TOP ROW (ID + STATUS)
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Text(
+                "Pickup ID",
+                style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
               ),
-              child: Text(
-                status,
-                style: const TextStyle(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w700,
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 14,
+                  vertical: 6,
+                ),
+                decoration: BoxDecoration(
+                  color: statusColor,
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: Text(
+                  status,
+                  style: const TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w700,
+                  ),
                 ),
               ),
-            ),
-          ],
-        ),
+            ],
+          ),
 
-        const SizedBox(height: 6),
+          const SizedBox(height: 6),
 
-        /// ✅ PICKUP ID VALUE
-        Text(
-          id,
-          style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w900),
-        ),
+          /// ✅ PICKUP ID VALUE
+          Text(
+            id,
+            style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w900),
+          ),
 
-        const SizedBox(height: 8),
+          const SizedBox(height: 8),
 
-        /// ✅ DATE + TIME
-        Text(
-          "$date • $time",
-          style: const TextStyle(fontSize: 14, color: Colors.black54),
-        ),
+          /// ✅ DATE + TIME
+          Text(
+            "$date • $time",
+            style: const TextStyle(fontSize: 14, color: Colors.black54),
+          ),
 
-        const SizedBox(height: 10),
+          const SizedBox(height: 10),
 
-        /// ✅ TYPE
-        Text(
-          "Type: $type",
-          style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
-        ),
-      ]),
+          /// ✅ TYPE
+          Text(
+            "Type: $type",
+            style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+          ),
+        ],
+      ),
     );
   }
 }

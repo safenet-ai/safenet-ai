@@ -260,7 +260,7 @@ class _WorkerDashboardPageState extends State<WorkerDashboardPage> {
                 top: 0,
                 bottom: 0,
                 right: 0,
-                width: MediaQuery.of(context).size.width * 0.7,
+                width: 280,
                 child: ProfileSidebar(
                   onClose: () => setState(() => _isProfileOpen = false),
                   userCollection: "workers",

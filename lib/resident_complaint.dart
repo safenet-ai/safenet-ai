@@ -30,9 +30,7 @@ class _MyComplaintsPageState extends State<MyComplaintsPage> {
   @override
   Widget build(BuildContext context) {
     if (uid == null) {
-      return const Scaffold(
-        body: Center(child: Text("User not logged in")),
-      );
+      return const Scaffold(body: Center(child: Text("User not logged in")));
     }
 
     return Scaffold(
@@ -44,7 +42,6 @@ class _MyComplaintsPageState extends State<MyComplaintsPage> {
               fit: BoxFit.cover,
             ),
           ),
-          
 
           SafeArea(
             child: Column(
@@ -63,16 +60,16 @@ class _MyComplaintsPageState extends State<MyComplaintsPage> {
                       ),
                       Row(
                         children: [
-                            NotificationDropdown(role: "user"),
+                          NotificationDropdown(role: "user"),
 
-                            const SizedBox(width: 15),
+                          const SizedBox(width: 15),
 
                           GestureDetector(
-                          onTap: () {
-                            setState(() => _isProfileOpen = true);
-                          },
-                          child: _circleIcon(Icons.person),
-                        ),
+                            onTap: () {
+                              setState(() => _isProfileOpen = true);
+                            },
+                            child: _circleIcon(Icons.person),
+                          ),
                         ],
                       ),
                     ],
@@ -109,12 +106,15 @@ class _MyComplaintsPageState extends State<MyComplaintsPage> {
                                 Navigator.push(
                                   context,
                                   MaterialPageRoute(
-                                      builder: (_) => const NewComplaintPage()),
+                                    builder: (_) => const NewComplaintPage(),
+                                  ),
                                 );
                               },
                               child: Container(
                                 width: double.infinity,
-                                padding: const EdgeInsets.symmetric(vertical: 18),
+                                padding: const EdgeInsets.symmetric(
+                                  vertical: 18,
+                                ),
                                 decoration: BoxDecoration(
                                   color: const Color(0xFFFF98B9),
                                   borderRadius: BorderRadius.circular(30),
@@ -163,7 +163,6 @@ class _MyComplaintsPageState extends State<MyComplaintsPage> {
                             ),
                           ),
 
-
                           const SizedBox(height: 25),
 
                           SizedBox(
@@ -172,7 +171,11 @@ class _MyComplaintsPageState extends State<MyComplaintsPage> {
                               controller: _pageController,
                               onPageChanged: (index) {
                                 setState(() {
-                                 selectedFilter = ["All", "Pending", "Resolved"][index];
+                                  selectedFilter = [
+                                    "All",
+                                    "Pending",
+                                    "Resolved",
+                                  ][index];
                                 });
                               },
                               children: [
@@ -203,7 +206,7 @@ class _MyComplaintsPageState extends State<MyComplaintsPage> {
               ],
             ),
           ),
-          
+
           if (_isProfileOpen) ...[
             Positioned.fill(
               child: GestureDetector(
@@ -218,87 +221,93 @@ class _MyComplaintsPageState extends State<MyComplaintsPage> {
               top: 0,
               bottom: 0,
               right: 0,
-              width: MediaQuery.of(context).size.width * 0.33,
+              width: 280,
               child: ProfileSidebar(
                 userCollection: "users",
                 onClose: () => setState(() => _isProfileOpen = false),
               ),
             ),
           ],
-
         ],
       ),
     );
   }
 
-  //  FIRESTORE STREAM (UNCHANGED) 
+  //  FIRESTORE STREAM (UNCHANGED)
 
   Widget _complaintStream(String filter) {
-  Query query = FirebaseFirestore.instance
-      .collection("complaints")
-      .where("userId", isEqualTo: uid);
+    Query query = FirebaseFirestore.instance
+        .collection("complaints")
+        .where("userId", isEqualTo: uid);
 
-  if (filter != "All") {
-    query = query.where("status", isEqualTo: filter);
+    if (filter != "All") {
+      query = query.where("status", isEqualTo: filter);
+    }
+
+    return StreamBuilder<QuerySnapshot>(
+      stream: query
+          .orderBy("timestamp", descending: true)
+          .snapshots(), //  LATEST FIRST
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Center(child: CircularProgressIndicator());
+        }
+
+        if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+          return const Center(child: Text("No complaints found"));
+        }
+
+        final docs = snapshot.data!.docs;
+
+        return ListView.separated(
+          physics: const BouncingScrollPhysics(),
+          itemCount: docs.length,
+          separatorBuilder: (_, __) => const SizedBox(height: 18),
+          itemBuilder: (context, index) {
+            final data = docs[index].data() as Map<String, dynamic>;
+
+            return GestureDetector(
+              onTap: () {
+                _showComplaintDetailsPopup(
+                  context: context, // ✅ FIX
+                  complaintId: data["complaint_id"],
+                  title: data["title"],
+                  fullDesc: data["description"],
+                  status: data["status"],
+                  date: _formatReadableDate(data["timestamp"]),
+                );
+              },
+              child: _complaintCard(
+                complaintId: data["complaint_id"],
+                title: data["title"],
+                date: _formatReadableDate(data["timestamp"]),
+                desc: data["description"],
+                status: data["status"],
+              ),
+            );
+          },
+        );
+      },
+    );
   }
 
-  return StreamBuilder<QuerySnapshot>(
-    stream: query.orderBy("timestamp", descending: true).snapshots(), //  LATEST FIRST
-    builder: (context, snapshot) {
-      if (snapshot.connectionState == ConnectionState.waiting) {
-        return const Center(child: CircularProgressIndicator());
-      }
+  ///  READABLE DATE FORMAT → "8 Dec 2025"
 
-      if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
-        return const Center(child: Text("No complaints found"));
-      }
-
-      final docs = snapshot.data!.docs;
-
-      return ListView.separated(
-        physics: const BouncingScrollPhysics(),
-        itemCount: docs.length,
-        separatorBuilder: (_, __) => const SizedBox(height: 18),
-        itemBuilder: (context, index) {
-          final data = docs[index].data() as Map<String, dynamic>;
-
-          return GestureDetector(
-            onTap: () {
-              _showComplaintDetailsPopup(
-              context: context, // ✅ FIX
-              complaintId: data["complaint_id"],
-              title: data["title"],
-              fullDesc: data["description"],
-              status: data["status"],
-              date: _formatReadableDate(data["timestamp"]),
-            );
-
-            },
-            child: _complaintCard(
-              complaintId: data["complaint_id"],
-              title: data["title"],
-              date: _formatReadableDate(data["timestamp"]),
-              desc: data["description"],
-              status: data["status"],
-            ),            
-          );
-
-
-        },
-      );
-    },
-  );
-}
-
-
-  
-  ///  READABLE DATE FORMAT → "8 Dec 2025" 
-   
   String _formatReadableDate(Timestamp timestamp) {
     final date = timestamp.toDate();
     const months = [
-      "Jan", "Feb", "Mar", "Apr", "May", "Jun",
-      "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"
+      "Jan",
+      "Feb",
+      "Mar",
+      "Apr",
+      "May",
+      "Jun",
+      "Jul",
+      "Aug",
+      "Sep",
+      "Oct",
+      "Nov",
+      "Dec",
     ];
     return "${date.day} ${months[date.month - 1]} ${date.year}";
   }
@@ -321,26 +330,25 @@ class _MyComplaintsPageState extends State<MyComplaintsPage> {
     );
   }
 
-  
-
   Widget _complaintCard({
-  required String complaintId,   //  NEW
-  required String title,
-  required String date,
-  required String desc,
-  required String status,
-}) {
+    required String complaintId, //  NEW
+    required String title,
+    required String date,
+    required String desc,
+    required String status,
+  }) {
+    Color statusColor = status == "Pending"
+        ? const Color(0xFFFFE680)
+        : const Color(0xFFBBF3C1);
 
-    Color statusColor =
-        status == "Pending" ? const Color(0xFFFFE680) : const Color(0xFFBBF3C1);
-
-    return Center( // ✅ centers the shorter card
-  child: SizedBox(
-        width: MediaQuery.of(context).size.width * 0.88, // ✅ REDUCES CARD LENGTH
+    return Center(
+      // ✅ centers the shorter card
+      child: SizedBox(
+        width:
+            MediaQuery.of(context).size.width * 0.88, // ✅ REDUCES CARD LENGTH
         child: Container(
           padding: const EdgeInsets.all(18),
           decoration: BoxDecoration(
-
             color: Colors.white.withOpacity(0.85),
             borderRadius: BorderRadius.circular(28),
             boxShadow: [
@@ -381,29 +389,38 @@ class _MyComplaintsPageState extends State<MyComplaintsPage> {
                   ),
 
                   Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 14,
+                      vertical: 6,
+                    ),
                     decoration: BoxDecoration(
                       color: statusColor,
                       borderRadius: BorderRadius.circular(22),
                     ),
-                    child: Text(status,
-                        style: const TextStyle(
-                            fontSize: 13,
-                            fontWeight: FontWeight.w700,
-                            color: Colors.black87)),
+                    child: Text(
+                      status,
+                      style: const TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w700,
+                        color: Colors.black87,
+                      ),
+                    ),
                   ),
                 ],
               ),
               const SizedBox(height: 6),
-              Text(date,
-                  style:
-                      TextStyle(color: Colors.black.withOpacity(0.55), fontSize: 14)),
+              Text(
+                date,
+                style: TextStyle(
+                  color: Colors.black.withOpacity(0.55),
+                  fontSize: 14,
+                ),
+              ),
               const SizedBox(height: 6),
               Text(
                 desc,
-                maxLines: 1, 
-                softWrap: false,       // ✅ ONLY ONE LINE
+                maxLines: 1,
+                softWrap: false, // ✅ ONLY ONE LINE
                 overflow: TextOverflow.ellipsis, // ✅ SHOWS ...
                 style: TextStyle(
                   color: Colors.black.withOpacity(0.6),
@@ -476,14 +493,13 @@ void _showComplaintDetailsPopup({
 
             Row(
               children: [
-                Text(
-                  date,
-                  style: const TextStyle(color: Colors.black54),
-                ),
+                Text(date, style: const TextStyle(color: Colors.black54)),
                 const Spacer(),
                 Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 14,
+                    vertical: 6,
+                  ),
                   decoration: BoxDecoration(
                     color: status == "Pending"
                         ? const Color(0xFFFFE680)
@@ -493,7 +509,9 @@ void _showComplaintDetailsPopup({
                   child: Text(
                     status,
                     style: const TextStyle(
-                        fontSize: 13, fontWeight: FontWeight.bold),
+                      fontSize: 13,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
                 ),
               ],
@@ -503,20 +521,14 @@ void _showComplaintDetailsPopup({
 
             const Text(
               "Description",
-              style: TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.bold,
-              ),
+              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
             ),
 
             const SizedBox(height: 6),
 
             Text(
               fullDesc,
-              style: const TextStyle(
-                fontSize: 15,
-                color: Colors.black87,
-              ),
+              style: const TextStyle(fontSize: 15, color: Colors.black87),
             ),
 
             const SizedBox(height: 30),

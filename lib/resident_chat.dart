@@ -14,7 +14,6 @@ class SupportChatPage extends StatefulWidget {
 }
 
 class _SupportChatPageState extends State<SupportChatPage> {
-
   bool _isProfileOpen = false;
 
   final TextEditingController _controller = TextEditingController();
@@ -61,10 +60,10 @@ class _SupportChatPageState extends State<SupportChatPage> {
           .doc(conversationId)
           .collection("messages")
           .add({
-        "sender": "resident",
-        "text": text,
-        "timestamp": FieldValue.serverTimestamp(),
-      });
+            "sender": "resident",
+            "text": text,
+            "timestamp": FieldValue.serverTimestamp(),
+          });
     }
 
     if (messages.length == 1) _botWelcome();
@@ -78,7 +77,7 @@ class _SupportChatPageState extends State<SupportChatPage> {
         messages.add({
           "type": "bot",
           "text":
-              "Hello! Welcome to SafeNet AI.\nI am SafeNet AI Support Bot.\nWhat help do you need today?"
+              "Hello! Welcome to SafeNet AI.\nI am SafeNet AI Support Bot.\nWhat help do you need today?",
         });
         messages.add({"type": "category"});
       });
@@ -108,13 +107,13 @@ class _SupportChatPageState extends State<SupportChatPage> {
           messages.add({
             "type": "selectable",
             "title": item['title'],
-            "desc": item['desc']
+            "desc": item['desc'],
           });
         }
 
         messages.add({
           "type": "bot",
-          "text": "Which one do you need help with?"
+          "text": "Which one do you need help with?",
         });
       });
 
@@ -126,7 +125,7 @@ class _SupportChatPageState extends State<SupportChatPage> {
     setState(() {
       messages.add({
         "type": "bot",
-        "text": "Selected:\n${item['title']}\n${item['desc']}"
+        "text": "Selected:\n${item['title']}\n${item['desc']}",
       });
     });
     _askAuthority();
@@ -136,7 +135,7 @@ class _SupportChatPageState extends State<SupportChatPage> {
     setState(() {
       messages.add({
         "type": "bot",
-        "text": "Do you want to chat with authority?"
+        "text": "Do you want to chat with authority?",
       });
       messages.add({"type": "yesno"});
     });
@@ -148,10 +147,7 @@ class _SupportChatPageState extends State<SupportChatPage> {
   Future<void> _connectToAuthority() async {
     setState(() {
       messages.removeLast();
-      messages.add({
-        "type": "bot",
-        "text": "Connecting you to authority..."
-      });
+      messages.add({"type": "bot", "text": "Connecting you to authority..."});
     });
 
     _startReconnectTimer();
@@ -161,11 +157,11 @@ class _SupportChatPageState extends State<SupportChatPage> {
     final doc = await FirebaseFirestore.instance
         .collection("support_requests")
         .add({
-      "residentId": uid,
-      "residentName": "Resident",
-      "status": "waiting",
-      "createdAt": FieldValue.serverTimestamp(),
-    });
+          "residentId": uid,
+          "residentName": "Resident",
+          "status": "waiting",
+          "createdAt": FieldValue.serverTimestamp(),
+        });
 
     conversationId = doc.id;
 
@@ -174,44 +170,44 @@ class _SupportChatPageState extends State<SupportChatPage> {
         .doc(conversationId)
         .snapshots()
         .listen((snapshot) {
-      if (snapshot.exists && snapshot["status"] == "active") {
-        reconnectTimer?.cancel();
+          if (snapshot.exists && snapshot["status"] == "active") {
+            reconnectTimer?.cancel();
 
-        setState(() {
-          connectedToAuthority = true;
-          messages.add({
-            "type": "authority",
-            "text": "Hello! I am the authority. How can I assist you?"
-          });
-        });
+            setState(() {
+              connectedToAuthority = true;
+              messages.add({
+                "type": "authority",
+                "text": "Hello! I am the authority. How can I assist you?",
+              });
+            });
 
-        _scrollToBottom();
+            _scrollToBottom();
 
-        // ✅ ✅ ✅ THIS FIXES YOUR ISSUE ✅ ✅ ✅
-        messageListener = FirebaseFirestore.instance
-            .collection("support_chats")
-            .doc(conversationId)
-            .collection("messages")
-            .orderBy("timestamp", descending: false)
-            .snapshots()
-            .listen((snapshot) {
-          for (var doc in snapshot.docs) {
-            final data = doc.data();
-            if (data["sender"] == "authority") {
-              if (!messages.any((m) => m["text"] == data["text"])) {
-                setState(() {
-                  messages.add({
-                    "type": "authority",
-                    "text": data["text"],
-                  });
+            // ✅ ✅ ✅ THIS FIXES YOUR ISSUE ✅ ✅ ✅
+            messageListener = FirebaseFirestore.instance
+                .collection("support_chats")
+                .doc(conversationId)
+                .collection("messages")
+                .orderBy("timestamp", descending: false)
+                .snapshots()
+                .listen((snapshot) {
+                  for (var doc in snapshot.docs) {
+                    final data = doc.data();
+                    if (data["sender"] == "authority") {
+                      if (!messages.any((m) => m["text"] == data["text"])) {
+                        setState(() {
+                          messages.add({
+                            "type": "authority",
+                            "text": data["text"],
+                          });
+                        });
+                        _scrollToBottom();
+                      }
+                    }
+                  }
                 });
-                _scrollToBottom();
-              }
-            }
           }
         });
-      }
-    });
   }
 
   // ---------------- RECONNECT TIMER ----------------
@@ -261,7 +257,6 @@ class _SupportChatPageState extends State<SupportChatPage> {
             ),
           ),
 
-          
           SafeArea(
             child: Column(
               children: [
@@ -271,8 +266,10 @@ class _SupportChatPageState extends State<SupportChatPage> {
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      _circleButton(Icons.arrow_back,
-                          onTap: () => Navigator.pop(context)),
+                      _circleButton(
+                        Icons.arrow_back,
+                        onTap: () => Navigator.pop(context),
+                      ),
 
                       const Text(
                         "Support chat",
@@ -287,13 +284,13 @@ class _SupportChatPageState extends State<SupportChatPage> {
                           NotificationDropdown(role: "user"),
 
                           const SizedBox(width: 15),
-                          
+
                           GestureDetector(
-                          onTap: () {
-                            setState(() => _isProfileOpen = true);
-                          },
-                          child: _circleButton(Icons.person),
-                        ),
+                            onTap: () {
+                              setState(() => _isProfileOpen = true);
+                            },
+                            child: _circleButton(Icons.person),
+                          ),
                         ],
                       ),
                     ],
@@ -303,8 +300,10 @@ class _SupportChatPageState extends State<SupportChatPage> {
 
                 Container(
                   margin: const EdgeInsets.symmetric(horizontal: 16),
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 14,
+                    vertical: 6,
+                  ),
                   decoration: BoxDecoration(
                     color: connectedToAuthority
                         ? Colors.green.withOpacity(0.15)
@@ -316,10 +315,11 @@ class _SupportChatPageState extends State<SupportChatPage> {
                         ? "Connected to Authority"
                         : "Chatting with Support Bot",
                     style: TextStyle(
-                        color: connectedToAuthority
-                            ? Colors.green
-                            : Colors.orange,
-                        fontWeight: FontWeight.w600),
+                      color: connectedToAuthority
+                          ? Colors.green
+                          : Colors.orange,
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
                 ),
 
@@ -341,8 +341,10 @@ class _SupportChatPageState extends State<SupportChatPage> {
                     itemBuilder: (context, index) {
                       final msg = messages[index];
 
-                      if (msg["type"] == "user") return _bubble(msg["text"], true);
-                      if (msg["type"] == "bot") return _bubble(msg["text"], false);
+                      if (msg["type"] == "user")
+                        return _bubble(msg["text"], true);
+                      if (msg["type"] == "bot")
+                        return _bubble(msg["text"], false);
                       if (msg["type"] == "authority")
                         return _bubble(msg["text"], false);
 
@@ -353,13 +355,18 @@ class _SupportChatPageState extends State<SupportChatPage> {
                             "desc": msg["desc"],
                           }),
                           child: _glassSelectable(
-                              "${msg["title"]}\n${msg["desc"]}"),
+                            "${msg["title"]}\n${msg["desc"]}",
+                          ),
                         );
                       }
 
                       if (msg["type"] == "category") {
-                        return _inlineOptions(
-                            ["Complaints", "Service", "Waste Pickup", "Other"]);
+                        return _inlineOptions([
+                          "Complaints",
+                          "Service",
+                          "Waste Pickup",
+                          "Other",
+                        ]);
                       }
 
                       if (msg["type"] == "yesno") {
@@ -377,8 +384,7 @@ class _SupportChatPageState extends State<SupportChatPage> {
                     children: [
                       Expanded(
                         child: Container(
-                          padding:
-                              const EdgeInsets.symmetric(horizontal: 14),
+                          padding: const EdgeInsets.symmetric(horizontal: 14),
                           decoration: BoxDecoration(
                             color: Colors.white,
                             borderRadius: BorderRadius.circular(30),
@@ -386,8 +392,9 @@ class _SupportChatPageState extends State<SupportChatPage> {
                           child: TextField(
                             controller: _controller,
                             decoration: const InputDecoration(
-                                hintText: "Type your message...",
-                                border: InputBorder.none),
+                              hintText: "Type your message...",
+                              border: InputBorder.none,
+                            ),
                           ),
                         ),
                       ),
@@ -400,10 +407,9 @@ class _SupportChatPageState extends State<SupportChatPage> {
                             color: Color(0xFF6EA7A0),
                             shape: BoxShape.circle,
                           ),
-                          child:
-                              const Icon(Icons.send, color: Colors.white),
+                          child: const Icon(Icons.send, color: Colors.white),
                         ),
-                      )
+                      ),
                     ],
                   ),
                 ),
@@ -425,14 +431,13 @@ class _SupportChatPageState extends State<SupportChatPage> {
               top: 0,
               bottom: 0,
               right: 0,
-              width: MediaQuery.of(context).size.width * 0.33,
+              width: 280,
               child: ProfileSidebar(
                 userCollection: "users",
                 onClose: () => setState(() => _isProfileOpen = false),
               ),
             ),
           ],
-
         ],
       ),
     );
@@ -462,17 +467,16 @@ class _SupportChatPageState extends State<SupportChatPage> {
         child: BackdropFilter(
           filter: ImageFilter.blur(sigmaX: 6, sigmaY: 6),
           child: Container(
-            padding:
-                const EdgeInsets.symmetric(horizontal: 18, vertical: 9),
+            padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 9),
             decoration: BoxDecoration(
               color: Colors.white.withOpacity(0.35),
               borderRadius: BorderRadius.circular(22),
-              border:
-                  Border.all(color: Colors.white.withOpacity(0.6)),
+              border: Border.all(color: Colors.white.withOpacity(0.6)),
             ),
-            child: Text(text,
-                style:
-                    const TextStyle(fontWeight: FontWeight.w700)),
+            child: Text(
+              text,
+              style: const TextStyle(fontWeight: FontWeight.w700),
+            ),
           ),
         ),
       ),
@@ -488,27 +492,24 @@ class _SupportChatPageState extends State<SupportChatPage> {
         borderRadius: BorderRadius.circular(18),
         border: Border.all(color: Colors.white.withOpacity(0.6)),
       ),
-      child: Text(text,
-          style: const TextStyle(fontWeight: FontWeight.w700)),
+      child: Text(text, style: const TextStyle(fontWeight: FontWeight.w700)),
     );
   }
 
   Widget _bubble(String text, bool isUser) {
     return Align(
-      alignment:
-          isUser ? Alignment.centerRight : Alignment.centerLeft,
+      alignment: isUser ? Alignment.centerRight : Alignment.centerLeft,
       child: Container(
         margin: const EdgeInsets.only(bottom: 10),
         padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(
-          color:
-              isUser ? const Color(0xFF6EA7A0) : Colors.white,
+          color: isUser ? const Color(0xFF6EA7A0) : Colors.white,
           borderRadius: BorderRadius.circular(18),
         ),
-        child: Text(text,
-            style: TextStyle(
-                color:
-                    isUser ? Colors.white : Colors.black87)),
+        child: Text(
+          text,
+          style: TextStyle(color: isUser ? Colors.white : Colors.black87),
+        ),
       ),
     );
   }
