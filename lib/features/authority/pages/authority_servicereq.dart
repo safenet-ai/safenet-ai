@@ -74,29 +74,26 @@ class _AuthorityServiceManagementPageState
                 style: const TextStyle(fontSize: 14, color: Colors.black87),
               ),
               const SizedBox(height: 24),
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton.icon(
-                  onPressed: () {
-                    Navigator.pop(context);
-                    _showWorkerSelection(context, docId, data);
-                  },
-                  icon: const Icon(Icons.person_add),
-                  label: Text(
-                    data["assignedWorker"] != null
-                        ? "Change Worker"
-                        : "Assign Worker",
-                  ),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF7DD3C0),
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(vertical: 14),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(16),
+              if (data["status"] != "Completed")
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton.icon(
+                    onPressed: () {
+                      Navigator.pop(context);
+                      _showWorkerSelection(context, docId, data);
+                    },
+                    icon: const Icon(Icons.person_add),
+                    label: const Text("Assign Worker"),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF7DD3C0),
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16),
+                      ),
                     ),
                   ),
                 ),
-              ),
             ],
           ),
         ),

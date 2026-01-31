@@ -345,6 +345,80 @@ class _WorkerMyJobsPageState extends State<WorkerMyJobsPage> {
     });
   }
 
+  Future<void> _rejectJob(
+    BuildContext context,
+    String jobId,
+    Map<String, dynamic> job,
+  ) async {
+    // Show confirmation dialog
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text("Reject Job"),
+        content: const Text(
+          "Are you sure you want to reject this job? It will be returned to pending status.",
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text("Cancel"),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: TextButton.styleFrom(foregroundColor: Colors.red),
+            child: const Text("Reject"),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm != true) return;
+
+    try {
+      // Update service request to Pending and remove worker
+      await FirebaseFirestore.instance
+          .collection("service_requests")
+          .doc(jobId)
+          .update({
+            "status": "Pending",
+            "assignedWorker": null,
+            "isStarted": false,
+          });
+
+      // Send notification to authority
+      await FirebaseFirestore.instance.collection("notifications").add({
+        "title": "Job Rejected",
+        "message": "Worker rejected service request '${job["title"]}'.",
+        "toRole": "authority",
+        "isRead": false,
+        "timestamp": Timestamp.now(),
+      });
+
+      // Send notification to resident
+      await FirebaseFirestore.instance.collection("notifications").add({
+        "title": "Service Update",
+        "message":
+            "Your service request '${job["title"]}' is back to pending. A new worker will be assigned soon.",
+        "toUid": job["userId"],
+        "isRead": false,
+        "timestamp": Timestamp.now(),
+      });
+
+      if (context.mounted) {
+        Navigator.pop(context);
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("Job rejected successfully")),
+        );
+      }
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text("Error rejecting job: $e")));
+      }
+    }
+  }
+
   String? workerId;
 
   Future<void> _loadWorkerId() async {
@@ -664,34 +738,59 @@ class _WorkerMyJobsPageState extends State<WorkerMyJobsPage> {
   ) {
     final status = job["status"];
 
-    // START JOB
+    // START JOB OR REJECT
     if (status == "Assigned" && job["isStarted"] != true) {
-      return SizedBox(
-        width: double.infinity,
-        height: 45,
-        child: ElevatedButton(
-          style: ElevatedButton.styleFrom(
-            backgroundColor: const Color(0xFFBEE7E8),
-            foregroundColor: Colors.black87,
-            elevation: 0,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(18),
+      return Column(
+        children: [
+          SizedBox(
+            width: double.infinity,
+            height: 45,
+            child: ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFFBEE7E8),
+                foregroundColor: Colors.black87,
+                elevation: 0,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(18),
+                ),
+              ),
+              onPressed: () async {
+                await FirebaseFirestore.instance
+                    .collection("service_requests")
+                    .doc(jobId)
+                    .update({"isStarted": true});
+
+                await _sendStartNotification(job);
+                Navigator.pop(context);
+              },
+              child: const Text(
+                "Start Job",
+                style: TextStyle(fontWeight: FontWeight.w700),
+              ),
             ),
           ),
-          onPressed: () async {
-            await FirebaseFirestore.instance
-                .collection("service_requests")
-                .doc(jobId)
-                .update({"isStarted": true});
-
-            await _sendStartNotification(job);
-            Navigator.pop(context);
-          },
-          child: const Text(
-            "Start Job",
-            style: TextStyle(fontWeight: FontWeight.w700),
+          const SizedBox(height: 12),
+          SizedBox(
+            width: double.infinity,
+            height: 45,
+            child: OutlinedButton(
+              style: OutlinedButton.styleFrom(
+                foregroundColor: Colors.red,
+                side: const BorderSide(color: Colors.red, width: 2),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(18),
+                ),
+              ),
+              onPressed: () async {
+                await _rejectJob(context, jobId, job);
+              },
+              child: const Text(
+                "Reject Job",
+                style: TextStyle(fontWeight: FontWeight.w700),
+              ),
+            ),
           ),
-        ),
+        ],
       );
     }
 
