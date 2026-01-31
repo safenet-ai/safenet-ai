@@ -122,7 +122,6 @@ class _PendingApprovalPageState extends State<PendingApprovalPage> {
     required String message,
   }) async {
     await FirebaseFirestore.instance.collection("notifications").add({
-      "target": "user",
       "toUid": uid,
       "title": title,
       "message": message,

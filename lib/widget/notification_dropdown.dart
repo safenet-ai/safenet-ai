@@ -19,25 +19,80 @@ class _NotificationDropdownState extends State<NotificationDropdown> {
     if (_overlay != null) {
       _overlay!.remove();
       _overlay = null;
+      setState(() {});
     } else {
       _overlay = _createOverlay();
       Overlay.of(context).insert(_overlay!);
     }
   }
 
-  OverlayEntry _createOverlay() {
-  final uid = FirebaseAuth.instance.currentUser?.uid;
+  Future<void> _clearAllNotifications() async {
+    final uid = FirebaseAuth.instance.currentUser?.uid;
 
-  Query query = FirebaseFirestore.instance
-      .collection("notifications")
-      .orderBy("timestamp", descending: true)
-      .limit(6);
+    try {
+      QuerySnapshot notifications;
 
-  if (widget.role == "user") {
-    query = query.where("toUid", isEqualTo: uid);
-  } else if (widget.role == "authority") {
-    query = query.where("toRole", isEqualTo: "authority"); // ✅ FIXED
+      if (widget.role == "user" || widget.role == "worker") {
+        notifications = await FirebaseFirestore.instance
+            .collection("notifications")
+            .where("toUid", isEqualTo: uid)
+            .get();
+      } else if (widget.role == "authority") {
+        notifications = await FirebaseFirestore.instance
+            .collection("notifications")
+            .where("toRole", isEqualTo: "authority")
+            .get();
+      } else {
+        return;
+      }
+
+      // Delete all notifications
+      for (var doc in notifications.docs) {
+        await doc.reference.delete();
+      }
+
+      // Close overlay after clearing
+      if (_overlay != null) {
+        _overlay!.remove();
+        _overlay = null;
+      }
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text("All notifications cleared"),
+            duration: Duration(seconds: 2),
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text("Error clearing notifications: $e"),
+            duration: const Duration(seconds: 2),
+          ),
+        );
+      }
+    }
   }
+
+  OverlayEntry _createOverlay() {
+    final uid = FirebaseAuth.instance.currentUser?.uid;
+
+    Query query = FirebaseFirestore.instance
+        .collection("notifications")
+        .orderBy("timestamp", descending: true)
+        .limit(6);
+
+    if (widget.role == "user") {
+      query = query.where("toUid", isEqualTo: uid);
+    } else if (widget.role == "authority") {
+      query = query.where("toRole", isEqualTo: "authority");
+    } else if (widget.role == "worker") {
+      // Workers should only see notifications specifically sent to them
+      query = query.where("toUid", isEqualTo: uid);
+    }
 
     return OverlayEntry(
       builder: (_) => Stack(
@@ -65,8 +120,12 @@ class _NotificationDropdownState extends State<NotificationDropdown> {
                       end: Alignment.bottomRight,
                       colors: [
                         const Color(0xFFBEEBFF).withOpacity(0.75), // aqua light
-                        const Color(0xFFDCF7FF).withOpacity(0.55), // glass shine
-                        const Color(0xFFB4E8F5).withOpacity(0.65), // liquid blue
+                        const Color(
+                          0xFFDCF7FF,
+                        ).withOpacity(0.55), // glass shine
+                        const Color(
+                          0xFFB4E8F5,
+                        ).withOpacity(0.65), // liquid blue
                       ],
                     ),
                     borderRadius: BorderRadius.circular(26),
@@ -85,8 +144,59 @@ class _NotificationDropdownState extends State<NotificationDropdown> {
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      const Text("Notifications",
-                          style: TextStyle(fontWeight: FontWeight.w700,fontSize: 35,color: Colors.black87)),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          const Flexible(
+                            child: Text(
+                              "Notifications",
+                              style: TextStyle(
+                                fontWeight: FontWeight.w700,
+                                fontSize: 26,
+                                color: Colors.black87,
+                              ),
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          GestureDetector(
+                            onTap: _clearAllNotifications,
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 12,
+                                vertical: 6,
+                              ),
+                              decoration: BoxDecoration(
+                                color: Colors.red.shade50,
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(
+                                  color: Colors.red.shade200,
+                                  width: 1,
+                                ),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(
+                                    Icons.clear_all,
+                                    size: 16,
+                                    color: Colors.red.shade700,
+                                  ),
+                                  const SizedBox(width: 4),
+                                  Text(
+                                    "Clear All",
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w600,
+                                      color: Colors.red.shade700,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
 
                       const SizedBox(height: 12),
 
@@ -100,7 +210,7 @@ class _NotificationDropdownState extends State<NotificationDropdown> {
                             );
                           }
 
-                          final docs = snap.data!.docs;   // ✅ ADD THIS LINE
+                          final docs = snap.data!.docs; // ✅ ADD THIS LINE
 
                           if (docs.isEmpty) {
                             return const Padding(
@@ -112,7 +222,6 @@ class _NotificationDropdownState extends State<NotificationDropdown> {
                           return Column(
                             children: docs.map((doc) {
                               final data = doc.data() as Map<String, dynamic>;
-
 
                               return Container(
                                 margin: const EdgeInsets.only(bottom: 12),
@@ -133,7 +242,9 @@ class _NotificationDropdownState extends State<NotificationDropdown> {
                                   ),
                                   boxShadow: [
                                     BoxShadow(
-                                      color: Colors.blueAccent.withOpacity(0.12),
+                                      color: Colors.blueAccent.withOpacity(
+                                        0.12,
+                                      ),
                                       blurRadius: 12,
                                       offset: const Offset(0, 6),
                                     ),
@@ -161,7 +272,8 @@ class _NotificationDropdownState extends State<NotificationDropdown> {
 
                                     Expanded(
                                       child: Column(
-                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
                                         children: [
                                           Text(
                                             data["title"] ?? "Notification",
@@ -188,13 +300,13 @@ class _NotificationDropdownState extends State<NotificationDropdown> {
                             }).toList(),
                           );
                         },
-                      )
+                      ),
                     ],
                   ),
                 ),
               ),
             ),
-          )
+          ),
         ],
       ),
     );
@@ -226,5 +338,3 @@ Widget _circleIcon(IconData icon) {
     child: Icon(icon, color: Colors.black87, size: 22),
   );
 }
-
-

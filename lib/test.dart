@@ -302,7 +302,6 @@ class _WorkerMyJobsPageState extends State<WorkerMyJobsPage> {
       "title": "Service Started",
       "message": "Your service request '${job["title"]}' has been started.",
       "toUid": job["userId"],
-      "target": "user",
       "isRead": false,
       "timestamp": now,
     });
@@ -311,8 +310,7 @@ class _WorkerMyJobsPageState extends State<WorkerMyJobsPage> {
     await FirebaseFirestore.instance.collection("notifications").add({
       "title": "Service Started",
       "message": "Worker has started service '${job["title"]}'.",
-      //"target": "authority",
-      "torole": "authority", // 👈 REQUIRED
+      "toRole": "authority",
       "isRead": false,
       "timestamp": now,
     });
