@@ -1,6 +1,7 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'approval_guard.dart';
+import 'notice_board.dart';
 
 class SecurityDashboardPage extends StatelessWidget {
   const SecurityDashboardPage({super.key});
@@ -10,24 +11,21 @@ class SecurityDashboardPage extends StatelessWidget {
     return ApprovalGate(
       collection: "workers",
       child: Scaffold(
-        
-        backgroundColor: Colors.black,
+        backgroundColor: Colors.transparent,
         body: Stack(
           children: [
             // Background image
             Positioned.fill(
-              child: Image.asset(
-                'assets/bg1_img.png',
-                fit: BoxFit.cover,
-              ),
+              child: Image.asset('assets/bg1_img.png', fit: BoxFit.cover),
             ),
-
-            
 
             // WHOLE PAGE SCROLLS
             SafeArea(
               child: SingleChildScrollView(
-                padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 18,
+                  vertical: 12,
+                ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -61,7 +59,7 @@ class SecurityDashboardPage extends StatelessWidget {
                                     color: Colors.black.withOpacity(0.15),
                                     blurRadius: 10,
                                     offset: const Offset(0, 4),
-                                  )
+                                  ),
                                 ],
                               ),
                               child: const Icon(
@@ -198,22 +196,64 @@ class SecurityDashboardPage extends StatelessWidget {
                         Row(
                           children: [
                             Expanded(
-                              child: _GlassCard(
-                                gradient: const LinearGradient(
-                                  colors: [
-                                    Color(0xFFE6F2FF),
-                                    Color(0xFFEAF1FF),
+                              child: GestureDetector(
+                                onTap: () {
+                                  // TODO: Chat functionality
+                                },
+                                child: _GlassCard(
+                                  gradient: const LinearGradient(
+                                    colors: [
+                                      Color(0xFFE6F2FF),
+                                      Color(0xFFEAF1FF),
+                                    ],
+                                  ),
+                                  title: 'Chat with\nAuthority',
+                                  mainValue: '',
+                                  subtitleLines: const [
+                                    'Communicate with\nAuthority Team',
                                   ],
+                                  leadingIcon: Icons.chat_bubble_rounded,
                                 ),
-                                title: 'Chat with\nAuthority',
-                                mainValue: '',
-                                subtitleLines: const [
-                                  'Communicate with\nAuthority Team',
-                                ],
-                                leadingIcon: Icons.chat_bubble_rounded,
                               ),
                             ),
                             const SizedBox(width: 12),
+                            Expanded(
+                              child: GestureDetector(
+                                onTap: () {
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (_) => NoticeBoardPage(
+                                        role: "security",
+                                        displayRole: "Security",
+                                        userCollection: "security",
+                                      ),
+                                    ),
+                                  );
+                                },
+                                child: _GlassCard(
+                                  gradient: const LinearGradient(
+                                    colors: [
+                                      Color(0xFFFFE5B4),
+                                      Color(0xFFFFEAC2),
+                                    ],
+                                  ),
+                                  title: 'Notice\nBoard',
+                                  mainValue: '',
+                                  subtitleLines: const [
+                                    'View announcements\nfrom Authority',
+                                  ],
+                                  leadingIcon: Icons.campaign_outlined,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+
+                        const SizedBox(height: 12),
+
+                        Row(
+                          children: [
                             Expanded(
                               child: _GlassCard(
                                 gradient: const LinearGradient(
@@ -225,11 +265,14 @@ class SecurityDashboardPage extends StatelessWidget {
                                 title: 'Report\nIncident',
                                 mainValue: '',
                                 subtitleLines: const [
-                                  'Communicate with\nAuthority Team',
+                                  'Report incidents to\nAuthority Team',
                                 ],
-                                leadingIcon:
-                                    Icons.report_gmailerrorred_rounded,
+                                leadingIcon: Icons.report_gmailerrorred_rounded,
                               ),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Container(), // Empty placeholder
                             ),
                           ],
                         ),
@@ -266,10 +309,7 @@ class _RoundGlassButton extends StatelessWidget {
   final IconData icon;
   final VoidCallback onTap;
 
-  const _RoundGlassButton({
-    required this.icon,
-    required this.onTap,
-  });
+  const _RoundGlassButton({required this.icon, required this.onTap});
 
   @override
   Widget build(BuildContext context) {
@@ -290,11 +330,7 @@ class _RoundGlassButton extends StatelessWidget {
                 width: 1.2,
               ),
             ),
-            child: Icon(
-              icon,
-              size: 18,
-              color: Colors.black.withOpacity(0.75),
-            ),
+            child: Icon(icon, size: 18, color: Colors.black.withOpacity(0.75)),
           ),
         ),
       ),
@@ -333,10 +369,7 @@ class _GlassCard extends StatelessWidget {
           decoration: BoxDecoration(
             gradient: gradient,
             borderRadius: BorderRadius.circular(26),
-            border: Border.all(
-              color: Colors.white.withOpacity(0.7),
-              width: 1,
-            ),
+            border: Border.all(color: Colors.white.withOpacity(0.7), width: 1),
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,

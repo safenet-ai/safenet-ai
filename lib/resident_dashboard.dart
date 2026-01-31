@@ -3,6 +3,7 @@ import 'resident_complaint.dart';
 import 'resident_service.dart';
 import 'resident_waste.dart';
 import 'resident_chat.dart';
+import 'notice_board.dart';
 import 'dart:async';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -233,20 +234,105 @@ class _ResidentDashboardPageState extends State<ResidentDashboardPage> {
 
                       const SizedBox(height: 26),
 
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Expanded(
+                            child: InkWell(
+                              onTap: () {
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (_) => SupportChatPage(),
+                                  ),
+                                );
+                              },
+                              child: Container(
+                                height: cardSize * 0.75,
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFFEFE4F9),
+                                  borderRadius: BorderRadius.circular(22),
+                                ),
+                                child: Column(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Icon(
+                                      Icons.chat_bubble_outline,
+                                      size: 34,
+                                      color: Colors.black87,
+                                    ),
+                                    const SizedBox(height: 8),
+                                    Text(
+                                      "Chat",
+                                      textAlign: TextAlign.center,
+                                      style: TextStyle(
+                                        fontSize: 16,
+                                        fontWeight: FontWeight.w700,
+                                        color: Colors.black87,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 20),
+                          Expanded(
+                            child: InkWell(
+                              onTap: () {
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (_) => NoticeBoardPage(
+                                      role: "users",
+                                      displayRole: "Resident",
+                                      userCollection: "users",
+                                    ),
+                                  ),
+                                );
+                              },
+                              child: Container(
+                                height: cardSize * 0.75,
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFFFFE5B4),
+                                  borderRadius: BorderRadius.circular(22),
+                                ),
+                                child: Column(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Icon(
+                                      Icons.campaign_outlined,
+                                      size: 34,
+                                      color: Colors.black87,
+                                    ),
+                                    const SizedBox(height: 8),
+                                    Text(
+                                      "Notice Board",
+                                      textAlign: TextAlign.center,
+                                      style: TextStyle(
+                                        fontSize: 16,
+                                        fontWeight: FontWeight.w700,
+                                        color: Colors.black87,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+
+                      const SizedBox(height: 26),
+
                       InkWell(
                         onTap: () {
-                          // TODO: Navigate to Chat / Notice Board page
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (_) => SupportChatPage(),
-                            ),
-                          );
+                          // Placeholder action
                         },
                         child: _fullCard(
-                          icon: Icons.chat_bubble_outline,
-                          label: "Chat / Notice\nBoard",
-                          color: const Color(0xFFEFE4F9),
+                          icon: Icons.forum_outlined,
+                          label: "Community\nForum",
+                          color: const Color(0xFFD9F4F6),
                         ),
                       ),
 

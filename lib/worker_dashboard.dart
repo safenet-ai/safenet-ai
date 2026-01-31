@@ -6,6 +6,7 @@ import 'widget/notification_dropdown.dart';
 import 'approval_guard.dart';
 import 'worker_myjob.dart';
 import 'worker_work_history.dart';
+import 'notice_board.dart';
 //import 'test.dart';
 
 class WorkerDashboardPage extends StatefulWidget {
@@ -226,8 +227,42 @@ class _WorkerDashboardPageState extends State<WorkerDashboardPage> {
                           Expanded(
                             child: GestureDetector(
                               onTap: () {
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (_) => NoticeBoardPage(
+                                      role: "workers",
+                                      displayRole: "Worker",
+                                      userCollection: "workers",
+                                    ),
+                                  ),
+                                );
+                              },
+                              child: WorkerTile(
+                                color: const Color(0xFFFFE5B4),
+                                icon: Icons.campaign_outlined,
+                                title: "Notice Board",
+                                subtitle: "View announcements.",
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+
+                      const SizedBox(height: 20),
+
+                      Row(
+                        children: [
+                          Expanded(
+                            child: GestureDetector(
+                              onTap: () {
                                 // TODO: Navigate to Work History page
-                                Navigator.push(context, MaterialPageRoute(builder: (_) => WorkerHistoryPage()));
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (_) => WorkerHistoryPage(),
+                                  ),
+                                );
                               },
                               child: WorkerTile(
                                 color: const Color(0xFFDAF5E8),
@@ -236,6 +271,11 @@ class _WorkerDashboardPageState extends State<WorkerDashboardPage> {
                                 subtitle: "Track completed tasks.",
                               ),
                             ),
+                          ),
+                          const SizedBox(width: 20),
+                          Expanded(
+                            child:
+                                Container(), // Empty placeholder for symmetry
                           ),
                         ],
                       ),
