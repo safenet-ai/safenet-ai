@@ -406,26 +406,25 @@ class _AuthorityServiceManagementPageState
 
                           const SizedBox(height: 40),
 
-                          /// ✅ FILTER TABS EXACTLY LIKE SERVICE REQUEST PAGE
-                          Padding(
-                            padding: const EdgeInsets.symmetric(horizontal: 12),
-                            child: FilterTabs(
-                              selected: selectedFilter,
-                              tabs: [
-                                FilterTabItem("All", Icons.apps),
-                                FilterTabItem("Pending", Icons.access_time),
-                                FilterTabItem("Assigned", Icons.work),
-                                FilterTabItem("In Progress", Icons.build),
-                                FilterTabItem("Completed", Icons.check_circle),
+                          /// ✅ FILTER TABS - SCROLLABLE
+                          SizedBox(
+                            height: 50,
+                            child: ListView(
+                              scrollDirection: Axis.horizontal,
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 12,
+                              ),
+                              children: [
+                                _filterChip("All", Icons.apps, 0),
+                                const SizedBox(width: 10),
+                                _filterChip("Pending", Icons.access_time, 1),
+                                const SizedBox(width: 10),
+                                _filterChip("Assigned", Icons.work, 2),
+                                const SizedBox(width: 10),
+                                _filterChip("In Progress", Icons.build, 3),
+                                const SizedBox(width: 10),
+                                _filterChip("Completed", Icons.check_circle, 4),
                               ],
-                              onChanged: (index, label) {
-                                setState(() => selectedFilter = label);
-                                _pageController.animateToPage(
-                                  index,
-                                  duration: const Duration(milliseconds: 250),
-                                  curve: Curves.easeInOut,
-                                );
-                              },
                             ),
                           ),
 
@@ -695,6 +694,64 @@ class _AuthorityServiceManagementPageState
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  /// ✅ FILTER CHIP WIDGET
+  Widget _filterChip(String label, IconData icon, int index) {
+    final isSelected = selectedFilter == label;
+    return GestureDetector(
+      onTap: () {
+        setState(() => selectedFilter = label);
+        _pageController.animateToPage(
+          index,
+          duration: const Duration(milliseconds: 250),
+          curve: Curves.easeInOut,
+        );
+      },
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+        decoration: BoxDecoration(
+          color: isSelected
+              ? const Color(0xFF7DD3C0)
+              : Colors.white.withOpacity(0.85),
+          borderRadius: BorderRadius.circular(25),
+          border: Border.all(
+            color: isSelected
+                ? const Color(0xFF7DD3C0)
+                : Colors.grey.withOpacity(0.3),
+            width: 1.5,
+          ),
+          boxShadow: isSelected
+              ? [
+                  BoxShadow(
+                    color: const Color(0xFF7DD3C0).withOpacity(0.3),
+                    blurRadius: 8,
+                    offset: const Offset(0, 3),
+                  ),
+                ]
+              : [],
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              icon,
+              size: 18,
+              color: isSelected ? Colors.white : Colors.black87,
+            ),
+            const SizedBox(width: 8),
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+                color: isSelected ? Colors.white : Colors.black87,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
