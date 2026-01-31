@@ -1,95 +1,104 @@
 import 'package:flutter/material.dart';
 import 'dart:ui';
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'role_selection.dart';
-import 'worker_dashboard.dart';
+import './role_selection.dart';
+import '../../security/pages/security_dashbaord.dart';
 
-class WorkerLoginPage extends StatefulWidget {
-  const WorkerLoginPage({super.key});
+class SecurityLoginPage extends StatefulWidget {
+  const SecurityLoginPage({super.key});
 
   @override
-  State<WorkerLoginPage> createState() => _SafeNetLoginPageState();
+  State<SecurityLoginPage> createState() => _SecurityLoginPageState();
 }
 
-class _SafeNetLoginPageState extends State<WorkerLoginPage> {
+class _SecurityLoginPageState extends State<SecurityLoginPage> {
   bool _obscure = true;
 
-  // 🔹 Added controllers
-  final TextEditingController _loginCtrl = TextEditingController();
-  final TextEditingController _passwordCtrl = TextEditingController();
+  final _emailCtrl = TextEditingController();
+  final _passCtrl = TextEditingController();
 
-  // -------------------------------------------------------------------
-  // 🔥 WORKER LOGIN METHOD (email / username / phone)
-  // -------------------------------------------------------------------
-  Future<void> _loginWorker() async {
-    final input = _loginCtrl.text.trim();
-    final password = _passwordCtrl.text.trim();
+  // ------------------- LOGIN FUNCTION -------------------
+
+  Future<void> _loginSecurity() async {
+    final input = _emailCtrl.text.trim();
+    final password = _passCtrl.text.trim();
 
     if (input.isEmpty || password.isEmpty) {
-      _showMsg("Please fill all fields");
+      _showMsg("Please enter username/email/phone and password");
       return;
     }
 
     try {
-      String email = "";
-      final workers = FirebaseFirestore.instance.collection("workers");
+      DocumentSnapshot? snap;
 
-      QuerySnapshot snap;
+      // Detect input type
+      bool isEmail = input.contains("@");
+      bool isPhone = RegExp(r'^[0-9]{10,}$').hasMatch(input); // 10+ digits
 
-      // 🔹 If email
-      if (input.contains("@")) {
-        snap = await workers.where("email", isEqualTo: input).limit(1).get();
-      }
-      // 🔹 If phone number
-      else if (RegExp(r'^[0-9]{10}$').hasMatch(input)) {
-        snap = await workers.where("phone", isEqualTo: input).limit(1).get();
-      }
-      // 🔹 If username
-      else {
-        snap = await workers.where("username", isEqualTo: input).limit(1).get();
+      // 1️⃣ Search workers collection according to input
+      if (isEmail) {
+        snap = await FirebaseFirestore.instance
+            .collection("workers")
+            .where("email", isEqualTo: input)
+            .limit(1)
+            .get()
+            .then((q) => q.docs.isNotEmpty ? q.docs.first : null);
+      } else if (isPhone) {
+        snap = await FirebaseFirestore.instance
+            .collection("workers")
+            .where("phone", isEqualTo: "+91$input")
+            .limit(1)
+            .get()
+            .then((q) => q.docs.isNotEmpty ? q.docs.first : null);
+      } else {
+        // Username login
+        snap = await FirebaseFirestore.instance
+            .collection("workers")
+            .where("username", isEqualTo: input)
+            .limit(1)
+            .get()
+            .then((q) => q.docs.isNotEmpty ? q.docs.first : null);
       }
 
-      // 🔥 Check worker exists
-      if (snap.docs.isEmpty) {
-        _showMsg("No worker found with this username/phone/email");
+      if (snap == null) {
+        _showMsg("No security worker found");
         return;
       }
 
-      final data = snap.docs.first.data() as Map<String, dynamic>;
-      email = data["email"];
+      final data = snap.data() as Map<String, dynamic>;
 
-      // 🔥 Login using Firebase Auth
-      final userCred = await FirebaseAuth.instance.signInWithEmailAndPassword(
+      final email = data["email"];
+      if (email == null) {
+        _showMsg("Account does not have a valid email");
+        return;
+      }
+
+      // 2️⃣ Firebase login using email
+      await FirebaseAuth.instance.signInWithEmailAndPassword(
         email: email,
         password: password,
       );
 
-      // 🔍 Verify worker role again
-      final uid = userCred.user!.uid;
-      final userDoc = await workers.doc(uid).get();
+      // 3️⃣ Validate security role
+      if (data["role"] == "worker" &&
+          data["profession"].toString().toLowerCase().contains("security")) {
+        _showMsg("Login Successful!");
 
-      if (!userDoc.exists || userDoc["role"] != "worker") {
+        // Clear any authority session
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.remove('authority_uid');
+        await prefs.setString('user_role', 'security');
+
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (_) => SecurityDashboardPage()),
+        );
+      } else {
+        _showMsg("This account is NOT a security worker");
         FirebaseAuth.instance.signOut();
-        _showMsg("Access Denied! Not a worker.");
-        return;
       }
-
-      // SUCCESS
-      _showMsg("Worker Login Successful!");
-
-      // Clear any authority session
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.remove('authority_uid');
-      await prefs.setString('user_role', 'worker');
-
-      await Future.delayed(const Duration(seconds: 2));
-
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (_) => WorkerDashboardPage()),
-      );
     } catch (e) {
       _showMsg("Login failed: $e");
     }
@@ -99,7 +108,7 @@ class _SafeNetLoginPageState extends State<WorkerLoginPage> {
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
   }
 
-  // -------------------------------------------------------------------
+  // ------------------------------------------------------
 
   @override
   Widget build(BuildContext context) {
@@ -111,7 +120,6 @@ class _SafeNetLoginPageState extends State<WorkerLoginPage> {
         elevation: 0,
         title: Row(
           children: [
-            // 🔙 Custom Glass Back Button
             GestureDetector(
               onTap: () => Navigator.pop(context),
               child: ClipRRect(
@@ -124,25 +132,16 @@ class _SafeNetLoginPageState extends State<WorkerLoginPage> {
                       color: Colors.white.withOpacity(0.45),
                       borderRadius: BorderRadius.circular(12),
                       border: Border.all(color: Colors.white.withOpacity(0.25)),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withOpacity(0.07),
-                          blurRadius: 15,
-                          offset: const Offset(0, 4),
-                        ),
-                      ],
                     ),
                     child: Icon(Icons.arrow_back, color: Colors.grey.shade800),
                   ),
                 ),
               ),
             ),
-
             const SizedBox(width: 12),
-
             const Expanded(
               child: Text(
-                "Worker Login Page",
+                "Security Login Page",
                 textAlign: TextAlign.center,
                 style: TextStyle(
                   fontSize: 20,
@@ -151,18 +150,17 @@ class _SafeNetLoginPageState extends State<WorkerLoginPage> {
                 ),
               ),
             ),
-
             const SizedBox(width: 48),
           ],
         ),
       ),
 
+      // ---------------- UI ----------------
       body: Stack(
         children: [
           Positioned.fill(
             child: Image.asset('assets/bg1_img.png', fit: BoxFit.cover),
           ),
-
           Center(
             child: SingleChildScrollView(
               padding: const EdgeInsets.symmetric(horizontal: 28),
@@ -189,20 +187,20 @@ class _SafeNetLoginPageState extends State<WorkerLoginPage> {
 
                   const SizedBox(height: 50),
 
-                  // 🔹 Login field (email/username/phone)
+                  // Email
                   _glassTextField(
-                    label: "Email / Username / Phone",
+                    controller: _emailCtrl,
+                    label: "Email",
                     obscureText: false,
-                    controller: _loginCtrl,
                   ),
 
                   const SizedBox(height: 18),
 
-                  // 🔹 Password
+                  // Password
                   _glassTextField(
+                    controller: _passCtrl,
                     label: "Password",
                     obscureText: _obscure,
-                    controller: _passwordCtrl,
                     suffix: IconButton(
                       onPressed: () => setState(() => _obscure = !_obscure),
                       icon: Icon(
@@ -227,11 +225,9 @@ class _SafeNetLoginPageState extends State<WorkerLoginPage> {
 
                   const SizedBox(height: 28),
 
-                  // ------------------------------------------------------------------
-                  // 🔥 LOGIN BUTTON connected to _loginWorker()
-                  // ------------------------------------------------------------------
+                  // ---------------- LOGIN BUTTON ----------------
                   GestureDetector(
-                    onTap: _loginWorker,
+                    onTap: _loginSecurity,
                     child: Container(
                       height: 54,
                       width: double.infinity,
@@ -254,8 +250,7 @@ class _SafeNetLoginPageState extends State<WorkerLoginPage> {
                     ),
                   ),
 
-                  const SizedBox(height: 30),
-
+                  const SizedBox(height: 40),
                   Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
@@ -313,25 +308,18 @@ class _SafeNetLoginPageState extends State<WorkerLoginPage> {
     );
   }
 
-  // Glass-like TextField WITH controller
+  // Glass-like TextField
   Widget _glassTextField({
     required String label,
     required bool obscureText,
+    required TextEditingController controller,
     Widget? suffix,
-    TextEditingController? controller,
   }) {
     return Container(
       decoration: BoxDecoration(
         color: Colors.white.withOpacity(0.45),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.white.withOpacity(0.25), width: 1),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 18,
-            offset: const Offset(0, 4),
-          ),
-        ],
+        border: Border.all(color: Colors.white.withOpacity(0.25)),
       ),
       child: TextField(
         controller: controller,

@@ -7,8 +7,8 @@ import 'package:flutter_image_compress/flutter_image_compress.dart';
 //import 'package:path_provider/path_provider.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'widget/profile_sidebar.dart';
-import 'widget/notification_dropdown.dart';
+import 'features/shared/widgets/profile_sidebar.dart';
+import 'features/shared/widgets/notification_dropdown.dart';
 
 class NewServiceRequestpage extends StatefulWidget {
   const NewServiceRequestpage({super.key});

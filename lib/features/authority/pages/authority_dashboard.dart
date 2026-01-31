@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
-import 'authority_chatwaiting.dart';
-import 'authority_complaint.dart';
-import 'authority_approval.dart';
-import 'authority_servicereq.dart';
-import 'authority_announcement.dart';
-import 'authority_view_announcements.dart';
-import 'widget/notification_dropdown.dart';
+import './authority_chatwaiting.dart';
+import './authority_complaint.dart';
+import './authority_approval.dart';
+import './authority_servicereq.dart';
+import './authority_announcement.dart';
+import './authority_view_announcements.dart';
+import '../../shared/widgets/notification_dropdown.dart';
 
 class AuthorityDashboardPage extends StatelessWidget {
   const AuthorityDashboardPage({super.key});

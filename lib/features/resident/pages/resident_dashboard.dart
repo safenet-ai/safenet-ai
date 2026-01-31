@@ -1,15 +1,15 @@
 import 'package:flutter/material.dart';
-import 'resident_complaint.dart';
-import 'resident_service.dart';
-import 'resident_waste.dart';
-import 'resident_chat.dart';
-import 'notice_board.dart';
+import './resident_complaint.dart';
+import './resident_service.dart';
+import './resident_waste.dart';
+import './resident_chat.dart';
+import '../../../notice_board.dart';
 import 'dart:async';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'widget/profile_sidebar.dart';
-import 'approval_guard.dart';
-import 'widget/notification_dropdown.dart';
+import '../../shared/widgets/profile_sidebar.dart';
+import '../../../approval_guard.dart';
+import '../../shared/widgets/notification_dropdown.dart';
 
 class ResidentDashboardPage extends StatefulWidget {
   const ResidentDashboardPage({super.key});
@@ -251,17 +251,31 @@ class _ResidentDashboardPageState extends State<ResidentDashboardPage> {
                                 height: cardSize * 0.75,
                                 decoration: BoxDecoration(
                                   color: const Color(0xFFEFE4F9),
-                                  borderRadius: BorderRadius.circular(22),
+                                  borderRadius: BorderRadius.circular(28),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: Colors.black.withOpacity(0.12),
+                                      offset: const Offset(6, 6),
+                                      blurRadius: 14,
+                                      spreadRadius: 1,
+                                    ),
+                                    BoxShadow(
+                                      color: Colors.white.withOpacity(0.05),
+                                      offset: const Offset(-6, -6),
+                                      blurRadius: 14,
+                                      spreadRadius: 1,
+                                    ),
+                                  ],
                                 ),
                                 child: Column(
                                   mainAxisAlignment: MainAxisAlignment.center,
                                   children: [
                                     Icon(
                                       Icons.chat_bubble_outline,
-                                      size: 34,
-                                      color: Colors.black87,
+                                      size: 42,
+                                      color: Colors.black54,
                                     ),
-                                    const SizedBox(height: 8),
+                                    const SizedBox(height: 14),
                                     Text(
                                       "Chat",
                                       textAlign: TextAlign.center,
@@ -276,7 +290,7 @@ class _ResidentDashboardPageState extends State<ResidentDashboardPage> {
                               ),
                             ),
                           ),
-                          const SizedBox(width: 20),
+                          const SizedBox(width: 22),
                           Expanded(
                             child: InkWell(
                               onTap: () {
@@ -295,17 +309,31 @@ class _ResidentDashboardPageState extends State<ResidentDashboardPage> {
                                 height: cardSize * 0.75,
                                 decoration: BoxDecoration(
                                   color: const Color(0xFFFFE5B4),
-                                  borderRadius: BorderRadius.circular(22),
+                                  borderRadius: BorderRadius.circular(28),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: Colors.black.withOpacity(0.12),
+                                      offset: const Offset(6, 6),
+                                      blurRadius: 14,
+                                      spreadRadius: 1,
+                                    ),
+                                    BoxShadow(
+                                      color: Colors.white.withOpacity(0.05),
+                                      offset: const Offset(-6, -6),
+                                      blurRadius: 14,
+                                      spreadRadius: 1,
+                                    ),
+                                  ],
                                 ),
                                 child: Column(
                                   mainAxisAlignment: MainAxisAlignment.center,
                                   children: [
                                     Icon(
                                       Icons.campaign_outlined,
-                                      size: 34,
-                                      color: Colors.black87,
+                                      size: 42,
+                                      color: Colors.black54,
                                     ),
-                                    const SizedBox(height: 8),
+                                    const SizedBox(height: 14),
                                     Text(
                                       "Notice Board",
                                       textAlign: TextAlign.center,
@@ -321,19 +349,6 @@ class _ResidentDashboardPageState extends State<ResidentDashboardPage> {
                             ),
                           ),
                         ],
-                      ),
-
-                      const SizedBox(height: 26),
-
-                      InkWell(
-                        onTap: () {
-                          // Placeholder action
-                        },
-                        child: _fullCard(
-                          icon: Icons.forum_outlined,
-                          label: "Community\nForum",
-                          color: const Color(0xFFD9F4F6),
-                        ),
                       ),
 
                       const SizedBox(height: 40),

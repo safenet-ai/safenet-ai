@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'home.dart';
+import '../../../home.dart';
 
 class SafeNetWelcomePage extends StatelessWidget {
   const SafeNetWelcomePage({super.key});
@@ -33,8 +33,7 @@ class SafeNetWelcomePage extends StatelessWidget {
                     // Logo
                     Image.asset(
                       'assets/main_logo.png', // your logo
-                      height: 150
-
+                      height: 150,
                     ),
 
                     const SizedBox(height: 20),

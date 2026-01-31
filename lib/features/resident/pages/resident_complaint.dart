@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'complaint.dart';
-import 'widget/profile_sidebar.dart';
-import 'widget/filter_tabs.dart';
-import 'widget/notification_dropdown.dart';
+import '../../../complaint.dart';
+import '../../shared/widgets/profile_sidebar.dart';
+import '../../shared/widgets/filter_tabs.dart';
+import '../../shared/widgets/notification_dropdown.dart';
 
 class MyComplaintsPage extends StatefulWidget {
   const MyComplaintsPage({super.key});

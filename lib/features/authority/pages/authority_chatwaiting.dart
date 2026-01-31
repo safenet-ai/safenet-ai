@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'authority_chat.dart';
+import './authority_chat.dart';
 
 class AuthorityWaitingListPage extends StatefulWidget {
   const AuthorityWaitingListPage({super.key});
@@ -10,8 +10,7 @@ class AuthorityWaitingListPage extends StatefulWidget {
       _AuthorityWaitingListPageState();
 }
 
-class _AuthorityWaitingListPageState
-    extends State<AuthorityWaitingListPage> {
+class _AuthorityWaitingListPageState extends State<AuthorityWaitingListPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -36,13 +35,17 @@ class _AuthorityWaitingListPageState
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      _circleButton(Icons.arrow_back,
-                          onTap: () => Navigator.pop(context)),
+                      _circleButton(
+                        Icons.arrow_back,
+                        onTap: () => Navigator.pop(context),
+                      ),
 
                       const Text(
                         "Support Requests",
                         style: TextStyle(
-                            fontSize: 20, fontWeight: FontWeight.w800),
+                          fontSize: 20,
+                          fontWeight: FontWeight.w800,
+                        ),
                       ),
 
                       _circleButton(Icons.headset_mic),
@@ -54,8 +57,10 @@ class _AuthorityWaitingListPageState
 
                 // ✅ STATUS CHIP
                 Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 14,
+                    vertical: 6,
+                  ),
                   decoration: BoxDecoration(
                     color: Colors.orange.withOpacity(0.15),
                     borderRadius: BorderRadius.circular(20),
@@ -63,8 +68,9 @@ class _AuthorityWaitingListPageState
                   child: const Text(
                     "Residents Waiting for Support",
                     style: TextStyle(
-                        color: Colors.orange,
-                        fontWeight: FontWeight.w600),
+                      color: Colors.orange,
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
                 ),
 
@@ -79,19 +85,18 @@ class _AuthorityWaitingListPageState
                         .orderBy("createdAt", descending: false)
                         .snapshots(),
                     builder: (context, snapshot) {
-                      if (snapshot.connectionState ==
-                          ConnectionState.waiting) {
-                        return const Center(
-                            child: CircularProgressIndicator());
+                      if (snapshot.connectionState == ConnectionState.waiting) {
+                        return const Center(child: CircularProgressIndicator());
                       }
 
-                      if (!snapshot.hasData ||
-                          snapshot.data!.docs.isEmpty) {
+                      if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
                         return const Center(
                           child: Text(
                             "No residents waiting right now",
                             style: TextStyle(
-                                fontSize: 16, color: Colors.black54),
+                              fontSize: 16,
+                              color: Colors.black54,
+                            ),
                           ),
                         );
                       }
@@ -123,19 +128,14 @@ class _AuthorityWaitingListPageState
   }
 
   // ✅ WAITING CARD
-  Widget _waitingCard({
-    required String residentName,
-    required String docId,
-  }) {
+  Widget _waitingCard({required String residentName, required String docId}) {
     return GestureDetector(
       onTap: () async {
         // ✅ MARK AS ACTIVE
         await FirebaseFirestore.instance
             .collection("support_requests")
             .doc(docId)
-            .update({
-          "status": "active",
-        });
+            .update({"status": "active"});
 
         // ✅ OPEN AUTHORITY CHAT
 
@@ -157,9 +157,10 @@ class _AuthorityWaitingListPageState
           borderRadius: BorderRadius.circular(20),
           boxShadow: [
             BoxShadow(
-                color: Colors.black12.withOpacity(0.12),
-                blurRadius: 10,
-                offset: const Offset(2, 4)),
+              color: Colors.black12.withOpacity(0.12),
+              blurRadius: 10,
+              offset: const Offset(2, 4),
+            ),
           ],
         ),
         child: Row(
@@ -182,13 +183,14 @@ class _AuthorityWaitingListPageState
               child: Text(
                 residentName,
                 style: const TextStyle(
-                    fontSize: 16, fontWeight: FontWeight.w700),
+                  fontSize: 16,
+                  fontWeight: FontWeight.w700,
+                ),
               ),
             ),
 
             Container(
-              padding: const EdgeInsets.symmetric(
-                  horizontal: 12, vertical: 6),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
               decoration: BoxDecoration(
                 color: Colors.orange.withOpacity(0.15),
                 borderRadius: BorderRadius.circular(16),
@@ -196,8 +198,9 @@ class _AuthorityWaitingListPageState
               child: const Text(
                 "WAITING",
                 style: TextStyle(
-                    color: Colors.orange,
-                    fontWeight: FontWeight.w700),
+                  color: Colors.orange,
+                  fontWeight: FontWeight.w700,
+                ),
               ),
             ),
           ],

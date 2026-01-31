@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'widget/filter_tabs.dart';
-import 'widget/profile_sidebar.dart';
+import '../../shared/widgets/filter_tabs.dart';
+import '../../shared/widgets/profile_sidebar.dart';
 
 class AuthorityServiceManagementPage extends StatefulWidget {
   const AuthorityServiceManagementPage({super.key});

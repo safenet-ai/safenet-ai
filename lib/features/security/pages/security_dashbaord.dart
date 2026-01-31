@@ -1,7 +1,7 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
-import 'approval_guard.dart';
-import 'notice_board.dart';
+import '../../../approval_guard.dart';
+import '../../../notice_board.dart';
 
 class SecurityDashboardPage extends StatelessWidget {
   const SecurityDashboardPage({super.key});

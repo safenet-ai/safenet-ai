@@ -1,123 +1,93 @@
 import 'package:flutter/material.dart';
 import 'dart:ui';
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'role_selection.dart';
-import 'resident_dashboard.dart';
+import './role_selection.dart';
+import '../../authority/pages/authority_dashboard.dart';
 
-class ResidentLoginPage extends StatefulWidget {
-  const ResidentLoginPage({super.key});
+class AuthorityLoginPage extends StatefulWidget {
+  const AuthorityLoginPage({super.key});
 
   @override
-  State<ResidentLoginPage> createState() => _SafeNetLoginPageState();
+  State<AuthorityLoginPage> createState() => _SafeNetLoginPageState();
 }
 
-class _SafeNetLoginPageState extends State<ResidentLoginPage> {
+class _SafeNetLoginPageState extends State<AuthorityLoginPage> {
   bool _obscure = true;
 
-  // 🔹 Added controllers
-  final TextEditingController _loginCtrl = TextEditingController();
+  // 🔹 Add controllers
+  final TextEditingController _emailOrUsernameCtrl = TextEditingController();
   final TextEditingController _passwordCtrl = TextEditingController();
 
-  // ----------------------------------------------------------------------
-  // 🔥 RESIDENT LOGIN METHOD (email / username / phone)
-  // ----------------------------------------------------------------------
-  Future<void> _loginResident() async {
-    final input = _loginCtrl.text.trim();
-    final password = _passwordCtrl.text.trim();
+  // -------------------------------------------------------------------
+  // 🔥 AUTHORITY LOGIN METHOD (ONLY THIS IS ADDED)
+  // -------------------------------------------------------------------
+  Future<void> _loginAuthority() async {
+    final input = _emailOrUsernameCtrl.text.trim(); // email or username
+    final password = _passwordCtrl.text.trim(); // unique_id
 
     if (input.isEmpty || password.isEmpty) {
-      _showMsg("Please fill all fields");
+      _showMsg("Please enter Email/Username and Password");
       return;
     }
 
     try {
-      String email = "";
+      final authorityRef = FirebaseFirestore.instance.collection("authority");
 
-      // 🔹 Case 1: User entered email
+      QuerySnapshot<Map<String, dynamic>> snap;
+
+      // 🔹 If input contains "@", it's an email
       if (input.contains("@")) {
-        email = input;
-      }
-      // 🔹 Case 2: User entered phone number
-      else if (RegExp(r'^[0-9]{10}$').hasMatch(input)) {
-        final snap = await FirebaseFirestore.instance
-            .collection("users")
-            .where("phone", isEqualTo: input)
+        snap = await authorityRef
+            .where("email", isEqualTo: input)
+            .where("unique_id", isEqualTo: password)
             .limit(1)
             .get();
-
-        if (snap.docs.isEmpty) {
-          _showMsg("No resident found with this phone number");
-          return;
-        }
-
-        final data = snap.docs.first.data();
-
-        if (data["role"] != "resident") {
-          _showMsg("This account is not a resident");
-          return;
-        }
-
-        email = data["email"];
-      }
-      // 🔹 Case 3: User entered username
-      else {
-        final snap = await FirebaseFirestore.instance
-            .collection("users")
+      } else {
+        // 🔹 Otherwise it's a username
+        snap = await authorityRef
             .where("username", isEqualTo: input)
+            .where("unique_id", isEqualTo: password)
             .limit(1)
             .get();
-
-        if (snap.docs.isEmpty) {
-          _showMsg("No resident found with this username");
-          return;
-        }
-
-        final data = snap.docs.first.data();
-
-        if (data["role"] != "resident") {
-          _showMsg("This account is not a resident");
-          return;
-        }
-
-        email = data["email"];
       }
 
-      // 🔥 Login using Firebase Auth
-      final userCred = await FirebaseAuth.instance.signInWithEmailAndPassword(
-        email: email,
-        password: password,
-      );
-
-      final uid = userCred.user!.uid;
-
-      // 🔍 Verify role again
-      final userDoc = await FirebaseFirestore.instance
-          .collection("users")
-          .doc(uid)
-          .get();
-
-      if (!userDoc.exists || userDoc["role"] != "resident") {
-        FirebaseAuth.instance.signOut();
-        _showMsg("Access denied! You are not a Resident.");
+      if (snap.docs.isEmpty) {
+        _showMsg("Invalid Email/Username or Password");
         return;
       }
 
+      final data = snap.docs.first.data();
+      final authorityUid = snap.docs.first.id;
+
+      // 🔒 Extra safety: Verify role
+      if (data["role"] != "authority") {
+        _showMsg("Access denied: Not an authority account");
+        return;
+      }
+
+      // 🔥 Sign out any existing Firebase Auth session
+      await FirebaseAuth.instance.signOut();
+
+      // 🔥 Store authority UID in SharedPreferences
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString('authority_uid', authorityUid);
+      await prefs.setString('user_role', 'authority');
+
+      // ⭐ SHOW SUCCESS MESSAGE
       _showMsg("Login Successful!");
 
-      // Clear any authority session
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.remove('authority_uid');
-      await prefs.setString('user_role', 'resident');
+      // ⭐ WAIT 2 SECONDS
+      await Future.delayed(const Duration(seconds: 2));
 
-      // TODO → Navigate to Resident Dashboard
-      Navigator.push(
+      // ⭐ REDIRECT AFTER DELAY
+      Navigator.pushReplacement(
         context,
-        MaterialPageRoute(builder: (_) => ResidentDashboardPage()),
+        MaterialPageRoute(builder: (_) => const AuthorityDashboardPage()),
       );
     } catch (e) {
-      _showMsg("Login Failed: $e");
+      _showMsg("Login failed. Please try again.");
     }
   }
 
@@ -125,7 +95,7 @@ class _SafeNetLoginPageState extends State<ResidentLoginPage> {
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
   }
 
-  // ----------------------------------------------------------------------
+  // -------------------------------------------------------------------
 
   @override
   Widget build(BuildContext context) {
@@ -167,7 +137,7 @@ class _SafeNetLoginPageState extends State<ResidentLoginPage> {
 
             const Expanded(
               child: Text(
-                "Resident Login Page",
+                "Authority Login Page",
                 textAlign: TextAlign.center,
                 style: TextStyle(
                   fontSize: 20,
@@ -201,6 +171,7 @@ class _SafeNetLoginPageState extends State<ResidentLoginPage> {
                     children: [
                       Image.asset('assets/logo.png', height: 60),
                       const SizedBox(width: 12),
+
                       Text(
                         "SafeNet AI",
                         style: TextStyle(
@@ -214,16 +185,16 @@ class _SafeNetLoginPageState extends State<ResidentLoginPage> {
 
                   const SizedBox(height: 50),
 
-                  // 🔹 LOGIN FIELD (EMAIL / USERNAME / PHONE)
+                  // 🔹 EMAIL OR USERNAME FIELD (controller mapped)
                   _glassTextField(
-                    label: "Email / Username / Phone",
+                    label: "Email or Username",
                     obscureText: false,
-                    controller: _loginCtrl,
+                    controller: _emailOrUsernameCtrl,
                   ),
 
                   const SizedBox(height: 18),
 
-                  // 🔹 PASSWORD FIELD
+                  // 🔹 PASSWORD FIELD (controller mapped)
                   _glassTextField(
                     label: "Password",
                     obscureText: _obscure,
@@ -252,11 +223,11 @@ class _SafeNetLoginPageState extends State<ResidentLoginPage> {
 
                   const SizedBox(height: 28),
 
-                  // ------------------------------------------------------------------
-                  // 🔥 LOGIN BUTTON CONNECTED TO _loginResident()
-                  // ------------------------------------------------------------------
+                  // -------------------------------------------------------------------
+                  // 🔥 LOGIN BUTTON — CONNECTED TO FIREBASE LOGIN
+                  // -------------------------------------------------------------------
                   GestureDetector(
-                    onTap: _loginResident,
+                    onTap: _loginAuthority,
                     child: Container(
                       height: 54,
                       width: double.infinity,
@@ -279,6 +250,7 @@ class _SafeNetLoginPageState extends State<ResidentLoginPage> {
                     ),
                   ),
 
+                  // -------------------------------------------------------------------
                   const SizedBox(height: 30),
 
                   Row(
@@ -306,6 +278,7 @@ class _SafeNetLoginPageState extends State<ResidentLoginPage> {
                     "Don’t have an account?",
                     style: TextStyle(fontSize: 16, color: Colors.grey.shade700),
                   ),
+
                   const SizedBox(height: 5),
 
                   GestureDetector(
@@ -337,7 +310,7 @@ class _SafeNetLoginPageState extends State<ResidentLoginPage> {
     );
   }
 
-  // Glass-like field with controller
+  // Glass-like TextField (updated to accept controller)
   Widget _glassTextField({
     required String label,
     required bool obscureText,

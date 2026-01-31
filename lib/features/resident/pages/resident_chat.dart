@@ -3,8 +3,8 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'widget/profile_sidebar.dart';
-import 'widget/notification_dropdown.dart';
+import '../../shared/widgets/profile_sidebar.dart';
+import '../../shared/widgets/notification_dropdown.dart';
 
 class SupportChatPage extends StatefulWidget {
   const SupportChatPage({super.key});

@@ -2,7 +2,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'login_residents.dart';
+import '../../auth/pages/login_residents.dart';
 
 class ResidentRegisterPage extends StatefulWidget {
   const ResidentRegisterPage({super.key});
@@ -20,8 +20,10 @@ class _ResidentRegisterPageState extends State<ResidentRegisterPage> {
 
   final _scrollController = ScrollController();
 
-  final List<TextEditingController> _otpControllers =
-      List.generate(6, (_) => TextEditingController());
+  final List<TextEditingController> _otpControllers = List.generate(
+    6,
+    (_) => TextEditingController(),
+  );
   final List<FocusNode> _otpNodes = List.generate(6, (_) => FocusNode());
 
   // OTP state
@@ -33,12 +35,64 @@ class _ResidentRegisterPageState extends State<ResidentRegisterPage> {
 
   // Country codes
   final List<String> _countryCodes = const [
-    '+1', '+7', '+20', '+27', '+30', '+31', '+32', '+33', '+34', '+36', '+39',
-    '+40', '+44', '+45', '+46', '+47', '+48', '+49', '+51', '+52', '+53', '+54',
-    '+55', '+56', '+57', '+60', '+61', '+62', '+63', '+64', '+65', '+66', '+81',
-    '+82', '+84', '+86', '+90', '+91', '+92', '+93', '+94', '+95', '+98',
-    '+212', '+213', '+218', '+971', '+974', '+965', '+966', '+880', '+370',
-    '+371', '+372', '+420', '+353', '+358', '+380'
+    '+1',
+    '+7',
+    '+20',
+    '+27',
+    '+30',
+    '+31',
+    '+32',
+    '+33',
+    '+34',
+    '+36',
+    '+39',
+    '+40',
+    '+44',
+    '+45',
+    '+46',
+    '+47',
+    '+48',
+    '+49',
+    '+51',
+    '+52',
+    '+53',
+    '+54',
+    '+55',
+    '+56',
+    '+57',
+    '+60',
+    '+61',
+    '+62',
+    '+63',
+    '+64',
+    '+65',
+    '+66',
+    '+81',
+    '+82',
+    '+84',
+    '+86',
+    '+90',
+    '+91',
+    '+92',
+    '+93',
+    '+94',
+    '+95',
+    '+98',
+    '+212',
+    '+213',
+    '+218',
+    '+971',
+    '+974',
+    '+965',
+    '+966',
+    '+880',
+    '+370',
+    '+371',
+    '+372',
+    '+420',
+    '+353',
+    '+358',
+    '+380',
   ];
 
   String _selectedCountryCode = '+91';
@@ -85,8 +139,9 @@ class _ResidentRegisterPageState extends State<ResidentRegisterPage> {
     final rawPhone = _phoneCtrl.text.trim();
 
     if (rawPhone.isEmpty) {
-      ScaffoldMessenger.of(context)
-          .showSnackBar(const SnackBar(content: Text("Enter phone number")));
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text("Enter phone number")));
       return;
     }
 
@@ -105,8 +160,9 @@ class _ResidentRegisterPageState extends State<ResidentRegisterPage> {
         verificationCompleted: (PhoneAuthCredential credential) {},
 
         verificationFailed: (FirebaseAuthException e) {
-          ScaffoldMessenger.of(context)
-              .showSnackBar(SnackBar(content: Text("OTP Failed: ${e.message}")));
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(SnackBar(content: Text("OTP Failed: ${e.message}")));
         },
 
         codeSent: (String verificationId, int? resendToken) {
@@ -117,8 +173,9 @@ class _ResidentRegisterPageState extends State<ResidentRegisterPage> {
 
           _startCountdown();
 
-          ScaffoldMessenger.of(context)
-              .showSnackBar(const SnackBar(content: Text("OTP Sent")));
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(const SnackBar(content: Text("OTP Sent")));
         },
 
         codeAutoRetrievalTimeout: (String verificationId) {
@@ -126,8 +183,9 @@ class _ResidentRegisterPageState extends State<ResidentRegisterPage> {
         },
       );
     } catch (e) {
-      ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text("Failed to send OTP: $e")));
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text("Failed to send OTP: $e")));
     }
   }
 
@@ -140,8 +198,9 @@ class _ResidentRegisterPageState extends State<ResidentRegisterPage> {
     }
 
     if (_verificationId == null) {
-      ScaffoldMessenger.of(context)
-          .showSnackBar(const SnackBar(content: Text("Send OTP first")));
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text("Send OTP first")));
       return false;
     }
 
@@ -164,8 +223,9 @@ class _ResidentRegisterPageState extends State<ResidentRegisterPage> {
       return true;
     } catch (e) {
       _clearOtpFields();
-      ScaffoldMessenger.of(context)
-          .showSnackBar(const SnackBar(content: Text("Invalid OTP")));
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text("Invalid OTP")));
       return false;
     }
   }
@@ -191,29 +251,29 @@ class _ResidentRegisterPageState extends State<ResidentRegisterPage> {
         phone.isEmpty ||
         pass.isEmpty ||
         confirmPass.isEmpty) {
-      ScaffoldMessenger.of(context)
-          .showSnackBar(const SnackBar(content: Text("Please fill all fields")));
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text("Please fill all fields")));
       return;
     }
 
     if (pass != confirmPass) {
-      ScaffoldMessenger.of(context)
-          .showSnackBar(const SnackBar(content: Text("Passwords do not match")));
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text("Passwords do not match")));
       return;
     }
 
     if (!_phoneVerified) {
-      ScaffoldMessenger.of(context)
-          .showSnackBar(const SnackBar(content: Text("Please verify OTP first")));
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text("Please verify OTP first")));
       return;
     }
 
     try {
-      UserCredential user =
-          await FirebaseAuth.instance.createUserWithEmailAndPassword(
-        email: email,
-        password: pass,
-      );
+      UserCredential user = await FirebaseAuth.instance
+          .createUserWithEmailAndPassword(email: email, password: pass);
 
       final uid = user.user!.uid;
 
@@ -230,7 +290,7 @@ class _ResidentRegisterPageState extends State<ResidentRegisterPage> {
 
         "created_at": FieldValue.serverTimestamp(),
 
-       /* // 🔐 Authority approval system
+        /* // 🔐 Authority approval system
         "approvalStatus": "pending",   // pending | approved | rejected
         "approvedBy": null,
         "approvedAt": null,*/
@@ -253,8 +313,9 @@ class _ResidentRegisterPageState extends State<ResidentRegisterPage> {
       }
     } catch (e) {
       print("[v0] Registration error: $e");
-      ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text("Error: $e")));
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text("Error: $e")));
     }
   }
 
@@ -267,7 +328,9 @@ class _ResidentRegisterPageState extends State<ResidentRegisterPage> {
         color: Colors.white,
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
-          color: _phoneVerified ? Colors.green.shade600 : Colors.white.withOpacity(0.28),
+          color: _phoneVerified
+              ? Colors.green.shade600
+              : Colors.white.withOpacity(0.28),
           width: _phoneVerified ? 2 : 1,
         ),
       ),
@@ -277,7 +340,10 @@ class _ResidentRegisterPageState extends State<ResidentRegisterPage> {
         textAlign: TextAlign.center,
         keyboardType: TextInputType.number,
         maxLength: 1,
-        decoration: const InputDecoration(counterText: "", border: InputBorder.none),
+        decoration: const InputDecoration(
+          counterText: "",
+          border: InputBorder.none,
+        ),
         onChanged: (value) async {
           if (value.isNotEmpty && i < 5) {
             _otpNodes[i + 1].requestFocus();
@@ -399,7 +465,6 @@ class _ResidentRegisterPageState extends State<ResidentRegisterPage> {
             Positioned.fill(
               child: Image.asset("assets/bg1_img.png", fit: BoxFit.cover),
             ),
-            
 
             SafeArea(
               child: SingleChildScrollView(
@@ -427,7 +492,10 @@ class _ResidentRegisterPageState extends State<ResidentRegisterPage> {
                     Text(
                       "Join SafeNet AI to manage your\nresidence securely",
                       textAlign: TextAlign.center,
-                      style: TextStyle(fontSize: 15, color: Colors.grey.shade700),
+                      style: TextStyle(
+                        fontSize: 15,
+                        color: Colors.grey.shade700,
+                      ),
                     ),
 
                     const SizedBox(height: 20),
@@ -474,7 +542,9 @@ class _ResidentRegisterPageState extends State<ResidentRegisterPage> {
                                         .toList(),
                                     onChanged: (v) {
                                       if (v != null) {
-                                        setState(() => _selectedCountryCode = v);
+                                        setState(
+                                          () => _selectedCountryCode = v,
+                                        );
                                       }
                                     },
                                   ),
@@ -486,7 +556,9 @@ class _ResidentRegisterPageState extends State<ResidentRegisterPage> {
                                   child: TextField(
                                     controller: _phoneCtrl,
                                     keyboardType: TextInputType.phone,
-                                    decoration: _inputDecoration("Phone Number"),
+                                    decoration: _inputDecoration(
+                                      "Phone Number",
+                                    ),
                                   ),
                                 ),
                               ],
@@ -509,8 +581,10 @@ class _ResidentRegisterPageState extends State<ResidentRegisterPage> {
                     const SizedBox(height: 10),
 
                     if (_secondsRemaining > 0)
-                      Text("Resend in $_secondsRemaining sec",
-                          style: TextStyle(color: Colors.grey.shade700)),
+                      Text(
+                        "Resend in $_secondsRemaining sec",
+                        style: TextStyle(color: Colors.grey.shade700),
+                      ),
 
                     const SizedBox(height: 20),
 
@@ -548,7 +622,9 @@ class _ResidentRegisterPageState extends State<ResidentRegisterPage> {
                         onPressed: () async {
                           if (!_phoneVerified) {
                             ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(content: Text("Please verify OTP first")),
+                              const SnackBar(
+                                content: Text("Please verify OTP first"),
+                              ),
                             );
                             return;
                           }
@@ -578,14 +654,18 @@ class _ResidentRegisterPageState extends State<ResidentRegisterPage> {
                     Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        Text("Already have an account?",
-                            style: TextStyle(color: Colors.grey.shade700)),
+                        Text(
+                          "Already have an account?",
+                          style: TextStyle(color: Colors.grey.shade700),
+                        ),
                         GestureDetector(
                           onTap: () {
                             Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                    builder: (_) => const ResidentLoginPage()));
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => const ResidentLoginPage(),
+                              ),
+                            );
                           },
                           child: Text(
                             " Log in",

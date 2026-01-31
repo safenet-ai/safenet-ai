@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'servicerequest.dart';
-import 'widget/profile_sidebar.dart';
-import 'widget/filter_tabs.dart';
-import 'widget/notification_dropdown.dart';
+import '../../../servicerequest.dart';
+import '../../shared/widgets/profile_sidebar.dart';
+import '../../shared/widgets/filter_tabs.dart';
+import '../../shared/widgets/notification_dropdown.dart';
 
 class ServiceRequestpage extends StatefulWidget {
   const ServiceRequestpage({super.key});

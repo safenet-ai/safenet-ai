@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'widget/profile_sidebar.dart';
-import 'widget/notification_dropdown.dart';
+import 'features/shared/widgets/profile_sidebar.dart';
+import 'features/shared/widgets/notification_dropdown.dart';
 
 class NoticeBoardPage extends StatefulWidget {
   final String role; // "users", "workers", "security"

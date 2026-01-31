@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'widget/profile_sidebar.dart';
-import 'widget/notification_dropdown.dart';
-import 'approval_guard.dart';
-import 'worker_myjob.dart';
-import 'worker_work_history.dart';
-import 'notice_board.dart';
+import '../../shared/widgets/profile_sidebar.dart';
+import '../../shared/widgets/notification_dropdown.dart';
+import '../../../approval_guard.dart';
+import './worker_myjob.dart';
+import './worker_work_history.dart';
+import '../../../notice_board.dart';
 //import 'test.dart';
 
 class WorkerDashboardPage extends StatefulWidget {

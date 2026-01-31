@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'widget/filter_tabs.dart';
-import 'widget/profile_sidebar.dart';
+import '../../shared/widgets/filter_tabs.dart';
+import '../../shared/widgets/profile_sidebar.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 
 class PendingApprovalPage extends StatefulWidget {

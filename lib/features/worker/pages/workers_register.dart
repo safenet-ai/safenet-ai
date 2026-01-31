@@ -6,8 +6,8 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 
-import 'login_security.dart';
-import 'login_worker.dart'; // <-- adjust if your worker login file/class is different
+import '../../auth/pages/login_security.dart';
+import '../../auth/pages/login_worker.dart'; // <-- adjust if your worker login file/class is different
 
 class WorkersRegisterPage extends StatefulWidget {
   const WorkersRegisterPage({super.key});

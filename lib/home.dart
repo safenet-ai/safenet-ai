@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
-import 'login_authority.dart';
-import 'login_residents.dart';
-import 'login_security.dart';
-import 'login_worker.dart';
+import 'features/auth/pages/login_authority.dart';
+import 'features/auth/pages/login_residents.dart';
+import 'features/auth/pages/login_security.dart';
+import 'features/auth/pages/login_worker.dart';
 
 class Homepage extends StatelessWidget {
   const Homepage({super.key});
@@ -16,10 +16,7 @@ class Homepage extends StatelessWidget {
         children: [
           // Background gradient image
           Positioned.fill(
-            child: Image.asset(
-              'assets/bg1_img.png',
-              fit: BoxFit.cover,
-            ),
+            child: Image.asset('assets/bg1_img.png', fit: BoxFit.cover),
           ),
 
           SafeArea(
@@ -31,10 +28,7 @@ class Homepage extends StatelessWidget {
                     const SizedBox(height: 20),
 
                     // Logo
-                    Image.asset(
-                      'assets/main_logo.png',
-                      height: 90,
-                    ),
+                    Image.asset('assets/main_logo.png', height: 90),
 
                     const SizedBox(height: 18),
 
@@ -124,17 +118,25 @@ class Homepage extends StatelessWidget {
     return GestureDetector(
       onTap: () {
         if (label == "Authority") {
-          Navigator.push(context,
-            MaterialPageRoute(builder: (_) => const AuthorityLoginPage()));
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (_) => const AuthorityLoginPage()),
+          );
         } else if (label == "Resident") {
-          Navigator.push(context,
-            MaterialPageRoute(builder: (_) => const ResidentLoginPage()));
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (_) => const ResidentLoginPage()),
+          );
         } else if (label == "Worker") {
-          Navigator.push(context,
-            MaterialPageRoute(builder: (_) => const WorkerLoginPage()));
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (_) => const WorkerLoginPage()),
+          );
         } else if (label == "Security") {
-          Navigator.push(context,
-            MaterialPageRoute(builder: (_) => const SecurityLoginPage()));
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (_) => const SecurityLoginPage()),
+          );
         }
       },
 

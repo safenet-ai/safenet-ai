@@ -6,8 +6,8 @@ import 'package:flutter_image_compress/flutter_image_compress.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'widget/notification_dropdown.dart';
-import 'widget/profile_sidebar.dart';
+import '../../shared/widgets/notification_dropdown.dart';
+import '../../shared/widgets/profile_sidebar.dart';
 
 class WorkerMyJobsPage extends StatefulWidget {
   const WorkerMyJobsPage({super.key});

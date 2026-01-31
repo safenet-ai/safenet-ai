@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
-import 'workers_register.dart';
-import 'residents_register.dart';
-import 'home.dart';
+import '../../worker/pages/workers_register.dart';
+import '../../resident/pages/residents_register.dart';
+import '../../../home.dart';
 
 class RoleSelectionPage extends StatelessWidget {
   const RoleSelectionPage({super.key});
@@ -16,10 +16,7 @@ class RoleSelectionPage extends StatelessWidget {
         children: [
           // Background
           Positioned.fill(
-            child: Image.asset(
-              "assets/bg1_img.png",
-              fit: BoxFit.cover,
-            ),
+            child: Image.asset("assets/bg1_img.png", fit: BoxFit.cover),
           ),
 
           SafeArea(
@@ -31,10 +28,7 @@ class RoleSelectionPage extends StatelessWidget {
                     const SizedBox(height: 20),
 
                     // Logo
-                    Image.asset(
-                      "assets/logo.png",
-                      height: 100,
-                    ),
+                    Image.asset("assets/logo.png", height: 100),
 
                     const SizedBox(height: 30),
 
@@ -58,14 +52,19 @@ class RoleSelectionPage extends StatelessWidget {
                       style: TextStyle(
                         fontSize: 16,
                         height: 1.4,
-                        color: const Color.fromARGB(255, 12, 12, 12).withOpacity(0.85),
+                        color: const Color.fromARGB(
+                          255,
+                          12,
+                          12,
+                          12,
+                        ).withOpacity(0.85),
                       ),
                     ),
 
                     const SizedBox(height: 50),
 
                     // Register as Resident
-                   _glassButton(
+                    _glassButton(
                       context,
                       color: const Color(0xFFDFFBEA),
                       icon: Icons.home_outlined,
@@ -108,23 +107,23 @@ class RoleSelectionPage extends StatelessWidget {
                       ),
                     ),
                     GestureDetector(
-                    onTap: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => const Homepage(),
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => const Homepage(),
+                          ),
+                        );
+                      },
+                      child: Text(
+                        "Sign up",
+                        style: TextStyle(
+                          fontSize: 17,
+                          color: Colors.teal.shade500,
+                          fontWeight: FontWeight.w600,
                         ),
-                      );
-                    },
-                    child: Text(
-                      "Sign up",
-                      style: TextStyle(
-                        fontSize: 17,
-                        color: Colors.teal.shade500,
-                        fontWeight: FontWeight.w600,
                       ),
                     ),
-                  ),
 
                     const SizedBox(height: 40),
                   ],
