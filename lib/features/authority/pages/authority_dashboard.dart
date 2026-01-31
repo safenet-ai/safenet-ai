@@ -5,6 +5,7 @@ import './authority_approval.dart';
 import './authority_servicereq.dart';
 import './authority_announcement.dart';
 import './authority_view_announcements.dart';
+import './authority_waste.dart';
 import '../../shared/widgets/notification_dropdown.dart';
 
 class AuthorityDashboardPage extends StatelessWidget {
@@ -131,7 +132,13 @@ class AuthorityDashboardPage extends StatelessWidget {
                             width: MediaQuery.of(context).size.width * 0.40,
                             child: GestureDetector(
                               onTap: () {
-                                // Navigator.push(context, MaterialPageRoute(builder: (context) => PendingApprovalPage()));
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (context) =>
+                                        const AuthorityWasteManagementPage(),
+                                  ),
+                                );
                               },
                               child: DashboardTile(
                                 // color: Color(0xFFE9DCF8),
