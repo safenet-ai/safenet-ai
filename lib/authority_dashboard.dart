@@ -3,6 +3,7 @@ import 'authority_chatwaiting.dart';
 import 'authority_complaint.dart';
 import 'authority_approval.dart';
 import 'authority_servicereq.dart';
+import 'authority_announcement.dart';
 import 'widget/notification_dropdown.dart';
 
 class AuthorityDashboardPage extends StatelessWidget {
@@ -250,7 +251,13 @@ class AuthorityDashboardPage extends StatelessWidget {
                           width: MediaQuery.of(context).size.width * 0.85,
                           child: GestureDetector(
                             onTap: () {
-                              // Navigator.push(context, MaterialPageRoute(builder: (context) => GenerateReportPage()));
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) =>
+                                      AuthorityAnnouncementPage(),
+                                ),
+                              );
                             },
                             child: const FullWidthButtonTile(
                               //color: Color(0xFFCCF1E6),
