@@ -181,6 +181,90 @@ class _AuthorityComplaintsPageState extends State<AuthorityComplaintsPage> {
     );
   }
 
+  void _showComplaintDetails(
+    BuildContext context,
+    String docId,
+    Map<String, dynamic> data,
+  ) {
+    showDialog(
+      context: context,
+      builder: (context) => Dialog(
+        backgroundColor: Colors.white.withOpacity(0.95),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Text(
+                    "Complaint Details",
+                    style: TextStyle(fontSize: 20, fontWeight: FontWeight.w900),
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.close),
+                    onPressed: () => Navigator.pop(context),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 20),
+              _detailRow("Complaint ID", data["complaint_id"] ?? "N/A"),
+              _detailRow("Resident", data["username"] ?? "N/A"),
+              _detailRow("Title", data["title"] ?? "N/A"),
+              _detailRow("Status", data["status"] ?? "N/A"),
+              _detailRow(
+                "Date",
+                data["timestamp"] != null
+                    ? _formatDate(data["timestamp"])
+                    : "N/A",
+              ),
+              const SizedBox(height: 12),
+              const Text(
+                "Description:",
+                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                data["description"] ?? "No description provided",
+                style: const TextStyle(fontSize: 14, color: Colors.black87),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _detailRow(String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(
+            width: 110,
+            child: Text(
+              "$label:",
+              style: const TextStyle(
+                fontWeight: FontWeight.w600,
+                color: Colors.black54,
+              ),
+            ),
+          ),
+          Expanded(
+            child: Text(
+              value,
+              style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   ///  READY FOR FIRESTORE (ENABLE LATER)
 
   Widget _firestoreList(String filter) {
@@ -206,13 +290,17 @@ class _AuthorityComplaintsPageState extends State<AuthorityComplaintsPage> {
               const SizedBox(height: 18), //  SPACE BETWEEN CARDS
           itemBuilder: (context, index) {
             final data = docs[index].data() as Map<String, dynamic>;
+            final docId = docs[index].id;
 
-            return _complaintCard(
-              id: data["complaint_id"], // ✅ REAL ID FROM DB
-              title: data["title"],
-              name: data["username"],
-              date: _formatDate(data["timestamp"]),
-              status: data["status"],
+            return GestureDetector(
+              onTap: () => _showComplaintDetails(context, docId, data),
+              child: _complaintCard(
+                id: data["complaint_id"], // ✅ REAL ID FROM DB
+                title: data["title"],
+                name: data["username"],
+                date: _formatDate(data["timestamp"]),
+                status: data["status"],
+              ),
             );
           },
         );

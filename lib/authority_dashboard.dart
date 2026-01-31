@@ -4,6 +4,7 @@ import 'authority_complaint.dart';
 import 'authority_approval.dart';
 import 'authority_servicereq.dart';
 import 'authority_announcement.dart';
+import 'authority_view_announcements.dart';
 import 'widget/notification_dropdown.dart';
 
 class AuthorityDashboardPage extends StatelessWidget {
@@ -264,7 +265,32 @@ class AuthorityDashboardPage extends StatelessWidget {
                               //text: "Generate Report",
                               color: Color(0xFFE9DCF8),
                               icon: Icons.campaign_outlined,
-                              title: "announcements",
+                              title: "Create Announcement",
+                            ),
+                          ),
+                        ),
+                      ),
+
+                      const SizedBox(height: 18),
+
+                      // View Announcements Button
+                      Center(
+                        child: SizedBox(
+                          width: MediaQuery.of(context).size.width * 0.85,
+                          child: GestureDetector(
+                            onTap: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) =>
+                                      AuthorityViewAnnouncementsPage(),
+                                ),
+                              );
+                            },
+                            child: const FullWidthButtonTile(
+                              color: Color(0xFFFFE5B4),
+                              icon: Icons.list_alt_outlined,
+                              title: "View Announcements",
                             ),
                           ),
                         ),

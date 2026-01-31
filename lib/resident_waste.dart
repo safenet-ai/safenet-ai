@@ -228,6 +228,72 @@ class _WastePickupPageState extends State<WastePickupPage> {
     );
   }
 
+  void _showPickupDetails(BuildContext context, Map<String, dynamic> data) {
+    showDialog(
+      context: context,
+      builder: (context) => Dialog(
+        backgroundColor: Colors.white.withOpacity(0.95),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Text(
+                    "Pickup Details",
+                    style: TextStyle(fontSize: 20, fontWeight: FontWeight.w900),
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.close),
+                    onPressed: () => Navigator.pop(context),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 20),
+              _detailRow("Pickup ID", data["pickup_id"] ?? "N/A"),
+              _detailRow("Waste Type", data["wasteType"] ?? "N/A"),
+              _detailRow("Scheduled Date", data["date"] ?? "N/A"),
+              _detailRow("Scheduled Time", data["time"] ?? "N/A"),
+              _detailRow("Status", data["status"] ?? "N/A"),
+              _detailRow("Location", data["location"] ?? "N/A"),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _detailRow(String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(
+            width: 120,
+            child: Text(
+              "$label:",
+              style: const TextStyle(
+                fontWeight: FontWeight.w600,
+                color: Colors.black54,
+              ),
+            ),
+          ),
+          Expanded(
+            child: Text(
+              value,
+              style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   // PICKUP LIST
   Widget _pickupList(String filter) {
     final user = FirebaseAuth.instance.currentUser;
@@ -265,12 +331,15 @@ class _WastePickupPageState extends State<WastePickupPage> {
           itemBuilder: (context, index) {
             final data = docs[index].data() as Map<String, dynamic>;
 
-            return _pickupCard(
-              id: data["pickup_id"], // ✅ FIRESTORE PICKUP ID
-              date: data["date"], // ✅ Scheduled Date
-              time: data["time"], // ✅ Scheduled Time
-              type: data["wasteType"], // ✅ Waste Type
-              status: data["status"], // ✅ Status pill
+            return GestureDetector(
+              onTap: () => _showPickupDetails(context, data),
+              child: _pickupCard(
+                id: data["pickup_id"], // ✅ FIRESTORE PICKUP ID
+                date: data["date"], // ✅ Scheduled Date
+                time: data["time"], // ✅ Scheduled Time
+                type: data["wasteType"], // ✅ Waste Type
+                status: data["status"], // ✅ Status pill
+              ),
             );
           },
         );

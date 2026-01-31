@@ -251,6 +251,122 @@ class _ServiceRequestpageState extends State<ServiceRequestpage> {
     );
   }
 
+  void _showServiceDetails(BuildContext context, Map<String, dynamic> data) {
+    showDialog(
+      context: context,
+      builder: (context) => Dialog(
+        backgroundColor: Colors.white.withOpacity(0.95),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Text(
+                    "Service Request Details",
+                    style: TextStyle(fontSize: 20, fontWeight: FontWeight.w900),
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.close),
+                    onPressed: () => Navigator.pop(context),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 20),
+              _detailRow("Service ID", data["service_id"] ?? "N/A"),
+              _detailRow("Title", data["title"] ?? "N/A"),
+              _detailRow("Category", data["category"] ?? "N/A"),
+              _detailRow("Status", data["status"] ?? "N/A"),
+              _detailRow(
+                "Date",
+                data["timestamp"] != null
+                    ? _formatTimestamp(data["timestamp"])
+                    : "N/A",
+              ),
+              _detailRow(
+                "Assigned Worker",
+                data["assignedWorker"] != null
+                    ? data["assignedWorker"]["name"]
+                    : "Not Assigned",
+              ),
+              const SizedBox(height: 12),
+              const Text(
+                "Description:",
+                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                data["description"] ?? "No description provided",
+                style: const TextStyle(fontSize: 14, color: Colors.black87),
+              ),
+              if (data["files"] != null &&
+                  (data["files"] as List).isNotEmpty) ...[
+                const SizedBox(height: 20),
+                const Text(
+                  "Attachments:",
+                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                ),
+                const SizedBox(height: 10),
+                Wrap(
+                  spacing: 10,
+                  runSpacing: 10,
+                  children: List.generate(
+                    (data["files"] as List).length,
+                    (index) => ClipRRect(
+                      borderRadius: BorderRadius.circular(12),
+                      child: Image.network(
+                        data["files"][index],
+                        width: 80,
+                        height: 80,
+                        fit: BoxFit.cover,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _detailRow(String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(
+            width: 120,
+            child: Text(
+              "$label:",
+              style: const TextStyle(
+                fontWeight: FontWeight.w600,
+                color: Colors.black54,
+              ),
+            ),
+          ),
+          Expanded(
+            child: Text(
+              value,
+              style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  String _formatTimestamp(Timestamp timestamp) {
+    final date = timestamp.toDate();
+    return "${date.day} ${_month(date.month)} ${date.year}";
+  }
+
   // Request List
   Widget _requestList(String filter) {
     final user = FirebaseAuth.instance.currentUser;
@@ -293,12 +409,15 @@ class _ServiceRequestpageState extends State<ServiceRequestpage> {
             final formattedDate =
                 "${date.day} ${_month(date.month)} ${date.year}";
 
-            return _requestCard(
-              serviceId: data["service_id"], // ✅ IMPORTANT
-              title: data["title"],
-              desc: data["description"],
-              date: formattedDate,
-              status: data["status"],
+            return GestureDetector(
+              onTap: () => _showServiceDetails(context, data),
+              child: _requestCard(
+                serviceId: data["service_id"], // ✅ IMPORTANT
+                title: data["title"],
+                desc: data["description"],
+                date: formattedDate,
+                status: data["status"],
+              ),
             );
           },
         );
