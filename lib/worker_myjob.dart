@@ -674,7 +674,7 @@ class _WorkerMyJobsPageState extends State<WorkerMyJobsPage> {
         children: [
           Center(
             child: Text(
-              "UPDATES",
+              "WORK UPDATES",
               style: TextStyle(
                 fontWeight: FontWeight.w700,
                 //decoration: TextDecoration.underline,
