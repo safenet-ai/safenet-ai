@@ -17,6 +17,326 @@ class _AuthorityServiceManagementPageState
   bool _isProfileOpen = false;
   final PageController _pageController = PageController();
 
+  Future<void> _showServiceDetails(
+    BuildContext context,
+    String docId,
+    Map<String, dynamic> data,
+  ) async {
+    showDialog(
+      context: context,
+      builder: (context) => Dialog(
+        backgroundColor: Colors.white.withOpacity(0.95),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Text(
+                    "Service Details",
+                    style: TextStyle(fontSize: 24, fontWeight: FontWeight.w900),
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.close),
+                    onPressed: () => Navigator.pop(context),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 20),
+              _detailRow("Service ID", data["service_id"] ?? "N/A"),
+              _detailRow("Resident", data["username"] ?? "N/A"),
+              _detailRow("Category", data["category"] ?? "N/A"),
+              _detailRow("Status", data["status"] ?? "N/A"),
+              _detailRow(
+                "Date",
+                data["timestamp"] != null
+                    ? _formatDate(data["timestamp"])
+                    : "N/A",
+              ),
+              _detailRow(
+                "Worker",
+                data["assignedWorker"] != null
+                    ? data["assignedWorker"]["name"]
+                    : "Not Assigned",
+              ),
+              const SizedBox(height: 12),
+              const Text(
+                "Description:",
+                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                data["description"] ?? "No description provided",
+                style: const TextStyle(fontSize: 14, color: Colors.black87),
+              ),
+              const SizedBox(height: 24),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton.icon(
+                  onPressed: () {
+                    Navigator.pop(context);
+                    _showWorkerSelection(context, docId, data);
+                  },
+                  icon: const Icon(Icons.person_add),
+                  label: Text(
+                    data["assignedWorker"] != null
+                        ? "Change Worker"
+                        : "Assign Worker",
+                  ),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF7DD3C0),
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _showWorkerSelection(
+    BuildContext context,
+    String docId,
+    Map<String, dynamic> serviceData,
+  ) async {
+    final category = serviceData["category"];
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => DraggableScrollableSheet(
+        initialChildSize: 0.7,
+        minChildSize: 0.5,
+        maxChildSize: 0.95,
+        builder: (_, controller) => Container(
+          decoration: BoxDecoration(
+            color: Colors.white.withOpacity(0.95),
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+          ),
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            children: [
+              Container(
+                width: 48,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: Colors.grey.shade300,
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+              const SizedBox(height: 16),
+              const Text(
+                "Select Worker",
+                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 16),
+              Expanded(
+                child: StreamBuilder<QuerySnapshot>(
+                  stream: category != null && category.toString().isNotEmpty
+                      ? FirebaseFirestore.instance
+                            .collection("workers")
+                            .where("isActive", isEqualTo: true)
+                            .where("profession", isEqualTo: category)
+                            .snapshots()
+                      : FirebaseFirestore.instance
+                            .collection("workers")
+                            .where("isActive", isEqualTo: true)
+                            .snapshots(),
+                  builder: (context, snapshot) {
+                    if (!snapshot.hasData) {
+                      return const Center(child: CircularProgressIndicator());
+                    }
+
+                    final workers = snapshot.data!.docs;
+
+                    if (workers.isEmpty) {
+                      return const Center(
+                        child: Text("No workers available for this category"),
+                      );
+                    }
+
+                    return ListView.separated(
+                      controller: controller,
+                      itemCount: workers.length,
+                      separatorBuilder: (_, __) => const SizedBox(height: 12),
+                      itemBuilder: (context, index) {
+                        final worker =
+                            workers[index].data() as Map<String, dynamic>;
+                        final workerId = workers[index].id;
+
+                        return GestureDetector(
+                          onTap: () async {
+                            await _assignWorker(
+                              docId,
+                              workerId,
+                              worker["username"],
+                              worker["profession"],
+                              serviceData,
+                            );
+                            Navigator.pop(context);
+                          },
+                          child: Container(
+                            padding: const EdgeInsets.all(14),
+                            decoration: BoxDecoration(
+                              color: Colors.grey.shade100,
+                              borderRadius: BorderRadius.circular(16),
+                            ),
+                            child: Row(
+                              children: [
+                                CircleAvatar(
+                                  backgroundColor: Colors.blueGrey,
+                                  child: Text(
+                                    worker["username"]
+                                        .toString()
+                                        .substring(0, 1)
+                                        .toUpperCase(),
+                                    style: const TextStyle(
+                                      color: Colors.white,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        worker["username"] ?? "Worker",
+                                        style: const TextStyle(
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: 16,
+                                        ),
+                                      ),
+                                      Text(
+                                        worker["profession"] ?? "",
+                                        style: TextStyle(
+                                          color: Colors.grey.shade600,
+                                          fontSize: 13,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                Icon(
+                                  Icons.chevron_right,
+                                  color: Colors.grey.shade400,
+                                ),
+                              ],
+                            ),
+                          ),
+                        );
+                      },
+                    );
+                  },
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _assignWorker(
+    String serviceDocId,
+    String workerId,
+    String workerName,
+    String workerProfession,
+    Map<String, dynamic> serviceData,
+  ) async {
+    try {
+      await FirebaseFirestore.instance
+          .collection("service_requests")
+          .doc(serviceDocId)
+          .update({
+            "assignedWorker": {
+              "id": workerId,
+              "name": workerName,
+              "role": workerProfession,
+            },
+            "status": "Assigned",
+          });
+
+      // Send notification to worker
+      await FirebaseFirestore.instance.collection("notifications").add({
+        "title": "New Service Assigned",
+        "message":
+            "You have been assigned to service: ${serviceData["title"] ?? serviceData["category"]}",
+        "toUid": workerId,
+        "isRead": false,
+        "timestamp": FieldValue.serverTimestamp(),
+      });
+
+      // Send notification to resident
+      await FirebaseFirestore.instance.collection("notifications").add({
+        "title": "Worker Assigned",
+        "message":
+            "Worker $workerName has been assigned to your service request",
+        "toUid": serviceData["userId"],
+        "isRead": false,
+        "timestamp": FieldValue.serverTimestamp(),
+      });
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text("Worker $workerName assigned successfully"),
+            backgroundColor: Colors.green,
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text("Error assigning worker: $e"),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
+  Widget _detailRow(String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(
+            width: 100,
+            child: Text(
+              "$label:",
+              style: const TextStyle(
+                fontWeight: FontWeight.w600,
+                color: Colors.black54,
+              ),
+            ),
+          ),
+          Expanded(
+            child: Text(
+              value,
+              style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -210,16 +530,20 @@ class _AuthorityServiceManagementPageState
           separatorBuilder: (_, __) => const SizedBox(height: 18),
           itemBuilder: (context, index) {
             final data = docs[index].data() as Map<String, dynamic>;
+            final docId = docs[index].id;
 
-            return _serviceCard(
-              id: data["service_id"],
-              name: data["username"],
-              category: data["category"],
-              date: _formatDate(data["timestamp"]),
-              status: data["status"],
-              worker: data["assignedWorker"] != null
-                  ? data["assignedWorker"]["name"]
-                  : null,
+            return GestureDetector(
+              onTap: () => _showServiceDetails(context, docId, data),
+              child: _serviceCard(
+                id: data["service_id"],
+                name: data["username"],
+                category: data["category"],
+                date: _formatDate(data["timestamp"]),
+                status: data["status"],
+                worker: data["assignedWorker"] != null
+                    ? data["assignedWorker"]["name"]
+                    : null,
+              ),
             );
           },
         );
