@@ -184,6 +184,34 @@ class _WorkerHistoryPageState extends State<WorkerHistoryPage> {
                   ),
                   const SizedBox(height: 15),
 
+                  // Completion Date
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const SizedBox(
+                        width: 110,
+                        child: Text(
+                          "Completed At:",
+                          style: TextStyle(
+                            fontWeight: FontWeight.w700,
+                            fontSize: 15,
+                          ),
+                        ),
+                      ),
+                      Expanded(
+                        child: Text(
+                          _formatCompletedDate(job),
+                          style: const TextStyle(
+                            fontSize: 15,
+                            color: Colors.black87,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 15),
+
                   // Completion Notes
                   Row(
                     crossAxisAlignment: CrossAxisAlignment.start,
