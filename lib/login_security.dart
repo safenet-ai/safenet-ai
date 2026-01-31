@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'dart:ui';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'role_selection.dart';
 import 'security_dashbaord.dart';
 
@@ -21,84 +22,87 @@ class _SecurityLoginPageState extends State<SecurityLoginPage> {
   // ------------------- LOGIN FUNCTION -------------------
 
   Future<void> _loginSecurity() async {
-  final input = _emailCtrl.text.trim();
-  final password = _passCtrl.text.trim();
+    final input = _emailCtrl.text.trim();
+    final password = _passCtrl.text.trim();
 
-  if (input.isEmpty || password.isEmpty) {
-    _showMsg("Please enter username/email/phone and password");
-    return;
-  }
-
-  try {
-    DocumentSnapshot? snap;
-
-    // Detect input type
-    bool isEmail = input.contains("@");
-    bool isPhone = RegExp(r'^[0-9]{10,}$').hasMatch(input); // 10+ digits
-
-    // 1️⃣ Search workers collection according to input
-    if (isEmail) {
-      snap = await FirebaseFirestore.instance
-          .collection("workers")
-          .where("email", isEqualTo: input)
-          .limit(1)
-          .get()
-          .then((q) => q.docs.isNotEmpty ? q.docs.first : null);
-    } else if (isPhone) {
-      snap = await FirebaseFirestore.instance
-          .collection("workers")
-          .where("phone", isEqualTo: "+91$input")
-          .limit(1)
-          .get()
-          .then((q) => q.docs.isNotEmpty ? q.docs.first : null);
-    } else {
-      // Username login
-      snap = await FirebaseFirestore.instance
-          .collection("workers")
-          .where("username", isEqualTo: input)
-          .limit(1)
-          .get()
-          .then((q) => q.docs.isNotEmpty ? q.docs.first : null);
-    }
-
-    if (snap == null) {
-      _showMsg("No security worker found");
+    if (input.isEmpty || password.isEmpty) {
+      _showMsg("Please enter username/email/phone and password");
       return;
     }
 
-    final data = snap.data() as Map<String, dynamic>;
+    try {
+      DocumentSnapshot? snap;
 
-    final email = data["email"];
-    if (email == null) {
-      _showMsg("Account does not have a valid email");
-      return;
-    }
+      // Detect input type
+      bool isEmail = input.contains("@");
+      bool isPhone = RegExp(r'^[0-9]{10,}$').hasMatch(input); // 10+ digits
 
-    // 2️⃣ Firebase login using email
-    await FirebaseAuth.instance.signInWithEmailAndPassword(
-      email: email,
-      password: password,
-    );
+      // 1️⃣ Search workers collection according to input
+      if (isEmail) {
+        snap = await FirebaseFirestore.instance
+            .collection("workers")
+            .where("email", isEqualTo: input)
+            .limit(1)
+            .get()
+            .then((q) => q.docs.isNotEmpty ? q.docs.first : null);
+      } else if (isPhone) {
+        snap = await FirebaseFirestore.instance
+            .collection("workers")
+            .where("phone", isEqualTo: "+91$input")
+            .limit(1)
+            .get()
+            .then((q) => q.docs.isNotEmpty ? q.docs.first : null);
+      } else {
+        // Username login
+        snap = await FirebaseFirestore.instance
+            .collection("workers")
+            .where("username", isEqualTo: input)
+            .limit(1)
+            .get()
+            .then((q) => q.docs.isNotEmpty ? q.docs.first : null);
+      }
 
-    // 3️⃣ Validate security role
-    if (data["role"] == "worker" &&
-        data["profession"].toString().toLowerCase().contains("security")) {
+      if (snap == null) {
+        _showMsg("No security worker found");
+        return;
+      }
 
-      _showMsg("Login Successful!");
+      final data = snap.data() as Map<String, dynamic>;
 
-      Navigator.push(
-        context,
-        MaterialPageRoute(builder: (_) => SecurityDashboardPage()),
+      final email = data["email"];
+      if (email == null) {
+        _showMsg("Account does not have a valid email");
+        return;
+      }
+
+      // 2️⃣ Firebase login using email
+      await FirebaseAuth.instance.signInWithEmailAndPassword(
+        email: email,
+        password: password,
       );
-    } else {
-      _showMsg("This account is NOT a security worker");
-      FirebaseAuth.instance.signOut();
-    }
 
-  } catch (e) {
-    _showMsg("Login failed: $e");
+      // 3️⃣ Validate security role
+      if (data["role"] == "worker" &&
+          data["profession"].toString().toLowerCase().contains("security")) {
+        _showMsg("Login Successful!");
+
+        // Clear any authority session
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.remove('authority_uid');
+        await prefs.setString('user_role', 'security');
+
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (_) => SecurityDashboardPage()),
+        );
+      } else {
+        _showMsg("This account is NOT a security worker");
+        FirebaseAuth.instance.signOut();
+      }
+    } catch (e) {
+      _showMsg("Login failed: $e");
+    }
   }
-}
 
   void _showMsg(String msg) {
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
@@ -127,11 +131,9 @@ class _SecurityLoginPageState extends State<SecurityLoginPage> {
                     decoration: BoxDecoration(
                       color: Colors.white.withOpacity(0.45),
                       borderRadius: BorderRadius.circular(12),
-                      border:
-                          Border.all(color: Colors.white.withOpacity(0.25)),
+                      border: Border.all(color: Colors.white.withOpacity(0.25)),
                     ),
-                    child:
-                        Icon(Icons.arrow_back, color: Colors.grey.shade800),
+                    child: Icon(Icons.arrow_back, color: Colors.grey.shade800),
                   ),
                 ),
               ),
@@ -157,7 +159,8 @@ class _SecurityLoginPageState extends State<SecurityLoginPage> {
       body: Stack(
         children: [
           Positioned.fill(
-              child: Image.asset('assets/bg1_img.png', fit: BoxFit.cover)),
+            child: Image.asset('assets/bg1_img.png', fit: BoxFit.cover),
+          ),
           Center(
             child: SingleChildScrollView(
               padding: const EdgeInsets.symmetric(horizontal: 28),
@@ -199,12 +202,9 @@ class _SecurityLoginPageState extends State<SecurityLoginPage> {
                     label: "Password",
                     obscureText: _obscure,
                     suffix: IconButton(
-                      onPressed: () =>
-                          setState(() => _obscure = !_obscure),
+                      onPressed: () => setState(() => _obscure = !_obscure),
                       icon: Icon(
-                        _obscure
-                            ? Icons.visibility
-                            : Icons.visibility_off,
+                        _obscure ? Icons.visibility : Icons.visibility_off,
                         color: Colors.grey.shade600,
                       ),
                     ),
@@ -233,10 +233,7 @@ class _SecurityLoginPageState extends State<SecurityLoginPage> {
                       width: double.infinity,
                       decoration: BoxDecoration(
                         gradient: const LinearGradient(
-                          colors: [
-                            Color(0xFF3CBDB0),
-                            Color(0xFF128071),
-                          ],
+                          colors: [Color(0xFF3CBDB0), Color(0xFF128071)],
                         ),
                         borderRadius: BorderRadius.circular(16),
                       ),
@@ -257,11 +254,19 @@ class _SecurityLoginPageState extends State<SecurityLoginPage> {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Container(width: 40, height: 1, color: Colors.grey.shade400),
+                      Container(
+                        width: 40,
+                        height: 1,
+                        color: Colors.grey.shade400,
+                      ),
                       const SizedBox(width: 10),
                       Text("OR", style: TextStyle(color: Colors.grey.shade600)),
                       const SizedBox(width: 10),
-                      Container(width: 40, height: 1, color: Colors.grey.shade400),
+                      Container(
+                        width: 40,
+                        height: 1,
+                        color: Colors.grey.shade400,
+                      ),
                     ],
                   ),
 

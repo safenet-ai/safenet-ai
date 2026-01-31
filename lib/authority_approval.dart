@@ -325,7 +325,7 @@ class _PendingApprovalPageState extends State<PendingApprovalPage> {
               width: 280,
               child: ProfileSidebar(
                 onClose: () => setState(() => _isProfileOpen = false),
-                userCollection: "workers",
+                userCollection: "authority",
               ),
             ),
           ],

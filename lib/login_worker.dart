@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'dart:ui';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'role_selection.dart';
 import 'worker_dashboard.dart';
 
@@ -22,75 +23,80 @@ class _SafeNetLoginPageState extends State<WorkerLoginPage> {
   // -------------------------------------------------------------------
   // 🔥 WORKER LOGIN METHOD (email / username / phone)
   // -------------------------------------------------------------------
- Future<void> _loginWorker() async {
-  final input = _loginCtrl.text.trim();
-  final password = _passwordCtrl.text.trim();
+  Future<void> _loginWorker() async {
+    final input = _loginCtrl.text.trim();
+    final password = _passwordCtrl.text.trim();
 
-  if (input.isEmpty || password.isEmpty) {
-    _showMsg("Please fill all fields");
-    return;
-  }
-
-  try {
-    String email = "";
-    final workers = FirebaseFirestore.instance.collection("workers");
-
-    QuerySnapshot snap;
-
-    // 🔹 If email
-    if (input.contains("@")) {
-      snap = await workers.where("email", isEqualTo: input).limit(1).get();
-    }
-    // 🔹 If phone number
-    else if (RegExp(r'^[0-9]{10}$').hasMatch(input)) {
-      snap = await workers.where("phone", isEqualTo: input).limit(1).get();
-    }
-    // 🔹 If username
-    else {
-      snap = await workers.where("username", isEqualTo: input).limit(1).get();
-    }
-
-    // 🔥 Check worker exists
-    if (snap.docs.isEmpty) {
-      _showMsg("No worker found with this username/phone/email");
+    if (input.isEmpty || password.isEmpty) {
+      _showMsg("Please fill all fields");
       return;
     }
 
-    final data = snap.docs.first.data() as Map<String, dynamic>;
-    email = data["email"];
+    try {
+      String email = "";
+      final workers = FirebaseFirestore.instance.collection("workers");
 
-    // 🔥 Login using Firebase Auth
-    final userCred = await FirebaseAuth.instance
-        .signInWithEmailAndPassword(email: email, password: password);
+      QuerySnapshot snap;
 
-    // 🔍 Verify worker role again
-    final uid = userCred.user!.uid;
-    final userDoc = await workers.doc(uid).get();
+      // 🔹 If email
+      if (input.contains("@")) {
+        snap = await workers.where("email", isEqualTo: input).limit(1).get();
+      }
+      // 🔹 If phone number
+      else if (RegExp(r'^[0-9]{10}$').hasMatch(input)) {
+        snap = await workers.where("phone", isEqualTo: input).limit(1).get();
+      }
+      // 🔹 If username
+      else {
+        snap = await workers.where("username", isEqualTo: input).limit(1).get();
+      }
 
-    if (!userDoc.exists || userDoc["role"] != "worker") {
-      FirebaseAuth.instance.signOut();
-      _showMsg("Access Denied! Not a worker.");
-      return;
+      // 🔥 Check worker exists
+      if (snap.docs.isEmpty) {
+        _showMsg("No worker found with this username/phone/email");
+        return;
+      }
+
+      final data = snap.docs.first.data() as Map<String, dynamic>;
+      email = data["email"];
+
+      // 🔥 Login using Firebase Auth
+      final userCred = await FirebaseAuth.instance.signInWithEmailAndPassword(
+        email: email,
+        password: password,
+      );
+
+      // 🔍 Verify worker role again
+      final uid = userCred.user!.uid;
+      final userDoc = await workers.doc(uid).get();
+
+      if (!userDoc.exists || userDoc["role"] != "worker") {
+        FirebaseAuth.instance.signOut();
+        _showMsg("Access Denied! Not a worker.");
+        return;
+      }
+
+      // SUCCESS
+      _showMsg("Worker Login Successful!");
+
+      // Clear any authority session
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.remove('authority_uid');
+      await prefs.setString('user_role', 'worker');
+
+      await Future.delayed(const Duration(seconds: 2));
+
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (_) => WorkerDashboardPage()),
+      );
+    } catch (e) {
+      _showMsg("Login failed: $e");
     }
-
-    // SUCCESS
-    _showMsg("Worker Login Successful!");
-
-    await Future.delayed(const Duration(seconds: 2));
-
-    Navigator.pushReplacement(
-      context,
-      MaterialPageRoute(builder: (_) => WorkerDashboardPage()),
-    );
-
-  } catch (e) {
-    _showMsg("Login failed: $e");
   }
-}
 
   void _showMsg(String msg) {
-    ScaffoldMessenger.of(context)
-        .showSnackBar(SnackBar(content: Text(msg)));
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
   }
 
   // -------------------------------------------------------------------
@@ -117,9 +123,7 @@ class _SafeNetLoginPageState extends State<WorkerLoginPage> {
                     decoration: BoxDecoration(
                       color: Colors.white.withOpacity(0.45),
                       borderRadius: BorderRadius.circular(12),
-                      border: Border.all(
-                        color: Colors.white.withOpacity(0.25),
-                      ),
+                      border: Border.all(color: Colors.white.withOpacity(0.25)),
                       boxShadow: [
                         BoxShadow(
                           color: Colors.black.withOpacity(0.07),
@@ -128,8 +132,7 @@ class _SafeNetLoginPageState extends State<WorkerLoginPage> {
                         ),
                       ],
                     ),
-                    child:
-                        Icon(Icons.arrow_back, color: Colors.grey.shade800),
+                    child: Icon(Icons.arrow_back, color: Colors.grey.shade800),
                   ),
                 ),
               ),
@@ -156,7 +159,9 @@ class _SafeNetLoginPageState extends State<WorkerLoginPage> {
 
       body: Stack(
         children: [
-          Positioned.fill(child: Image.asset('assets/bg1_img.png', fit: BoxFit.cover)),
+          Positioned.fill(
+            child: Image.asset('assets/bg1_img.png', fit: BoxFit.cover),
+          ),
 
           Center(
             child: SingleChildScrollView(
@@ -232,10 +237,7 @@ class _SafeNetLoginPageState extends State<WorkerLoginPage> {
                       width: double.infinity,
                       decoration: BoxDecoration(
                         gradient: const LinearGradient(
-                          colors: [
-                            Color(0xFF3CBDB0),
-                            Color(0xFF128071),
-                          ],
+                          colors: [Color(0xFF3CBDB0), Color(0xFF128071)],
                         ),
                         borderRadius: BorderRadius.circular(16),
                       ),
@@ -257,11 +259,19 @@ class _SafeNetLoginPageState extends State<WorkerLoginPage> {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Container(width: 40, height: 1, color: Colors.grey.shade400),
+                      Container(
+                        width: 40,
+                        height: 1,
+                        color: Colors.grey.shade400,
+                      ),
                       const SizedBox(width: 10),
                       Text("OR", style: TextStyle(color: Colors.grey.shade600)),
                       const SizedBox(width: 10),
-                      Container(width: 40, height: 1, color: Colors.grey.shade400),
+                      Container(
+                        width: 40,
+                        height: 1,
+                        color: Colors.grey.shade400,
+                      ),
                     ],
                   ),
 

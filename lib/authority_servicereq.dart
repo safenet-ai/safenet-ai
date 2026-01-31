@@ -174,7 +174,7 @@ class _AuthorityServiceManagementPageState
               width: 280,
               child: ProfileSidebar(
                 onClose: () => setState(() => _isProfileOpen = false),
-                userCollection: "workers",
+                userCollection: "authority",
               ),
             ),
           ],

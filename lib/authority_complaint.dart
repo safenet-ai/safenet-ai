@@ -172,7 +172,7 @@ class _AuthorityComplaintsPageState extends State<AuthorityComplaintsPage> {
               width: 280,
               child: ProfileSidebar(
                 onClose: () => setState(() => _isProfileOpen = false),
-                userCollection: "workers",
+                userCollection: "authority",
               ),
             ),
           ],

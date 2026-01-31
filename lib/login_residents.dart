@@ -2,8 +2,10 @@ import 'package:flutter/material.dart';
 import 'dart:ui';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'role_selection.dart';
 import 'resident_dashboard.dart';
+
 class ResidentLoginPage extends StatefulWidget {
   const ResidentLoginPage({super.key});
 
@@ -83,14 +85,18 @@ class _SafeNetLoginPageState extends State<ResidentLoginPage> {
       }
 
       // 🔥 Login using Firebase Auth
-      final userCred = await FirebaseAuth.instance
-          .signInWithEmailAndPassword(email: email, password: password);
+      final userCred = await FirebaseAuth.instance.signInWithEmailAndPassword(
+        email: email,
+        password: password,
+      );
 
       final uid = userCred.user!.uid;
 
       // 🔍 Verify role again
-      final userDoc =
-          await FirebaseFirestore.instance.collection("users").doc(uid).get();
+      final userDoc = await FirebaseFirestore.instance
+          .collection("users")
+          .doc(uid)
+          .get();
 
       if (!userDoc.exists || userDoc["role"] != "resident") {
         FirebaseAuth.instance.signOut();
@@ -100,18 +106,23 @@ class _SafeNetLoginPageState extends State<ResidentLoginPage> {
 
       _showMsg("Login Successful!");
 
-      // TODO → Navigate to Resident Dashboard
-      Navigator.push(context, MaterialPageRoute(builder: (_) => ResidentDashboardPage()));
+      // Clear any authority session
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.remove('authority_uid');
+      await prefs.setString('user_role', 'resident');
 
+      // TODO → Navigate to Resident Dashboard
+      Navigator.push(
+        context,
+        MaterialPageRoute(builder: (_) => ResidentDashboardPage()),
+      );
     } catch (e) {
       _showMsg("Login Failed: $e");
     }
   }
 
   void _showMsg(String msg) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(msg)),
-    );
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
   }
 
   // ----------------------------------------------------------------------
@@ -137,9 +148,7 @@ class _SafeNetLoginPageState extends State<ResidentLoginPage> {
                     decoration: BoxDecoration(
                       color: Colors.white.withOpacity(0.45),
                       borderRadius: BorderRadius.circular(12),
-                      border: Border.all(
-                        color: Colors.white.withOpacity(0.25),
-                      ),
+                      border: Border.all(color: Colors.white.withOpacity(0.25)),
                       boxShadow: [
                         BoxShadow(
                           color: Colors.black.withOpacity(0.07),
@@ -148,8 +157,7 @@ class _SafeNetLoginPageState extends State<ResidentLoginPage> {
                         ),
                       ],
                     ),
-                    child:
-                        Icon(Icons.arrow_back, color: Colors.grey.shade800),
+                    child: Icon(Icons.arrow_back, color: Colors.grey.shade800),
                   ),
                 ),
               ),
@@ -176,7 +184,9 @@ class _SafeNetLoginPageState extends State<ResidentLoginPage> {
 
       body: Stack(
         children: [
-          Positioned.fill(child: Image.asset('assets/bg1_img.png', fit: BoxFit.cover)),
+          Positioned.fill(
+            child: Image.asset('assets/bg1_img.png', fit: BoxFit.cover),
+          ),
 
           Center(
             child: SingleChildScrollView(
@@ -252,10 +262,7 @@ class _SafeNetLoginPageState extends State<ResidentLoginPage> {
                       width: double.infinity,
                       decoration: BoxDecoration(
                         gradient: const LinearGradient(
-                          colors: [
-                            Color(0xFF3CBDB0),
-                            Color(0xFF128071),
-                          ],
+                          colors: [Color(0xFF3CBDB0), Color(0xFF128071)],
                         ),
                         borderRadius: BorderRadius.circular(16),
                       ),
@@ -277,11 +284,19 @@ class _SafeNetLoginPageState extends State<ResidentLoginPage> {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Container(width: 40, height: 1, color: Colors.grey.shade400),
+                      Container(
+                        width: 40,
+                        height: 1,
+                        color: Colors.grey.shade400,
+                      ),
                       const SizedBox(width: 10),
                       Text("OR", style: TextStyle(color: Colors.grey.shade600)),
                       const SizedBox(width: 10),
-                      Container(width: 40, height: 1, color: Colors.grey.shade400),
+                      Container(
+                        width: 40,
+                        height: 1,
+                        color: Colors.grey.shade400,
+                      ),
                     ],
                   ),
 

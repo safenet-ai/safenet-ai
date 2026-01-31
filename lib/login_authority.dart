@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'dart:ui';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'role_selection.dart';
 import 'authority_dashboard.dart';
 
@@ -22,69 +24,75 @@ class _SafeNetLoginPageState extends State<AuthorityLoginPage> {
   // 🔥 AUTHORITY LOGIN METHOD (ONLY THIS IS ADDED)
   // -------------------------------------------------------------------
   Future<void> _loginAuthority() async {
-  final input = _emailOrUsernameCtrl.text.trim();  // email or username
-  final password = _passwordCtrl.text.trim();      // unique_id
+    final input = _emailOrUsernameCtrl.text.trim(); // email or username
+    final password = _passwordCtrl.text.trim(); // unique_id
 
-  if (input.isEmpty || password.isEmpty) {
-    _showMsg("Please enter Email/Username and Password");
-    return;
-  }
-
-  try {
-    final authorityRef = FirebaseFirestore.instance.collection("authority");
-
-    QuerySnapshot<Map<String, dynamic>> snap;
-
-    // 🔹 If input contains "@", it's an email
-    if (input.contains("@")) {
-      snap = await authorityRef
-          .where("email", isEqualTo: input)
-          .where("unique_id", isEqualTo: password)
-          .limit(1)
-          .get();
-    } else {
-      // 🔹 Otherwise it's a username
-      snap = await authorityRef
-          .where("username", isEqualTo: input)
-          .where("unique_id", isEqualTo: password)
-          .limit(1)
-          .get();
-    }
-
-    if (snap.docs.isEmpty) {
-      _showMsg("Invalid Email/Username or Password");
+    if (input.isEmpty || password.isEmpty) {
+      _showMsg("Please enter Email/Username and Password");
       return;
     }
 
-    final data = snap.docs.first.data();
+    try {
+      final authorityRef = FirebaseFirestore.instance.collection("authority");
 
-    // 🔒 Extra safety: Verify role
-    if (data["role"] != "authority") {
-      _showMsg("Access denied: Not an authority account");
-      return;
+      QuerySnapshot<Map<String, dynamic>> snap;
+
+      // 🔹 If input contains "@", it's an email
+      if (input.contains("@")) {
+        snap = await authorityRef
+            .where("email", isEqualTo: input)
+            .where("unique_id", isEqualTo: password)
+            .limit(1)
+            .get();
+      } else {
+        // 🔹 Otherwise it's a username
+        snap = await authorityRef
+            .where("username", isEqualTo: input)
+            .where("unique_id", isEqualTo: password)
+            .limit(1)
+            .get();
+      }
+
+      if (snap.docs.isEmpty) {
+        _showMsg("Invalid Email/Username or Password");
+        return;
+      }
+
+      final data = snap.docs.first.data();
+      final authorityUid = snap.docs.first.id;
+
+      // 🔒 Extra safety: Verify role
+      if (data["role"] != "authority") {
+        _showMsg("Access denied: Not an authority account");
+        return;
+      }
+
+      // 🔥 Sign out any existing Firebase Auth session
+      await FirebaseAuth.instance.signOut();
+
+      // 🔥 Store authority UID in SharedPreferences
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString('authority_uid', authorityUid);
+      await prefs.setString('user_role', 'authority');
+
+      // ⭐ SHOW SUCCESS MESSAGE
+      _showMsg("Login Successful!");
+
+      // ⭐ WAIT 2 SECONDS
+      await Future.delayed(const Duration(seconds: 2));
+
+      // ⭐ REDIRECT AFTER DELAY
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (_) => const AuthorityDashboardPage()),
+      );
+    } catch (e) {
+      _showMsg("Login failed. Please try again.");
     }
-
-     // ⭐ SHOW SUCCESS MESSAGE
-    _showMsg("Login Successful!");
-
-    // ⭐ WAIT 2 SECONDS
-    await Future.delayed(const Duration(seconds: 2));
-
-    // ⭐ REDIRECT AFTER DELAY
-    Navigator.pushReplacement(
-      context,
-      MaterialPageRoute(builder: (_) => const AuthorityDashboardPage()),
-    );
-  } catch (e) {
-    _showMsg("Login failed. Please try again.");
   }
-}
-
 
   void _showMsg(String msg) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(msg)),
-    );
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
   }
 
   // -------------------------------------------------------------------
@@ -110,9 +118,7 @@ class _SafeNetLoginPageState extends State<AuthorityLoginPage> {
                     decoration: BoxDecoration(
                       color: Colors.white.withOpacity(0.45),
                       borderRadius: BorderRadius.circular(12),
-                      border: Border.all(
-                        color: Colors.white.withOpacity(0.25),
-                      ),
+                      border: Border.all(color: Colors.white.withOpacity(0.25)),
                       boxShadow: [
                         BoxShadow(
                           color: Colors.black.withOpacity(0.07),
@@ -121,8 +127,7 @@ class _SafeNetLoginPageState extends State<AuthorityLoginPage> {
                         ),
                       ],
                     ),
-                    child: Icon(Icons.arrow_back,
-                        color: Colors.grey.shade800),
+                    child: Icon(Icons.arrow_back, color: Colors.grey.shade800),
                   ),
                 ),
               ),
@@ -149,7 +154,9 @@ class _SafeNetLoginPageState extends State<AuthorityLoginPage> {
 
       body: Stack(
         children: [
-          Positioned.fill(child: Image.asset('assets/bg1_img.png', fit: BoxFit.cover)),
+          Positioned.fill(
+            child: Image.asset('assets/bg1_img.png', fit: BoxFit.cover),
+          ),
 
           Center(
             child: SingleChildScrollView(
@@ -162,10 +169,7 @@ class _SafeNetLoginPageState extends State<AuthorityLoginPage> {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Image.asset(
-                        'assets/logo.png',
-                        height: 60,
-                      ),
+                      Image.asset('assets/logo.png', height: 60),
                       const SizedBox(width: 12),
 
                       Text(
@@ -196,12 +200,9 @@ class _SafeNetLoginPageState extends State<AuthorityLoginPage> {
                     obscureText: _obscure,
                     controller: _passwordCtrl,
                     suffix: IconButton(
-                      onPressed: () =>
-                          setState(() => _obscure = !_obscure),
+                      onPressed: () => setState(() => _obscure = !_obscure),
                       icon: Icon(
-                        _obscure
-                            ? Icons.visibility
-                            : Icons.visibility_off,
+                        _obscure ? Icons.visibility : Icons.visibility_off,
                         color: Colors.grey.shade600,
                       ),
                     ),
@@ -232,10 +233,7 @@ class _SafeNetLoginPageState extends State<AuthorityLoginPage> {
                       width: double.infinity,
                       decoration: BoxDecoration(
                         gradient: const LinearGradient(
-                          colors: [
-                            Color(0xFF3CBDB0),
-                            Color(0xFF128071),
-                          ],
+                          colors: [Color(0xFF3CBDB0), Color(0xFF128071)],
                         ),
                         borderRadius: BorderRadius.circular(16),
                       ),
@@ -251,18 +249,26 @@ class _SafeNetLoginPageState extends State<AuthorityLoginPage> {
                       ),
                     ),
                   ),
-                  // -------------------------------------------------------------------
 
+                  // -------------------------------------------------------------------
                   const SizedBox(height: 30),
 
                   Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Container(width: 40, height: 1, color: Colors.grey.shade400),
+                      Container(
+                        width: 40,
+                        height: 1,
+                        color: Colors.grey.shade400,
+                      ),
                       const SizedBox(width: 10),
                       Text("OR", style: TextStyle(color: Colors.grey.shade600)),
                       const SizedBox(width: 10),
-                      Container(width: 40, height: 1, color: Colors.grey.shade400),
+                      Container(
+                        width: 40,
+                        height: 1,
+                        color: Colors.grey.shade400,
+                      ),
                     ],
                   ),
 

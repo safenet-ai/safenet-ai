@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class ProfileSidebar extends StatelessWidget {
   final VoidCallback onClose;
-  final String userCollection; // "workers", "users", "security", etc
+  final String
+  userCollection; // "workers", "users", "security", "authority", etc
 
   const ProfileSidebar({
     super.key,
@@ -13,7 +15,17 @@ class ProfileSidebar extends StatelessWidget {
   });
 
   Future<String> _fetchName() async {
-    final uid = FirebaseAuth.instance.currentUser?.uid;
+    String? uid;
+
+    // For authority users, get UID from SharedPreferences
+    if (userCollection == "authority") {
+      final prefs = await SharedPreferences.getInstance();
+      uid = prefs.getString('authority_uid');
+    } else {
+      // For other users, get UID from Firebase Auth
+      uid = FirebaseAuth.instance.currentUser?.uid;
+    }
+
     if (uid == null) return "User";
 
     final doc = await FirebaseFirestore.instance
