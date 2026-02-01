@@ -7,9 +7,17 @@ import './authority_announcement.dart';
 import './authority_view_announcements.dart';
 import './authority_waste.dart';
 import '../../shared/widgets/notification_dropdown.dart';
+import '../../shared/widgets/profile_sidebar.dart';
 
-class AuthorityDashboardPage extends StatelessWidget {
+class AuthorityDashboardPage extends StatefulWidget {
   const AuthorityDashboardPage({super.key});
+
+  @override
+  State<AuthorityDashboardPage> createState() => _AuthorityDashboardPageState();
+}
+
+class _AuthorityDashboardPageState extends State<AuthorityDashboardPage> {
+  bool _isProfileOpen = false;
 
   @override
   Widget build(BuildContext context) {
@@ -43,16 +51,7 @@ class AuthorityDashboardPage extends StatelessWidget {
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          IconButton(
-                            onPressed: () {
-                              Navigator.of(context).pop();
-                            },
-                            icon: const Icon(
-                              Icons.arrow_back_ios_new,
-                              size: 22,
-                              color: Colors.black87,
-                            ),
-                          ),
+                          const SizedBox(width: 48),
 
                           Row(
                             children: const [
@@ -73,7 +72,25 @@ class AuthorityDashboardPage extends StatelessWidget {
                             ],
                           ),
 
-                          NotificationDropdown(role: "authority"),
+                          Row(
+                            children: [
+                              NotificationDropdown(role: "authority"),
+                              const SizedBox(width: 15),
+                              GestureDetector(
+                                onTap: () {
+                                  setState(() => _isProfileOpen = true);
+                                },
+                                child: Container(
+                                  padding: const EdgeInsets.all(7),
+                                  decoration: BoxDecoration(
+                                    color: Colors.white.withOpacity(0.9),
+                                    shape: BoxShape.circle,
+                                  ),
+                                  child: const Icon(Icons.person, size: 20),
+                                ),
+                              ),
+                            ],
+                          ),
                         ],
                       ),
 
@@ -310,6 +327,28 @@ class AuthorityDashboardPage extends StatelessWidget {
               ),
             ),
           ),
+
+          // Profile sidebar
+          if (_isProfileOpen) ...[
+            Positioned.fill(
+              child: GestureDetector(
+                onTap: () => setState(() => _isProfileOpen = false),
+                child: Container(color: Colors.black.withOpacity(0.35)),
+              ),
+            ),
+            AnimatedPositioned(
+              duration: const Duration(milliseconds: 250),
+              curve: Curves.easeOut,
+              top: 0,
+              bottom: 0,
+              right: 0,
+              width: 280,
+              child: ProfileSidebar(
+                userCollection: "authority",
+                onClose: () => setState(() => _isProfileOpen = false),
+              ),
+            ),
+          ],
         ],
       ),
     );

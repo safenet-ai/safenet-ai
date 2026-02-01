@@ -3,12 +3,14 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 
 class AuthorityChatPage extends StatefulWidget {
   final String conversationId;
-  final String residentName;
+  final String userName;
+  final String userType; // "resident" or "worker"
 
   const AuthorityChatPage({
     super.key,
     required this.conversationId,
-    required this.residentName,
+    required this.userName,
+    this.userType = "resident",
   });
 
   @override
@@ -26,15 +28,19 @@ class _AuthorityChatPageState extends State<AuthorityChatPage> {
     final text = _messageController.text.trim();
     _messageController.clear();
 
+    final chatCollection = widget.userType == "worker"
+        ? "worker_support_chats"
+        : "support_chats";
+
     await FirebaseFirestore.instance
-        .collection("support_chats")
+        .collection(chatCollection)
         .doc(widget.conversationId)
         .collection("messages")
         .add({
-      "sender": "authority",
-      "text": text,
-      "timestamp": FieldValue.serverTimestamp(),
-    });
+          "sender": "authority",
+          "text": text,
+          "timestamp": FieldValue.serverTimestamp(),
+        });
 
     _scrollToBottom();
   }
@@ -51,6 +57,78 @@ class _AuthorityChatPageState extends State<AuthorityChatPage> {
     });
   }
 
+  // ✅ END CHAT SESSION
+  Future<void> _endChat() async {
+    // Show confirmation dialog
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text("End Chat Session"),
+        content: const Text(
+          "Are you sure you want to end this chat session? This will close the connection and delete the chat history.",
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text("Cancel"),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: TextButton.styleFrom(foregroundColor: Colors.red),
+            child: const Text("End Chat"),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm != true) return;
+
+    try {
+      final chatCollection = widget.userType == "worker"
+          ? "worker_support_chats"
+          : "support_chats";
+      final requestCollection = widget.userType == "worker"
+          ? "worker_support_requests"
+          : "support_requests";
+
+      // Delete all messages in the chat
+      final messagesSnapshot = await FirebaseFirestore.instance
+          .collection(chatCollection)
+          .doc(widget.conversationId)
+          .collection("messages")
+          .get();
+
+      for (var doc in messagesSnapshot.docs) {
+        await doc.reference.delete();
+      }
+
+      // Delete the chat document
+      await FirebaseFirestore.instance
+          .collection(chatCollection)
+          .doc(widget.conversationId)
+          .delete();
+
+      // Delete the request
+      await FirebaseFirestore.instance
+          .collection(requestCollection)
+          .doc(widget.conversationId)
+          .delete();
+
+      print("✅ Chat session ended and deleted");
+
+      if (mounted) {
+        Navigator.pop(context);
+      }
+    } catch (e) {
+      print("❌ Error ending chat: $e");
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text("Error ending chat: $e")));
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -63,11 +141,9 @@ class _AuthorityChatPageState extends State<AuthorityChatPage> {
             ),
           ),
 
-
           SafeArea(
             child: Column(
               children: [
-
                 const SizedBox(height: 10),
 
                 // ✅ TOP BAR
@@ -76,23 +152,35 @@ class _AuthorityChatPageState extends State<AuthorityChatPage> {
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      _circleButton(Icons.arrow_back,
-                          onTap: () => Navigator.pop(context)),
+                      _circleButton(
+                        Icons.arrow_back,
+                        onTap: () => Navigator.pop(context),
+                      ),
 
                       Column(
                         children: [
                           const Text(
                             "Authority Support",
-                            style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800),
+                            style: TextStyle(
+                              fontSize: 20,
+                              fontWeight: FontWeight.w800,
+                            ),
                           ),
                           Text(
-                            "Chat with ${widget.residentName}",
-                            style: const TextStyle(fontSize: 13, color: Colors.black54),
+                            "Chat with ${widget.userName}",
+                            style: const TextStyle(
+                              fontSize: 13,
+                              color: Colors.black54,
+                            ),
                           ),
                         ],
                       ),
 
-                      _circleButton(Icons.verified_user),
+                      _circleButton(
+                        Icons.close,
+                        onTap: _endChat,
+                        color: Colors.red,
+                      ),
                     ],
                   ),
                 ),
@@ -102,17 +190,20 @@ class _AuthorityChatPageState extends State<AuthorityChatPage> {
                 // ✅ STATUS CHIP
                 Container(
                   margin: const EdgeInsets.symmetric(horizontal: 16),
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 14,
+                    vertical: 6,
+                  ),
                   decoration: BoxDecoration(
                     color: Colors.green.withOpacity(0.15),
                     borderRadius: BorderRadius.circular(20),
                   ),
-                  child: const Text(
-                    "Connected to Resident",
-                    style: TextStyle(
-                        color: Colors.green,
-                        fontWeight: FontWeight.w600),
+                  child: Text(
+                    "Connected to ${widget.userType == "worker" ? "Worker" : "Resident"}",
+                    style: const TextStyle(
+                      color: Colors.green,
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
                 ),
 
@@ -122,7 +213,11 @@ class _AuthorityChatPageState extends State<AuthorityChatPage> {
                 Expanded(
                   child: StreamBuilder<QuerySnapshot>(
                     stream: FirebaseFirestore.instance
-                        .collection("support_chats")
+                        .collection(
+                          widget.userType == "worker"
+                              ? "worker_support_chats"
+                              : "support_chats",
+                        )
                         .doc(widget.conversationId)
                         .collection("messages")
                         .orderBy("timestamp", descending: false)
@@ -142,8 +237,7 @@ class _AuthorityChatPageState extends State<AuthorityChatPage> {
                           final data =
                               docs[index].data() as Map<String, dynamic>;
 
-                          final isAuthority =
-                              data["sender"] == "authority";
+                          final isAuthority = data["sender"] == "authority";
 
                           return _bubble(data["text"], isAuthority);
                         },
@@ -167,8 +261,9 @@ class _AuthorityChatPageState extends State<AuthorityChatPage> {
                           child: TextField(
                             controller: _messageController,
                             decoration: const InputDecoration(
-                                hintText: "Type your reply...",
-                                border: InputBorder.none),
+                              hintText: "Type your reply...",
+                              border: InputBorder.none,
+                            ),
                           ),
                         ),
                       ),
@@ -183,10 +278,9 @@ class _AuthorityChatPageState extends State<AuthorityChatPage> {
                             color: Color(0xFF6EA7A0),
                             shape: BoxShape.circle,
                           ),
-                          child:
-                              const Icon(Icons.send, color: Colors.white),
+                          child: const Icon(Icons.send, color: Colors.white),
                         ),
-                      )
+                      ),
                     ],
                   ),
                 ),
@@ -201,36 +295,33 @@ class _AuthorityChatPageState extends State<AuthorityChatPage> {
   // ✅ MESSAGE BUBBLE
   Widget _bubble(String text, bool isAuthority) {
     return Align(
-      alignment:
-          isAuthority ? Alignment.centerRight : Alignment.centerLeft,
+      alignment: isAuthority ? Alignment.centerRight : Alignment.centerLeft,
       child: Container(
         margin: const EdgeInsets.only(bottom: 10),
         padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(
-          color:
-              isAuthority ? const Color(0xFF6EA7A0) : Colors.white,
+          color: isAuthority ? const Color(0xFF6EA7A0) : Colors.white,
           borderRadius: BorderRadius.circular(18),
         ),
         child: Text(
           text,
-          style:
-              TextStyle(color: isAuthority ? Colors.white : Colors.black87),
+          style: TextStyle(color: isAuthority ? Colors.white : Colors.black87),
         ),
       ),
     );
   }
 
   // ✅ CIRCLE BUTTON
-  Widget _circleButton(IconData icon, {VoidCallback? onTap}) {
+  Widget _circleButton(IconData icon, {VoidCallback? onTap, Color? color}) {
     return GestureDetector(
       onTap: onTap,
       child: Container(
         padding: const EdgeInsets.all(7),
         decoration: BoxDecoration(
-          color: Colors.white.withOpacity(0.9),
+          color: color?.withOpacity(0.15) ?? Colors.white.withOpacity(0.9),
           shape: BoxShape.circle,
         ),
-        child: Icon(icon, size: 20),
+        child: Icon(icon, size: 20, color: color),
       ),
     );
   }

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../../auth/pages/role_selection.dart';
 
 class ProfileSidebar extends StatelessWidget {
   final VoidCallback onClose;
@@ -37,6 +38,76 @@ class ProfileSidebar extends StatelessWidget {
       return doc["username"];
     }
     return "User";
+  }
+
+  Future<void> _logout(BuildContext context) async {
+    // Show confirmation dialog
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+          title: const Text(
+            'Confirm Logout',
+            style: TextStyle(fontWeight: FontWeight.w700),
+          ),
+          content: const Text(
+            'Are you sure you want to logout?',
+            style: TextStyle(fontSize: 16),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(false),
+              child: Text(
+                'Cancel',
+                style: TextStyle(
+                  color: Colors.grey.shade700,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(true),
+              child: const Text(
+                'Logout',
+                style: TextStyle(
+                  color: Colors.red,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+
+    // If user cancelled, return
+    if (confirm != true) return;
+
+    try {
+      // Sign out from Firebase Auth
+      await FirebaseAuth.instance.signOut();
+
+      // Clear all shared preferences
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.clear();
+
+      // Navigate to role selection page and clear stack
+      if (context.mounted) {
+        Navigator.of(context).pushAndRemoveUntil(
+          MaterialPageRoute(builder: (_) => const RoleSelectionPage()),
+          (route) => false,
+        );
+      }
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text("Logout failed: $e")));
+      }
+    }
   }
 
   @override
@@ -92,42 +163,77 @@ class ProfileSidebar extends StatelessWidget {
 
           const SizedBox(height: 30),
 
-          _btn("Edit Profile", Icons.edit),
+          _btn(
+            context,
+            "Edit Profile",
+            Icons.edit,
+            onTap: () {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text("Edit Profile - Coming Soon")),
+              );
+            },
+          ),
           const SizedBox(height: 16),
-          _btn("Upload Details", Icons.assignment),
+          _btn(
+            context,
+            "Settings",
+            Icons.settings,
+            onTap: () {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text("Settings - Coming Soon")),
+              );
+            },
+          ),
           const SizedBox(height: 16),
-          _btn("Logout", Icons.logout, danger: true),
+          _btn(
+            context,
+            "Logout",
+            Icons.logout,
+            danger: true,
+            onTap: () {
+              _logout(context);
+            },
+          ),
         ],
       ),
     );
   }
 
-  Widget _btn(String text, IconData icon, {bool danger = false}) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
-      decoration: BoxDecoration(
-        color: danger ? Colors.red.shade50 : Colors.grey.shade100,
-        borderRadius: BorderRadius.circular(14),
-      ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.center,
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, size: 18, color: danger ? Colors.red : Colors.black54),
-          const SizedBox(width: 8),
-          Flexible(
-            child: Text(
-              text,
-              style: TextStyle(
-                fontWeight: FontWeight.w600,
-                color: danger ? Colors.red : Colors.black87,
+  Widget _btn(
+    BuildContext context,
+    String text,
+    IconData icon, {
+    bool danger = false,
+    VoidCallback? onTap,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
+        decoration: BoxDecoration(
+          color: danger ? Colors.red.shade50 : Colors.grey.shade100,
+          borderRadius: BorderRadius.circular(14),
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, size: 18, color: danger ? Colors.red : Colors.black54),
+            const SizedBox(width: 8),
+            Flexible(
+              child: Text(
+                text,
+                style: TextStyle(
+                  fontWeight: FontWeight.w600,
+                  color: danger ? Colors.red : Colors.black87,
+                ),
+                overflow: TextOverflow.ellipsis,
+                textAlign: TextAlign.center,
               ),
-              overflow: TextOverflow.ellipsis,
-              textAlign: TextAlign.center,
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }

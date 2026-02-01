@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import './authority_chat.dart';
@@ -11,6 +12,163 @@ class AuthorityWaitingListPage extends StatefulWidget {
 }
 
 class _AuthorityWaitingListPageState extends State<AuthorityWaitingListPage> {
+  final StreamController<List<Map<String, dynamic>>> _combinedStream =
+      StreamController.broadcast();
+
+  @override
+  void initState() {
+    super.initState();
+    _listenToCombinedRequests();
+  }
+
+  void _listenToCombinedRequests() {
+    QuerySnapshot? residentWaitingCache;
+    QuerySnapshot? residentActiveCache;
+    QuerySnapshot? workerWaitingCache;
+    QuerySnapshot? workerActiveCache;
+
+    void combineAndEmit() {
+      List<Map<String, dynamic>> combined = [];
+
+      // Add waiting residents
+      if (residentWaitingCache != null) {
+        for (var doc in residentWaitingCache!.docs) {
+          combined.add({
+            "id": doc.id,
+            "name": doc["residentName"] ?? "Resident",
+            "type": "resident",
+            "status": "waiting",
+            "createdAt": doc["createdAt"],
+          });
+        }
+      }
+
+      // Add active residents
+      if (residentActiveCache != null) {
+        for (var doc in residentActiveCache!.docs) {
+          combined.add({
+            "id": doc.id,
+            "name": doc["residentName"] ?? "Resident",
+            "type": "resident",
+            "status": "active",
+            "createdAt": doc["createdAt"],
+          });
+        }
+      }
+
+      // Add waiting workers
+      if (workerWaitingCache != null) {
+        for (var doc in workerWaitingCache!.docs) {
+          combined.add({
+            "id": doc.id,
+            "name": doc["workerName"] ?? "Worker",
+            "type": "worker",
+            "status": "waiting",
+            "createdAt": doc["createdAt"],
+          });
+        }
+      }
+
+      // Add active workers
+      if (workerActiveCache != null) {
+        for (var doc in workerActiveCache!.docs) {
+          combined.add({
+            "id": doc.id,
+            "name": doc["workerName"] ?? "Worker",
+            "type": "worker",
+            "status": "active",
+            "createdAt": doc["createdAt"],
+          });
+        }
+      }
+
+      // Sort: Active first, then by createdAt
+      combined.sort((a, b) {
+        // Active comes before waiting
+        if (a["status"] == "active" && b["status"] == "waiting") return -1;
+        if (a["status"] == "waiting" && b["status"] == "active") return 1;
+
+        final aTime = a["createdAt"] as Timestamp?;
+        final bTime = b["createdAt"] as Timestamp?;
+        if (aTime == null) return 1;
+        if (bTime == null) return -1;
+        return aTime.compareTo(bTime);
+      });
+
+      _combinedStream.add(combined);
+    }
+
+    // Listen to waiting resident requests
+    FirebaseFirestore.instance
+        .collection("support_requests")
+        .where("status", isEqualTo: "waiting")
+        .snapshots()
+        .listen(
+          (snapshot) {
+            print("Resident waiting requests: ${snapshot.docs.length}");
+            residentWaitingCache = snapshot;
+            combineAndEmit();
+          },
+          onError: (error) {
+            print("Error listening to resident requests: $error");
+          },
+        );
+
+    // Listen to active resident requests
+    FirebaseFirestore.instance
+        .collection("support_requests")
+        .where("status", isEqualTo: "active")
+        .snapshots()
+        .listen(
+          (snapshot) {
+            print("Resident active requests: ${snapshot.docs.length}");
+            residentActiveCache = snapshot;
+            combineAndEmit();
+          },
+          onError: (error) {
+            print("Error listening to active resident requests: $error");
+          },
+        );
+
+    // Listen to waiting worker requests
+    FirebaseFirestore.instance
+        .collection("worker_support_requests")
+        .where("status", isEqualTo: "waiting")
+        .snapshots()
+        .listen(
+          (snapshot) {
+            print("Worker waiting requests: ${snapshot.docs.length}");
+            workerWaitingCache = snapshot;
+            combineAndEmit();
+          },
+          onError: (error) {
+            print("Error listening to worker requests: $error");
+          },
+        );
+
+    // Listen to active worker requests
+    FirebaseFirestore.instance
+        .collection("worker_support_requests")
+        .where("status", isEqualTo: "active")
+        .snapshots()
+        .listen(
+          (snapshot) {
+            print("Worker active requests: ${snapshot.docs.length}");
+            workerActiveCache = snapshot;
+            combineAndEmit();
+          },
+          onError: (error) {
+            print("Error listening to active worker requests: $error");
+          },
+        );
+  }
+
+  @override
+  void dispose() {
+    _combinedStream.close();
+    super.dispose();
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -66,7 +224,7 @@ class _AuthorityWaitingListPageState extends State<AuthorityWaitingListPage> {
                     borderRadius: BorderRadius.circular(20),
                   ),
                   child: const Text(
-                    "Residents Waiting for Support",
+                    "Support Requests",
                     style: TextStyle(
                       color: Colors.orange,
                       fontWeight: FontWeight.w600,
@@ -76,23 +234,28 @@ class _AuthorityWaitingListPageState extends State<AuthorityWaitingListPage> {
 
                 const SizedBox(height: 16),
 
-                // ✅ FIRESTORE WAITING LIST
+                // ✅ COMBINED WAITING LIST (RESIDENTS + WORKERS)
                 Expanded(
-                  child: StreamBuilder<QuerySnapshot>(
-                    stream: FirebaseFirestore.instance
-                        .collection("support_requests")
-                        .where("status", isEqualTo: "waiting")
-                        .orderBy("createdAt", descending: false)
-                        .snapshots(),
+                  child: StreamBuilder<List<Map<String, dynamic>>>(
+                    stream: _combinedStream.stream,
                     builder: (context, snapshot) {
+                      if (snapshot.hasError) {
+                        return Center(
+                          child: Text(
+                            "Error: ${snapshot.error}",
+                            style: const TextStyle(color: Colors.red),
+                          ),
+                        );
+                      }
+
                       if (snapshot.connectionState == ConnectionState.waiting) {
                         return const Center(child: CircularProgressIndicator());
                       }
 
-                      if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+                      if (!snapshot.hasData || snapshot.data!.isEmpty) {
                         return const Center(
                           child: Text(
-                            "No residents waiting right now",
+                            "No support requests waiting right now",
                             style: TextStyle(
                               fontSize: 16,
                               color: Colors.black54,
@@ -101,18 +264,19 @@ class _AuthorityWaitingListPageState extends State<AuthorityWaitingListPage> {
                         );
                       }
 
-                      final docs = snapshot.data!.docs;
+                      final requests = snapshot.data!;
 
                       return ListView.builder(
                         padding: const EdgeInsets.all(16),
-                        itemCount: docs.length,
+                        itemCount: requests.length,
                         itemBuilder: (context, index) {
-                          final data =
-                              docs[index].data() as Map<String, dynamic>;
+                          final request = requests[index];
 
                           return _waitingCard(
-                            residentName: data["residentName"],
-                            docId: docs[index].id,
+                            name: request["name"],
+                            docId: request["id"],
+                            type: request["type"],
+                            status: request["status"],
                           );
                         },
                       );
@@ -127,24 +291,88 @@ class _AuthorityWaitingListPageState extends State<AuthorityWaitingListPage> {
     );
   }
 
-  // ✅ WAITING CARD
-  Widget _waitingCard({required String residentName, required String docId}) {
+  // ✅ WAITING/ACTIVE CARD
+  Widget _waitingCard({
+    required String name,
+    required String docId,
+    required String type,
+    required String status,
+  }) {
+    final bool isWorker = type == "worker";
+    final bool isActive = status == "active";
+    final String collection = isWorker
+        ? "worker_support_requests"
+        : "support_requests";
+
     return GestureDetector(
       onTap: () async {
-        // ✅ MARK AS ACTIVE
-        await FirebaseFirestore.instance
-            .collection("support_requests")
-            .doc(docId)
-            .update({"status": "active"});
+        // ✅ MARK AS ACTIVE (only if waiting)
+        if (!isActive) {
+          await FirebaseFirestore.instance
+              .collection(collection)
+              .doc(docId)
+              .update({"status": "active"});
+
+          // ✅ SEND NOTIFICATION TO WORKER
+          if (isWorker) {
+            try {
+              // Get worker ID from the request
+              final requestDoc = await FirebaseFirestore.instance
+                  .collection(collection)
+                  .doc(docId)
+                  .get();
+
+              final workerId = requestDoc.data()?["workerId"];
+              if (workerId != null) {
+                await FirebaseFirestore.instance.collection("notifications").add({
+                  "toUid": workerId,
+                  "toRole": "worker",
+                  "title": "Authority Connected",
+                  "message":
+                      "Authority has joined your chat. You can now talk with them.",
+                  "isRead": false,
+                  "timestamp": FieldValue.serverTimestamp(),
+                });
+                print("✅ Notification sent to worker: $workerId");
+              }
+            } catch (e) {
+              print("⚠️ Error sending notification to worker: $e");
+            }
+          } else {
+            // Send notification to resident
+            try {
+              final requestDoc = await FirebaseFirestore.instance
+                  .collection(collection)
+                  .doc(docId)
+                  .get();
+
+              final residentId = requestDoc.data()?["residentId"];
+              if (residentId != null) {
+                await FirebaseFirestore.instance.collection("notifications").add({
+                  "toUid": residentId,
+                  "toRole": "user",
+                  "title": "Authority Connected",
+                  "message":
+                      "Authority has joined your chat. You can now talk with them.",
+                  "isRead": false,
+                  "timestamp": FieldValue.serverTimestamp(),
+                });
+                print("✅ Notification sent to resident: $residentId");
+              }
+            } catch (e) {
+              print("⚠️ Error sending notification to resident: $e");
+            }
+          }
+        }
 
         // ✅ OPEN AUTHORITY CHAT
-
         Navigator.push(
           context,
           MaterialPageRoute(
             builder: (_) => AuthorityChatPage(
               conversationId: docId,
-              residentName: residentName,
+              userName: name,
+              userType: type,
             ),
           ),
         );
@@ -169,36 +397,52 @@ class _AuthorityWaitingListPageState extends State<AuthorityWaitingListPage> {
             Container(
               width: 46,
               height: 46,
-              decoration: const BoxDecoration(
-                color: Color(0xFF6EA7A0),
+              decoration: BoxDecoration(
+                color: isWorker
+                    ? const Color(0xFFE7DFFC)
+                    : const Color(0xFF6EA7A0),
                 shape: BoxShape.circle,
               ),
-              child: const Icon(Icons.person, color: Colors.white),
+              child: Icon(
+                isWorker ? Icons.engineering : Icons.person,
+                color: Colors.white,
+              ),
             ),
 
             const SizedBox(width: 12),
 
-            // Name
+            // Name and Type
             Expanded(
-              child: Text(
-                residentName,
-                style: const TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w700,
-                ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    name,
+                    style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  Text(
+                    isWorker ? "Worker" : "Resident",
+                    style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                  ),
+                ],
               ),
             ),
 
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
               decoration: BoxDecoration(
-                color: Colors.orange.withOpacity(0.15),
+                color: isActive
+                    ? Colors.green.withOpacity(0.15)
+                    : Colors.orange.withOpacity(0.15),
                 borderRadius: BorderRadius.circular(16),
               ),
-              child: const Text(
-                "WAITING",
+              child: Text(
+                isActive ? "ACTIVE" : "WAITING",
                 style: TextStyle(
-                  color: Colors.orange,
+                  color: isActive ? Colors.green : Colors.orange,
                   fontWeight: FontWeight.w700,
                 ),
               ),

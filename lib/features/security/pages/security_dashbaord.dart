@@ -2,9 +2,17 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 import '../../../approval_guard.dart';
 import '../../../notice_board.dart';
+import '../../shared/widgets/profile_sidebar.dart';
 
-class SecurityDashboardPage extends StatelessWidget {
+class SecurityDashboardPage extends StatefulWidget {
   const SecurityDashboardPage({super.key});
+
+  @override
+  State<SecurityDashboardPage> createState() => _SecurityDashboardPageState();
+}
+
+class _SecurityDashboardPageState extends State<SecurityDashboardPage> {
+  bool _isProfileOpen = false;
 
   @override
   Widget build(BuildContext context) {
@@ -32,14 +40,6 @@ class SecurityDashboardPage extends StatelessWidget {
                     // Top bar
                     Row(
                       children: [
-                        _RoundGlassButton(
-                          icon: Icons.arrow_back_ios_new_rounded,
-                          onTap: () {
-                            Navigator.maybePop(context);
-                          },
-                        ),
-                        const SizedBox(width: 12),
-
                         // Logo + text
                         Row(
                           children: [
@@ -85,7 +85,9 @@ class SecurityDashboardPage extends StatelessWidget {
 
                         _RoundGlassButton(
                           icon: Icons.person_rounded,
-                          onTap: () {},
+                          onTap: () {
+                            setState(() => _isProfileOpen = true);
+                          },
                         ),
                       ],
                     ),
@@ -295,6 +297,28 @@ class SecurityDashboardPage extends StatelessWidget {
                 ),
               ),
             ),
+
+            // Profile sidebar
+            if (_isProfileOpen) ...[
+              Positioned.fill(
+                child: GestureDetector(
+                  onTap: () => setState(() => _isProfileOpen = false),
+                  child: Container(color: Colors.black.withOpacity(0.35)),
+                ),
+              ),
+              AnimatedPositioned(
+                duration: const Duration(milliseconds: 250),
+                curve: Curves.easeOut,
+                top: 0,
+                bottom: 0,
+                right: 0,
+                width: 280,
+                child: ProfileSidebar(
+                  userCollection: "security",
+                  onClose: () => setState(() => _isProfileOpen = false),
+                ),
+              ),
+            ],
           ],
         ),
       ),
