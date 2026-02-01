@@ -22,8 +22,19 @@ class _NotificationDropdownState extends State<NotificationDropdown> {
     _listenToUnreadCount();
   }
 
+  @override
+  void dispose() {
+    // Clean up overlay when widget is disposed
+    if (_overlay != null) {
+      _overlay!.remove();
+      _overlay = null;
+    }
+    super.dispose();
+  }
+
   void _listenToUnreadCount() {
     final uid = FirebaseAuth.instance.currentUser?.uid;
+    if (uid == null) return;
 
     Query query = FirebaseFirestore.instance
         .collection("notifications")
@@ -46,6 +57,7 @@ class _NotificationDropdownState extends State<NotificationDropdown> {
 
   Future<void> _markAllAsRead() async {
     final uid = FirebaseAuth.instance.currentUser?.uid;
+    if (uid == null && widget.role != "authority") return;
 
     try {
       QuerySnapshot notifications;
@@ -66,12 +78,15 @@ class _NotificationDropdownState extends State<NotificationDropdown> {
         return;
       }
 
-      // Mark all as read
+      // Mark all as read in batch
+      final batch = FirebaseFirestore.instance.batch();
       for (var doc in notifications.docs) {
-        await doc.reference.update({"isRead": true});
+        batch.update(doc.reference, {"isRead": true});
       }
+      await batch.commit();
     } catch (e) {
       // Silently handle error
+      debugPrint("Error marking notifications as read: $e");
     }
   }
 
@@ -89,6 +104,7 @@ class _NotificationDropdownState extends State<NotificationDropdown> {
 
   Future<void> _clearAllNotifications() async {
     final uid = FirebaseAuth.instance.currentUser?.uid;
+    if (uid == null && widget.role != "authority") return;
 
     try {
       QuerySnapshot notifications;
@@ -107,15 +123,18 @@ class _NotificationDropdownState extends State<NotificationDropdown> {
         return;
       }
 
-      // Delete all notifications
+      // Delete all notifications in batch
+      final batch = FirebaseFirestore.instance.batch();
       for (var doc in notifications.docs) {
-        await doc.reference.delete();
+        batch.delete(doc.reference);
       }
+      await batch.commit();
 
       // Close overlay after clearing
       if (_overlay != null) {
         _overlay!.remove();
         _overlay = null;
+        setState(() {});
       }
 
       if (mounted) {
@@ -141,18 +160,21 @@ class _NotificationDropdownState extends State<NotificationDropdown> {
   OverlayEntry _createOverlay() {
     final uid = FirebaseAuth.instance.currentUser?.uid;
 
-    Query query = FirebaseFirestore.instance
-        .collection("notifications")
-        .orderBy("timestamp", descending: true)
-        .limit(6);
+    // Build query based on role
+    Query query = FirebaseFirestore.instance.collection("notifications");
 
-    if (widget.role == "user") {
-      query = query.where("toUid", isEqualTo: uid);
+    if (widget.role == "user" || widget.role == "worker") {
+      if (uid != null) {
+        query = query
+            .where("toUid", isEqualTo: uid)
+            .orderBy("timestamp", descending: true)
+            .limit(20);
+      }
     } else if (widget.role == "authority") {
-      query = query.where("toRole", isEqualTo: "authority");
-    } else if (widget.role == "worker") {
-      // Workers should only see notifications specifically sent to them
-      query = query.where("toUid", isEqualTo: uid);
+      query = query
+          .where("toRole", isEqualTo: "authority")
+          .orderBy("timestamp", descending: true)
+          .limit(20);
     }
 
     return OverlayEntry(
@@ -262,37 +284,45 @@ class _NotificationDropdownState extends State<NotificationDropdown> {
 
                         const SizedBox(height: 12),
 
-                        Expanded(
+                        Flexible(
                           child: StreamBuilder<QuerySnapshot>(
                             stream: query.snapshots(),
                             builder: (_, snap) {
-                              if (!snap.hasData) {
+                              if (snap.connectionState ==
+                                  ConnectionState.waiting) {
                                 return const Padding(
                                   padding: EdgeInsets.all(20),
-                                  child: CircularProgressIndicator(),
+                                  child: Center(
+                                    child: CircularProgressIndicator(),
+                                  ),
                                 );
                               }
 
-                              final docs = snap.data!.docs; // ✅ ADD THIS LINE
-
-                              if (docs.isEmpty) {
+                              if (!snap.hasData || snap.data!.docs.isEmpty) {
                                 return const Padding(
                                   padding: EdgeInsets.all(20),
-                                  child: Text(
-                                    "No notifications",
-                                    style: TextStyle(
-                                      fontSize: 14,
-                                      color: Colors.black54,
+                                  child: Center(
+                                    child: Text(
+                                      "No notifications",
+                                      style: TextStyle(
+                                        fontSize: 14,
+                                        color: Colors.black54,
+                                        decoration: TextDecoration.none,
+                                      ),
                                     ),
                                   ),
                                 );
                               }
 
-                              return ListView(
+                              final docs = snap.data!.docs;
+
+                              return ListView.builder(
                                 shrinkWrap: true,
-                                children: docs.map((doc) {
+                                itemCount: docs.length,
+                                itemBuilder: (context, index) {
                                   final data =
-                                      doc.data() as Map<String, dynamic>;
+                                      docs[index].data()
+                                          as Map<String, dynamic>;
                                   final isRead = data["isRead"] ?? false;
 
                                   return Opacity(
@@ -396,7 +426,7 @@ class _NotificationDropdownState extends State<NotificationDropdown> {
                                       ),
                                     ),
                                   );
-                                }).toList(),
+                                },
                               );
                             },
                           ),

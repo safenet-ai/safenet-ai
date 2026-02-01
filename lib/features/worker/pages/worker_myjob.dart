@@ -1,5 +1,6 @@
 import 'dart:ui';
 import 'dart:typed_data';
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter_image_compress/flutter_image_compress.dart';
@@ -141,6 +142,8 @@ class _WorkerMyJobsPageState extends State<WorkerMyJobsPage> {
     required Map<String, dynamic> job,
     required String jobId,
   }) {
+    final isWastePickup = job["_jobType"] == "waste";
+
     showDialog(
       context: context,
       barrierColor: Colors.black.withOpacity(0.35),
@@ -162,10 +165,12 @@ class _WorkerMyJobsPageState extends State<WorkerMyJobsPage> {
                       // -------- TITLE --------
                       Center(
                         child: Text(
-                          job["title"] ?? "No Title",
-                          textAlign: TextAlign.center, // Center for long titles
+                          isWastePickup
+                              ? "Waste Pickup"
+                              : (job["title"] ?? "No Title"),
+                          textAlign: TextAlign.center,
                           style: const TextStyle(
-                            fontSize: 32, // Slightly reduced to fit better
+                            fontSize: 32,
                             fontWeight: FontWeight.w900,
                           ),
                         ),
@@ -173,41 +178,84 @@ class _WorkerMyJobsPageState extends State<WorkerMyJobsPage> {
 
                       const SizedBox(height: 20),
 
-                      _popupInfoRow("Service ID", job["service_id"] ?? ""),
-                      const SizedBox(height: 12),
-                      _popupInfoRow("Resident", job["username"] ?? ""),
-                      const SizedBox(height: 12),
+                      if (isWastePickup) ...[
+                        _popupInfoRow("Pickup ID", job["pickup_id"] ?? ""),
+                        const SizedBox(height: 12),
+                        _popupInfoRow("Resident", job["username"] ?? ""),
+                        const SizedBox(height: 12),
+                        _popupInfoRow("Waste Type", job["wasteType"] ?? ""),
+                        const SizedBox(height: 12),
+                        _popupInfoRow("Pickup Date", job["date"] ?? ""),
+                        const SizedBox(height: 12),
+                        _popupInfoRow("Pickup Time", job["time"] ?? ""),
+                        const SizedBox(height: 12),
 
-                      // -------- DESCRIPTION (FIXED OVERFLOW) --------
-                      Row(
-                        crossAxisAlignment:
-                            CrossAxisAlignment.start, // Align label to top
-                        children: [
-                          const SizedBox(
-                            width: 100, // Fixed width for labels
-                            child: Text(
-                              "Description :",
-                              style: TextStyle(
-                                fontWeight: FontWeight.w700,
-                                fontSize: 16,
-                                color: Colors.black,
+                        // Note for waste pickup
+                        if (job["note"] != null && job["note"].isNotEmpty) ...[
+                          Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const SizedBox(
+                                width: 100,
+                                child: Text(
+                                  "Note :",
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.w700,
+                                    fontSize: 16,
+                                    color: Colors.black,
+                                  ),
+                                ),
                               ),
-                            ),
-                          ),
-                          const SizedBox(width: 5),
-                          Expanded(
-                            // ✅ FIX: This forces the text to wrap to the next line
-                            child: Text(
-                              job["description"] ?? "No description provided.",
-                              style: const TextStyle(
-                                fontSize: 15,
-                                color: Colors.black87,
-                                height: 1.4, // Better readability
+                              const SizedBox(width: 5),
+                              Expanded(
+                                child: Text(
+                                  job["note"],
+                                  style: const TextStyle(
+                                    fontSize: 15,
+                                    color: Colors.black87,
+                                    height: 1.4,
+                                  ),
+                                ),
                               ),
-                            ),
+                            ],
                           ),
                         ],
-                      ),
+                      ] else ...[
+                        _popupInfoRow("Service ID", job["service_id"] ?? ""),
+                        const SizedBox(height: 12),
+                        _popupInfoRow("Resident", job["username"] ?? ""),
+                        const SizedBox(height: 12),
+
+                        // -------- DESCRIPTION (FIXED OVERFLOW) --------
+                        Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const SizedBox(
+                              width: 100,
+                              child: Text(
+                                "Description :",
+                                style: TextStyle(
+                                  fontWeight: FontWeight.w700,
+                                  fontSize: 16,
+                                  color: Colors.black,
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 5),
+                            Expanded(
+                              child: Text(
+                                job["description"] ??
+                                    "No description provided.",
+                                style: const TextStyle(
+                                  fontSize: 15,
+                                  color: Colors.black87,
+                                  height: 1.4,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
 
                       const SizedBox(height: 20),
 
@@ -229,10 +277,7 @@ class _WorkerMyJobsPageState extends State<WorkerMyJobsPage> {
                           children: List.generate(job["files"].length, (index) {
                             final url = job["files"][index];
                             return GestureDetector(
-                              onTap: () => _showFullScreenImage(
-                                context,
-                                url,
-                              ), // ✅ TAP TO ENLARGE
+                              onTap: () => _showFullScreenImage(context, url),
                               child: ClipRRect(
                                 borderRadius: BorderRadius.circular(12),
                                 child: Image.network(
@@ -438,6 +483,74 @@ class _WorkerMyJobsPageState extends State<WorkerMyJobsPage> {
     setState(() {});
   }
 
+  // Combine service requests and waste pickups into one stream
+  Stream<List<Map<String, dynamic>>> _getCombinedJobsStream(String workerId) {
+    final controller = StreamController<List<Map<String, dynamic>>>();
+
+    List<Map<String, dynamic>> serviceJobs = [];
+    List<Map<String, dynamic>> wasteJobs = [];
+
+    // Listen to service requests
+    final serviceSub = FirebaseFirestore.instance
+        .collection("service_requests")
+        .where("assignedWorker.id", isEqualTo: workerId)
+        .where("status", whereIn: ["Pending", "Assigned", "Started"])
+        .snapshots()
+        .listen((snapshot) {
+          serviceJobs = snapshot.docs.map((doc) {
+            var data = doc.data();
+            data["_docId"] = doc.id;
+            data["_jobType"] = "service";
+            return data;
+          }).toList();
+
+          _emitCombinedJobs(controller, serviceJobs, wasteJobs);
+        });
+
+    // Listen to waste pickups
+    final wasteSub = FirebaseFirestore.instance
+        .collection("waste_pickups")
+        .where("assignedWorkerId", isEqualTo: workerId)
+        .where("status", isEqualTo: "Pending")
+        .snapshots()
+        .listen((snapshot) {
+          wasteJobs = snapshot.docs.map((doc) {
+            var data = doc.data();
+            data["_docId"] = doc.id;
+            data["_jobType"] = "waste";
+            return data;
+          }).toList();
+
+          _emitCombinedJobs(controller, serviceJobs, wasteJobs);
+        });
+
+    controller.onCancel = () {
+      serviceSub.cancel();
+      wasteSub.cancel();
+    };
+
+    return controller.stream;
+  }
+
+  void _emitCombinedJobs(
+    StreamController<List<Map<String, dynamic>>> controller,
+    List<Map<String, dynamic>> serviceJobs,
+    List<Map<String, dynamic>> wasteJobs,
+  ) {
+    List<Map<String, dynamic>> allJobs = [...serviceJobs, ...wasteJobs];
+
+    // Sort by timestamp
+    allJobs.sort((a, b) {
+      final aTime = (a["timestamp"] as Timestamp?)?.millisecondsSinceEpoch ?? 0;
+      final bTime = (b["timestamp"] as Timestamp?)?.millisecondsSinceEpoch ?? 0;
+      return bTime.compareTo(aTime);
+    });
+
+    if (!controller.isClosed) {
+      controller.add(allJobs);
+    }
+  }
+
   @override
   void initState() {
     super.initState();
@@ -504,17 +617,8 @@ class _WorkerMyJobsPageState extends State<WorkerMyJobsPage> {
                 Expanded(
                   child: workerId == null
                       ? const Center(child: CircularProgressIndicator())
-                      : StreamBuilder<QuerySnapshot>(
-                          stream: FirebaseFirestore.instance
-                              .collection("service_requests")
-                              .where("assignedWorker.id", isEqualTo: workerId)
-                              .where(
-                                "status",
-                                whereIn: ["Pending", "Assigned", "Started"],
-                              )
-                              .orderBy("timestamp", descending: true)
-                              .snapshots(),
-
+                      : StreamBuilder<List<Map<String, dynamic>>>(
+                          stream: _getCombinedJobsStream(workerId!),
                           builder: (context, snapshot) {
                             if (!snapshot.hasData) {
                               return const Center(
@@ -522,9 +626,9 @@ class _WorkerMyJobsPageState extends State<WorkerMyJobsPage> {
                               );
                             }
 
-                            final docs = snapshot.data!.docs;
+                            final jobs = snapshot.data!;
 
-                            if (docs.isEmpty) {
+                            if (jobs.isEmpty) {
                               return const Center(
                                 child: Text("No jobs assigned"),
                               );
@@ -535,7 +639,7 @@ class _WorkerMyJobsPageState extends State<WorkerMyJobsPage> {
                               padding: const EdgeInsets.symmetric(
                                 horizontal: 20,
                               ),
-                              itemCount: docs.length + 1,
+                              itemCount: jobs.length + 1,
                               itemBuilder: (context, index) {
                                 if (index == 0) {
                                   return const Padding(
@@ -558,17 +662,14 @@ class _WorkerMyJobsPageState extends State<WorkerMyJobsPage> {
                                   );
                                 }
 
-                                final job =
-                                    docs[index - 1].data()
-                                        as Map<String, dynamic>;
-                                final docId = docs[index - 1].id;
+                                final job = jobs[index - 1];
 
                                 return GestureDetector(
                                   onTap: () {
                                     _showJobDetailsPopup(
                                       context,
                                       job: job,
-                                      jobId: docId,
+                                      jobId: job["_docId"] ?? "",
                                     );
                                   },
                                   child: _jobCardFromFirestore(job),
@@ -621,6 +722,8 @@ class _WorkerMyJobsPageState extends State<WorkerMyJobsPage> {
 
   // ================= JOB CARD =================
   Widget _jobCardFromFirestore(Map<String, dynamic> job) {
+    final isWastePickup = job["_jobType"] == "waste";
+
     return Container(
       margin: const EdgeInsets.only(bottom: 18),
       padding: const EdgeInsets.all(18),
@@ -646,17 +749,28 @@ class _WorkerMyJobsPageState extends State<WorkerMyJobsPage> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    _infoRow("Req ID", job["service_id"]),
-                    _infoRow("Resident", job["username"]),
-                    _infoRow("Service Type", job["title"]),
-                    _infoRow("Worker", job["assignedWorker"]?["name"] ?? "—"),
-                    _infoRow(
-                      "Date",
-                      (job["timestamp"] as Timestamp)
-                          .toDate()
-                          .toString()
-                          .substring(0, 10),
-                    ),
+                    if (isWastePickup) ...[
+                      _infoRow("Pickup ID", job["pickup_id"]),
+                      _infoRow("Resident", job["username"]),
+                      _infoRow("Waste Type", job["wasteType"]),
+                      _infoRow("Worker", job["assignedWorker"] ?? "—"),
+                      _infoRow("Pickup Date", job["date"] ?? "N/A"),
+                      _infoRow("Pickup Time", job["time"] ?? "N/A"),
+                    ] else ...[
+                      _infoRow("Req ID", job["service_id"]),
+                      _infoRow("Resident", job["username"]),
+                      _infoRow("Service Type", job["title"]),
+                      _infoRow("Worker", job["assignedWorker"]?["name"] ?? "—"),
+                      _infoRow(
+                        "Date",
+                        job["timestamp"] != null
+                            ? (job["timestamp"] as Timestamp)
+                                  .toDate()
+                                  .toString()
+                                  .substring(0, 10)
+                            : "N/A",
+                      ),
+                    ],
                   ],
                 ),
               ),
@@ -749,7 +863,49 @@ class _WorkerMyJobsPageState extends State<WorkerMyJobsPage> {
     void Function(VoidCallback fn) dialogSetState,
   ) {
     final status = job["status"];
+    final isWastePickup = job["_jobType"] == "waste";
 
+    // FOR WASTE PICKUPS - Only show complete button
+    if (isWastePickup && status == "Pending") {
+      return SizedBox(
+        width: double.infinity,
+        height: 45,
+        child: ElevatedButton(
+          style: ElevatedButton.styleFrom(
+            backgroundColor: const Color(0xFFBBF3C1),
+            foregroundColor: Colors.black87,
+            elevation: 0,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(18),
+            ),
+          ),
+          onPressed: () async {
+            await FirebaseFirestore.instance
+                .collection("waste_pickups")
+                .doc(jobId)
+                .update({
+                  "status": "Completed",
+                  "completedAt": FieldValue.serverTimestamp(),
+                });
+
+            if (context.mounted) {
+              Navigator.pop(context);
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text("Waste pickup marked as completed"),
+                ),
+              );
+            }
+          },
+          child: const Text(
+            "Mark as Completed",
+            style: TextStyle(fontWeight: FontWeight.w700),
+          ),
+        ),
+      );
+    }
+
+    // FOR SERVICE REQUESTS - Existing logic
     // START JOB OR REJECT
     if (status == "Assigned" && job["isStarted"] != true) {
       return Column(

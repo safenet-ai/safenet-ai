@@ -90,11 +90,11 @@ class _AuthorityWasteManagementPageState
                               selected: selectedFilter,
                               tabs: [
                                 FilterTabItem("All", Icons.apps),
-                                FilterTabItem("Pending", Icons.access_time),
                                 FilterTabItem(
                                   "Scheduled",
                                   Icons.event_available,
                                 ),
+                                FilterTabItem("Pending", Icons.access_time),
                                 FilterTabItem("Completed", Icons.check_circle),
                               ],
                               onChanged: (index, label) {
@@ -118,16 +118,16 @@ class _AuthorityWasteManagementPageState
                                 setState(() {
                                   selectedFilter = switch (index) {
                                     0 => "All",
-                                    1 => "Pending",
-                                    2 => "Scheduled",
+                                    1 => "Scheduled",
+                                    2 => "Pending",
                                     _ => "Completed",
                                   };
                                 });
                               },
                               children: [
                                 _firestoreList("All"),
-                                _firestoreList("Pending"),
                                 _firestoreList("Scheduled"),
+                                _firestoreList("Pending"),
                                 _firestoreList("Completed"),
                               ],
                             ),
@@ -220,6 +220,9 @@ class _AuthorityWasteManagementPageState
                     ? _formatDate(data["timestamp"])
                     : "N/A",
               ),
+              if (data["assignedWorker"] != null) ...[
+                _detailRow("Assigned Worker", data["assignedWorker"]),
+              ],
               const SizedBox(height: 12),
               const Text(
                 "Additional Notes:",
@@ -239,24 +242,6 @@ class _AuthorityWasteManagementPageState
                   children: [
                     ElevatedButton.icon(
                       onPressed: () {
-                        _updateStatus(docId, "Scheduled");
-                        Navigator.pop(context);
-                      },
-                      icon: const Icon(Icons.event_available),
-                      label: const Text("Schedule"),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF4CAF50),
-                        foregroundColor: Colors.white,
-                      ),
-                    ),
-                  ],
-                ),
-              ] else if (data["status"] == "Scheduled") ...[
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                  children: [
-                    ElevatedButton.icon(
-                      onPressed: () {
                         _updateStatus(docId, "Completed");
                         Navigator.pop(context);
                       },
@@ -269,12 +254,213 @@ class _AuthorityWasteManagementPageState
                     ),
                   ],
                 ),
+              ] else if (data["status"] == "Scheduled") ...[
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                  children: [
+                    ElevatedButton.icon(
+                      onPressed: () {
+                        Navigator.pop(context);
+                        _showAssignWorkerDialog(context, docId, data);
+                      },
+                      icon: const Icon(Icons.person_add),
+                      label: const Text("Assign Worker"),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF4CAF50),
+                        foregroundColor: Colors.white,
+                      ),
+                    ),
+                  ],
+                ),
               ],
             ],
           ),
         ),
       ),
     );
+  }
+
+  void _showAssignWorkerDialog(
+    BuildContext context,
+    String docId,
+    Map<String, dynamic> data,
+  ) {
+    String? selectedWorker;
+
+    showDialog(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setDialogState) {
+          return Dialog(
+            backgroundColor: Colors.white.withOpacity(0.95),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(24),
+            ),
+            child: Padding(
+              padding: const EdgeInsets.all(24),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Text(
+                        "Assign Cleaner Worker",
+                        style: TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.w900,
+                        ),
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.close),
+                        onPressed: () => Navigator.pop(context),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 20),
+                  _detailRow("Pickup ID", data["pickup_id"] ?? "N/A"),
+                  _detailRow("Waste Type", data["wasteType"] ?? "N/A"),
+                  const SizedBox(height: 20),
+                  const Text(
+                    "Select Worker:",
+                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                  ),
+                  const SizedBox(height: 12),
+                  StreamBuilder<QuerySnapshot>(
+                    stream: FirebaseFirestore.instance
+                        .collection("workers")
+                        .where("profession", isEqualTo: "Cleaner")
+                        .where("approvalStatus", isEqualTo: "approved")
+                        .snapshots(),
+                    builder: (context, snapshot) {
+                      if (snapshot.connectionState == ConnectionState.waiting) {
+                        return const Center(child: CircularProgressIndicator());
+                      }
+
+                      if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+                        return const Text(
+                          "No approved cleaner workers available",
+                          style: TextStyle(color: Colors.black54),
+                        );
+                      }
+
+                      final workers = snapshot.data!.docs;
+
+                      return Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 12),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: Colors.grey.shade300),
+                        ),
+                        child: DropdownButtonHideUnderline(
+                          child: DropdownButton<String>(
+                            value: selectedWorker,
+                            isExpanded: true,
+                            hint: const Text("Select a cleaner worker"),
+                            items: workers.map((doc) {
+                              final workerData =
+                                  doc.data() as Map<String, dynamic>;
+                              final workerId = doc.id;
+                              final workerName =
+                                  workerData["username"] ?? "Worker";
+                              return DropdownMenuItem<String>(
+                                value: workerId,
+                                child: Text(workerName),
+                              );
+                            }).toList(),
+                            onChanged: (value) {
+                              setDialogState(() {
+                                selectedWorker = value;
+                              });
+                            },
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                  const SizedBox(height: 24),
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton(
+                      onPressed: selectedWorker == null
+                          ? null
+                          : () async {
+                              await _assignWorkerAndUpdateStatus(
+                                docId,
+                                selectedWorker!,
+                              );
+                              if (context.mounted) {
+                                Navigator.pop(context);
+                              }
+                            },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF4CAF50),
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                      child: const Text(
+                        "Assign & Move to Pending",
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  Future<void> _assignWorkerAndUpdateStatus(
+    String docId,
+    String workerId,
+  ) async {
+    try {
+      // Get worker name
+      final workerDoc = await FirebaseFirestore.instance
+          .collection("workers")
+          .doc(workerId)
+          .get();
+
+      String workerName = "Worker";
+      if (workerDoc.exists && workerDoc.data()?['username'] != null) {
+        workerName = workerDoc.data()!['username'];
+      }
+
+      // Update waste pickup with worker and change status to Pending
+      await FirebaseFirestore.instance
+          .collection("waste_pickups")
+          .doc(docId)
+          .update({
+            "assignedWorker": workerName,
+            "assignedWorkerId": workerId,
+            "status": "Pending",
+          });
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text("Assigned to $workerName and moved to Pending"),
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text("Error assigning worker: $e")));
+      }
+    }
   }
 
   Future<void> _updateStatus(String docId, String newStatus) async {

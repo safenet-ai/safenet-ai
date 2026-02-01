@@ -6,6 +6,7 @@ import '../../shared/widgets/notification_dropdown.dart';
 import '../../../approval_guard.dart';
 import './worker_myjob.dart';
 import './worker_work_history.dart';
+import './worker_chat.dart';
 import '../../../notice_board.dart';
 //import 'test.dart';
 
@@ -191,14 +192,18 @@ class _WorkerDashboardPageState extends State<WorkerDashboardPage> {
                           Expanded(
                             child: GestureDetector(
                               onTap: () {
-                                // TODO: Navigate to New Requests page
-                                //Navigator.push(context, MaterialPageRoute(builder: (_) => MyComplaintsPage()));
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (_) => WorkerHistoryPage(),
+                                  ),
+                                );
                               },
                               child: WorkerTile(
                                 color: const Color(0xFFE7DFFC),
-                                icon: Icons.notifications_active_outlined,
-                                title: "New Requests",
-                                subtitle: "Incoming requests to approve.",
+                                icon: Icons.history,
+                                title: "Work History",
+                                subtitle: "Track completed tasks.",
                               ),
                             ),
                           ),
@@ -212,8 +217,12 @@ class _WorkerDashboardPageState extends State<WorkerDashboardPage> {
                           Expanded(
                             child: GestureDetector(
                               onTap: () {
-                                // TODO: Navigate to Worker Chat page
-                                //Navigator.push(context, MaterialPageRoute(builder: (_) => WorkerHistoryPage()));
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (_) => WorkerChatPage(),
+                                  ),
+                                );
                               },
                               child: WorkerTile(
                                 color: const Color(0xFFFCE3F1),
@@ -239,43 +248,12 @@ class _WorkerDashboardPageState extends State<WorkerDashboardPage> {
                                 );
                               },
                               child: WorkerTile(
-                                color: const Color(0xFFFFE5B4),
+                                color: const Color(0xFFDAF5E8),
                                 icon: Icons.campaign_outlined,
                                 title: "Notice Board",
                                 subtitle: "View announcements.",
                               ),
                             ),
-                          ),
-                        ],
-                      ),
-
-                      const SizedBox(height: 20),
-
-                      Row(
-                        children: [
-                          Expanded(
-                            child: GestureDetector(
-                              onTap: () {
-                                // TODO: Navigate to Work History page
-                                Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder: (_) => WorkerHistoryPage(),
-                                  ),
-                                );
-                              },
-                              child: WorkerTile(
-                                color: const Color(0xFFDAF5E8),
-                                icon: Icons.history,
-                                title: "Work History",
-                                subtitle: "Track completed tasks.",
-                              ),
-                            ),
-                          ),
-                          const SizedBox(width: 20),
-                          Expanded(
-                            child:
-                                Container(), // Empty placeholder for symmetry
                           ),
                         ],
                       ),

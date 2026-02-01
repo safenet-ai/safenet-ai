@@ -210,7 +210,11 @@ class _NoticeBoardPageState extends State<NoticeBoardPage> {
                       Row(
                         children: [
                           NotificationDropdown(
-                            role: widget.role == "users" ? "user" : widget.role,
+                            role: widget.role == "users"
+                                ? "user"
+                                : widget.role == "workers"
+                                ? "worker"
+                                : widget.role,
                           ),
                           const SizedBox(width: 12),
                           GestureDetector(

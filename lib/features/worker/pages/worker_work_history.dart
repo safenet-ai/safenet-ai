@@ -1,4 +1,5 @@
 import 'dart:ui';
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -25,6 +26,74 @@ class _WorkerHistoryPageState extends State<WorkerHistoryPage> {
   Future<void> _loadWorkerId() async {
     workerId = FirebaseAuth.instance.currentUser?.uid;
     setState(() {});
+  }
+
+  // Combine completed service requests and waste pickups
+  Stream<List<Map<String, dynamic>>> _getCompletedJobsStream(String workerId) {
+    final controller = StreamController<List<Map<String, dynamic>>>();
+
+    List<Map<String, dynamic>> serviceJobs = [];
+    List<Map<String, dynamic>> wasteJobs = [];
+
+    // Listen to completed service requests
+    final serviceSub = FirebaseFirestore.instance
+        .collection("service_requests")
+        .where("assignedWorker.id", isEqualTo: workerId)
+        .where("status", isEqualTo: "Completed")
+        .snapshots()
+        .listen((snapshot) {
+          serviceJobs = snapshot.docs.map((doc) {
+            var data = doc.data();
+            data["_docId"] = doc.id;
+            data["_jobType"] = "service";
+            return data;
+          }).toList();
+
+          _emitCompletedJobs(controller, serviceJobs, wasteJobs);
+        });
+
+    // Listen to completed waste pickups
+    final wasteSub = FirebaseFirestore.instance
+        .collection("waste_pickups")
+        .where("assignedWorkerId", isEqualTo: workerId)
+        .where("status", isEqualTo: "Completed")
+        .snapshots()
+        .listen((snapshot) {
+          wasteJobs = snapshot.docs.map((doc) {
+            var data = doc.data();
+            data["_docId"] = doc.id;
+            data["_jobType"] = "waste";
+            return data;
+          }).toList();
+
+          _emitCompletedJobs(controller, serviceJobs, wasteJobs);
+        });
+
+    controller.onCancel = () {
+      serviceSub.cancel();
+      wasteSub.cancel();
+    };
+
+    return controller.stream;
+  }
+
+  void _emitCompletedJobs(
+    StreamController<List<Map<String, dynamic>>> controller,
+    List<Map<String, dynamic>> serviceJobs,
+    List<Map<String, dynamic>> wasteJobs,
+  ) {
+    List<Map<String, dynamic>> allJobs = [...serviceJobs, ...wasteJobs];
+
+    // Sort by timestamp (most recent first)
+    allJobs.sort((a, b) {
+      final aTime = (a["timestamp"] as Timestamp?)?.millisecondsSinceEpoch ?? 0;
+      final bTime = (b["timestamp"] as Timestamp?)?.millisecondsSinceEpoch ?? 0;
+      return bTime.compareTo(aTime);
+    });
+
+    if (!controller.isClosed) {
+      controller.add(allJobs);
+    }
   }
 
   // ================= HELPER: SHOW FULL SCREEN IMAGE =================
@@ -63,6 +132,8 @@ class _WorkerHistoryPageState extends State<WorkerHistoryPage> {
 
   // ================= HISTORY DETAILS POPUP =================
   void _showHistoryPopup(BuildContext context, Map<String, dynamic> job) {
+    final isWastePickup = job["_jobType"] == "waste";
+
     showDialog(
       context: context,
       barrierColor: Colors.black.withOpacity(0.35),
@@ -94,7 +165,9 @@ class _WorkerHistoryPageState extends State<WorkerHistoryPage> {
                   const SizedBox(height: 10),
                   Center(
                     child: Text(
-                      job["title"] ?? "No Title",
+                      isWastePickup
+                          ? "Waste Pickup"
+                          : (job["title"] ?? "No Title"),
                       textAlign: TextAlign.center,
                       style: const TextStyle(
                         fontSize: 28,
@@ -105,7 +178,7 @@ class _WorkerHistoryPageState extends State<WorkerHistoryPage> {
                   ),
                   const Divider(height: 40, thickness: 1),
 
-                  // -------- ORIGINAL REQUEST DETAILS --------
+                  // -------- REQUEST DETAILS --------
                   const Text(
                     "Request Details",
                     style: TextStyle(
@@ -115,159 +188,203 @@ class _WorkerHistoryPageState extends State<WorkerHistoryPage> {
                     ),
                   ),
                   const SizedBox(height: 15),
-                  _popupInfoRow("Service ID", job["service_id"] ?? ""),
-                  const SizedBox(height: 8),
-                  _popupInfoRow("Resident", job["username"] ?? ""),
-                  const SizedBox(height: 8),
-                  _popupInfoRow(
-                    "Date",
-                    (job["timestamp"] as Timestamp?)
-                            ?.toDate()
-                            .toString()
-                            .substring(0, 10) ??
-                        "",
-                  ),
-                  const SizedBox(height: 15),
 
-                  // Description
-                  Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const SizedBox(
-                        width: 110,
-                        child: Text(
-                          "Description:",
-                          style: TextStyle(
-                            fontWeight: FontWeight.w700,
-                            fontSize: 15,
+                  if (isWastePickup) ...[
+                    _popupInfoRow("Pickup ID", job["pickup_id"] ?? ""),
+                    const SizedBox(height: 8),
+                    _popupInfoRow("Resident", job["username"] ?? ""),
+                    const SizedBox(height: 8),
+                    _popupInfoRow("Waste Type", job["wasteType"] ?? ""),
+                    const SizedBox(height: 8),
+                    _popupInfoRow("Pickup Date", job["date"] ?? ""),
+                    const SizedBox(height: 8),
+                    _popupInfoRow("Pickup Time", job["time"] ?? ""),
+                    const SizedBox(height: 15),
+
+                    if (job["note"] != null && job["note"].isNotEmpty) ...[
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const SizedBox(
+                            width: 110,
+                            child: Text(
+                              "Note:",
+                              style: TextStyle(
+                                fontWeight: FontWeight.w700,
+                                fontSize: 15,
+                              ),
+                            ),
                           ),
-                        ),
-                      ),
-                      Expanded(
-                        child: Text(
-                          job["description"] ?? "No description.",
-                          style: const TextStyle(
-                            fontSize: 15,
-                            color: Colors.black87,
-                            height: 1.4,
+                          Expanded(
+                            child: Text(
+                              job["note"],
+                              style: const TextStyle(
+                                fontSize: 15,
+                                color: Colors.black87,
+                                height: 1.4,
+                              ),
+                            ),
                           ),
-                        ),
+                        ],
                       ),
                     ],
-                  ),
-
-                  // Resident Attachments
-                  if (job["files"] != null &&
-                      (job["files"] as List).isNotEmpty) ...[
-                    const SizedBox(height: 15),
-                    const Text(
-                      "Resident Attachments:",
-                      style: TextStyle(
-                        fontWeight: FontWeight.w700,
-                        fontSize: 15,
-                      ),
+                  ] else ...[
+                    _popupInfoRow("Service ID", job["service_id"] ?? ""),
+                    const SizedBox(height: 8),
+                    _popupInfoRow("Resident", job["username"] ?? ""),
+                    const SizedBox(height: 8),
+                    _popupInfoRow(
+                      "Date",
+                      (job["timestamp"] as Timestamp?)
+                              ?.toDate()
+                              .toString()
+                              .substring(0, 10) ??
+                          "",
                     ),
-                    const SizedBox(height: 10),
-                    _buildImageGrid(job["files"]),
+                    const SizedBox(height: 15),
+
+                    // Description
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const SizedBox(
+                          width: 110,
+                          child: Text(
+                            "Description:",
+                            style: TextStyle(
+                              fontWeight: FontWeight.w700,
+                              fontSize: 15,
+                            ),
+                          ),
+                        ),
+                        Expanded(
+                          child: Text(
+                            job["description"] ?? "No description.",
+                            style: const TextStyle(
+                              fontSize: 15,
+                              color: Colors.black87,
+                              height: 1.4,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+
+                    // Resident Attachments
+                    if (job["files"] != null &&
+                        (job["files"] as List).isNotEmpty) ...[
+                      const SizedBox(height: 15),
+                      const Text(
+                        "Resident Attachments:",
+                        style: TextStyle(
+                          fontWeight: FontWeight.w700,
+                          fontSize: 15,
+                        ),
+                      ),
+                      const SizedBox(height: 10),
+                      _buildImageGrid(job["files"]),
+                    ],
                   ],
 
                   const Divider(height: 40, thickness: 1),
 
-                  // -------- WORKER COMPLETION DETAILS --------
-                  const Text(
-                    "Work Completion Report",
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.green,
+                  // -------- WORKER COMPLETION DETAILS (Only for service requests) --------
+                  if (!isWastePickup) ...[
+                    const Text(
+                      "Work Completion Report",
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.green,
+                      ),
                     ),
-                  ),
-                  const SizedBox(height: 15),
+                    const SizedBox(height: 15),
 
-                  // Completion Date
-                  Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const SizedBox(
-                        width: 110,
-                        child: Text(
-                          "Completed At:",
-                          style: TextStyle(
-                            fontWeight: FontWeight.w700,
-                            fontSize: 15,
+                    // Completion Date
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const SizedBox(
+                          width: 110,
+                          child: Text(
+                            "Completed At:",
+                            style: TextStyle(
+                              fontWeight: FontWeight.w700,
+                              fontSize: 15,
+                            ),
                           ),
                         ),
-                      ),
-                      Expanded(
-                        child: Text(
-                          _formatCompletedDate(job),
-                          style: const TextStyle(
-                            fontSize: 15,
-                            color: Colors.black87,
-                            fontWeight: FontWeight.w600,
+                        Expanded(
+                          child: Text(
+                            _formatCompletedDate(job),
+                            style: const TextStyle(
+                              fontSize: 15,
+                              color: Colors.black87,
+                              fontWeight: FontWeight.w600,
+                            ),
                           ),
                         ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 15),
+                      ],
+                    ),
+                    const SizedBox(height: 15),
 
-                  // Completion Notes
-                  Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const SizedBox(
-                        width: 110,
-                        child: Text(
-                          "Work Notes:",
-                          style: TextStyle(
-                            fontWeight: FontWeight.w700,
-                            fontSize: 15,
+                    // Completion Notes
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const SizedBox(
+                          width: 110,
+                          child: Text(
+                            "Work Notes:",
+                            style: TextStyle(
+                              fontWeight: FontWeight.w700,
+                              fontSize: 15,
+                            ),
                           ),
                         ),
-                      ),
-                      Expanded(
-                        child: Text(
-                          job["workDescription"] ?? "No notes added.",
-                          style: const TextStyle(
-                            fontSize: 15,
-                            color: Colors.black87,
-                            fontStyle: FontStyle.italic,
-                            height: 1.4,
+                        Expanded(
+                          child: Text(
+                            job["workDescription"] ?? "No notes added.",
+                            style: const TextStyle(
+                              fontSize: 15,
+                              color: Colors.black87,
+                              fontStyle: FontStyle.italic,
+                              height: 1.4,
+                            ),
                           ),
                         ),
-                      ),
-                    ],
-                  ),
+                      ],
+                    ),
 
-                  // Completion Proof Images - check both new and old field names
-                  ...(() {
-                    final proofImages =
-                        job["completionFiles"] ?? job["workFiles"];
-                    if (proofImages != null &&
-                        (proofImages as List).isNotEmpty) {
-                      return [
-                        const SizedBox(height: 20),
-                        const Text(
-                          "Proof of Work:",
-                          style: TextStyle(
-                            fontWeight: FontWeight.w700,
-                            fontSize: 15,
+                    // Completion Proof Images - check both new and old field names
+                    ...(() {
+                      final proofImages =
+                          job["completionFiles"] ?? job["workFiles"];
+                      if (proofImages != null &&
+                          (proofImages as List).isNotEmpty) {
+                        return [
+                          const SizedBox(height: 20),
+                          const Text(
+                            "Proof of Work:",
+                            style: TextStyle(
+                              fontWeight: FontWeight.w700,
+                              fontSize: 15,
+                            ),
                           ),
-                        ),
-                        const SizedBox(height: 10),
-                        _buildImageGrid(proofImages),
-                      ];
-                    } else {
-                      return [
-                        const SizedBox(height: 20),
-                        const Text(
-                          "No proof images attached.",
-                          style: TextStyle(color: Colors.grey, fontSize: 13),
-                        ),
-                      ];
-                    }
-                  })(),
+                          const SizedBox(height: 10),
+                          _buildImageGrid(proofImages),
+                        ];
+                      } else {
+                        return [
+                          const SizedBox(height: 20),
+                          const Text(
+                            "No proof images attached.",
+                            style: TextStyle(color: Colors.grey, fontSize: 13),
+                          ),
+                        ];
+                      }
+                    })(),
+                  ],
 
                   const SizedBox(height: 30),
 
@@ -429,16 +546,8 @@ class _WorkerHistoryPageState extends State<WorkerHistoryPage> {
                 Expanded(
                   child: workerId == null
                       ? const Center(child: CircularProgressIndicator())
-                      : StreamBuilder<QuerySnapshot>(
-                          stream: FirebaseFirestore.instance
-                              .collection("service_requests")
-                              .where("assignedWorker.id", isEqualTo: workerId)
-                              .where(
-                                "status",
-                                isEqualTo: "Completed",
-                              ) // ONLY COMPLETED
-                              .orderBy("timestamp", descending: true)
-                              .snapshots(),
+                      : StreamBuilder<List<Map<String, dynamic>>>(
+                          stream: _getCompletedJobsStream(workerId!),
                           builder: (context, snapshot) {
                             if (!snapshot.hasData) {
                               return const Center(
@@ -446,9 +555,9 @@ class _WorkerHistoryPageState extends State<WorkerHistoryPage> {
                               );
                             }
 
-                            final docs = snapshot.data!.docs;
+                            final jobs = snapshot.data!;
 
-                            if (docs.isEmpty) {
+                            if (jobs.isEmpty) {
                               return Center(
                                 child: Column(
                                   mainAxisAlignment: MainAxisAlignment.center,
@@ -476,10 +585,9 @@ class _WorkerHistoryPageState extends State<WorkerHistoryPage> {
                               padding: const EdgeInsets.symmetric(
                                 horizontal: 20,
                               ),
-                              itemCount: docs.length,
+                              itemCount: jobs.length,
                               itemBuilder: (context, index) {
-                                final job =
-                                    docs[index].data() as Map<String, dynamic>;
+                                final job = jobs[index];
 
                                 return GestureDetector(
                                   onTap: () => _showHistoryPopup(context, job),
@@ -522,6 +630,8 @@ class _WorkerHistoryPageState extends State<WorkerHistoryPage> {
 
   // ================= CARD WIDGET =================
   Widget _historyCard(Map<String, dynamic> job) {
+    final isWastePickup = job["_jobType"] == "waste";
+
     return Container(
       margin: const EdgeInsets.only(bottom: 18),
       padding: const EdgeInsets.all(18),
@@ -547,7 +657,10 @@ class _WorkerHistoryPageState extends State<WorkerHistoryPage> {
               color: const Color(0xFFBBF3C1).withOpacity(0.4),
               borderRadius: BorderRadius.circular(12),
             ),
-            child: const Icon(Icons.check_circle, color: Colors.green),
+            child: Icon(
+              isWastePickup ? Icons.delete : Icons.check_circle,
+              color: Colors.green,
+            ),
           ),
           const SizedBox(width: 15),
 
@@ -557,7 +670,9 @@ class _WorkerHistoryPageState extends State<WorkerHistoryPage> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  job["title"] ?? "Service",
+                  isWastePickup
+                      ? "Waste Pickup - ${job["wasteType"] ?? "N/A"}"
+                      : (job["title"] ?? "Service"),
                   style: const TextStyle(
                     fontSize: 18,
                     fontWeight: FontWeight.bold,
@@ -566,7 +681,9 @@ class _WorkerHistoryPageState extends State<WorkerHistoryPage> {
                 ),
                 const SizedBox(height: 6),
                 Text(
-                  "ID: ${job["service_id"] ?? "—"}",
+                  isWastePickup
+                      ? "ID: ${job["pickup_id"] ?? "—"}"
+                      : "ID: ${job["service_id"] ?? "—"}",
                   style: TextStyle(
                     fontSize: 13,
                     color: Colors.grey[600],
