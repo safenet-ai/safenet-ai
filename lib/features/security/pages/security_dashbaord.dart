@@ -1,8 +1,15 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../../approval_guard.dart';
 import '../../../notice_board.dart';
 import '../../shared/widgets/profile_sidebar.dart';
+import '../../shared/widgets/notification_dropdown.dart';
+import 'visitor_management.dart';
+import 'security_requests.dart';
+import 'ai_alerts.dart';
+import 'incident_report.dart';
+import 'security_chat.dart';
 
 class SecurityDashboardPage extends StatefulWidget {
   const SecurityDashboardPage({super.key});
@@ -83,6 +90,8 @@ class _SecurityDashboardPageState extends State<SecurityDashboardPage> {
 
                         const Spacer(),
 
+                        NotificationDropdown(role: "security"),
+                        const SizedBox(width: 12),
                         _RoundGlassButton(
                           icon: Icons.person_rounded,
                           onTap: () {
@@ -115,39 +124,88 @@ class _SecurityDashboardPageState extends State<SecurityDashboardPage> {
                         Row(
                           children: [
                             Expanded(
-                              child: _GlassCard(
-                                gradient: const LinearGradient(
-                                  colors: [
-                                    Color(0xFFE0F2FF),
-                                    Color(0xFFD7E6FF),
-                                  ],
-                                ),
-                                title: 'AI Alerts',
-                                mainValue: '04',
-                                subtitleLines: const [
-                                  'Motion',
-                                  'Intrusion',
-                                  'Unusual Activity',
-                                ],
-                                valueLabel: 'Active Alerts',
+                              child: StreamBuilder<QuerySnapshot>(
+                                stream: FirebaseFirestore.instance
+                                    .collection("ai_alerts")
+                                    .where("status", isEqualTo: "active")
+                                    .snapshots(),
+                                builder: (context, snapshot) {
+                                  final count = snapshot.hasData
+                                      ? snapshot.data!.docs.length
+                                      : 0;
+                                  return GestureDetector(
+                                    onTap: () {
+                                      Navigator.push(
+                                        context,
+                                        MaterialPageRoute(
+                                          builder: (context) =>
+                                              const AIAlertsPage(),
+                                        ),
+                                      );
+                                    },
+                                    child: _GlassCard(
+                                      gradient: const LinearGradient(
+                                        colors: [
+                                          Color(0xFFE0F2FF),
+                                          Color(0xFFD7E6FF),
+                                        ],
+                                      ),
+                                      title: 'AI Alerts',
+                                      mainValue: count.toString().padLeft(
+                                        2,
+                                        '0',
+                                      ),
+                                      subtitleLines: const [
+                                        'Motion',
+                                        'Intrusion',
+                                        'Unusual Activity',
+                                      ],
+                                      valueLabel: 'Active Alerts',
+                                    ),
+                                  );
+                                },
                               ),
                             ),
                             const SizedBox(width: 12),
                             Expanded(
-                              child: _GlassCard(
-                                gradient: const LinearGradient(
-                                  colors: [
-                                    Color(0xFFE7F4FF),
-                                    Color(0xFFE5F0FF),
-                                  ],
-                                ),
-                                title: 'Visitor\nManagement',
-                                mainValue: '02',
-                                subtitleLines: const [
-                                  'Pending Visitors',
-                                  'Approved Today: 21',
-                                ],
-                                valueLabel: 'Pending',
+                              child: StreamBuilder<QuerySnapshot>(
+                                stream: FirebaseFirestore.instance
+                                    .collection("visitors")
+                                    .where("status", isEqualTo: "pending")
+                                    .snapshots(),
+                                builder: (context, snapshot) {
+                                  final pendingCount = snapshot.hasData
+                                      ? snapshot.data!.docs.length
+                                      : 0;
+                                  return GestureDetector(
+                                    onTap: () {
+                                      Navigator.push(
+                                        context,
+                                        MaterialPageRoute(
+                                          builder: (context) =>
+                                              const VisitorManagementPage(),
+                                        ),
+                                      );
+                                    },
+                                    child: _GlassCard(
+                                      gradient: const LinearGradient(
+                                        colors: [
+                                          Color(0xFFE7F4FF),
+                                          Color(0xFFE5F0FF),
+                                        ],
+                                      ),
+                                      title: 'Visitor\nManagement',
+                                      mainValue: pendingCount
+                                          .toString()
+                                          .padLeft(2, '0'),
+                                      subtitleLines: const [
+                                        'Pending Visitors',
+                                        'Check-in & Approval',
+                                      ],
+                                      valueLabel: 'Pending',
+                                    ),
+                                  );
+                                },
                               ),
                             ),
                           ],
@@ -158,36 +216,65 @@ class _SecurityDashboardPageState extends State<SecurityDashboardPage> {
                         Row(
                           children: [
                             Expanded(
-                              child: _GlassCard(
-                                gradient: const LinearGradient(
-                                  colors: [
-                                    Color(0xFFEAF5FF),
-                                    Color(0xFFE3F1FF),
-                                  ],
-                                ),
-                                title: 'Resident\nRequests\nto Security',
-                                mainValue: '',
-                                subtitleLines: const [
-                                  'Suspicious sound\nnear Block C',
-                                  'Parking issue\nreported',
-                                ],
-                              ),
-                            ),
-                            const SizedBox(width: 12),
-                            Expanded(
-                              child: _GlassCard(
-                                gradient: const LinearGradient(
-                                  colors: [
-                                    Color(0xFFEAF3FF),
-                                    Color(0xFFE5F5FF),
-                                  ],
-                                ),
-                                title: 'Patrolling\nUpdates',
-                                mainValue: '',
-                                subtitleLines: const [
-                                  'Last Patrol: 11:30 PM',
-                                  'Next: 2:00 AM',
-                                ],
+                              child: StreamBuilder<QuerySnapshot>(
+                                stream: FirebaseFirestore.instance
+                                    .collection("security_requests")
+                                    .where("status", isEqualTo: "pending")
+                                    .snapshots(),
+                                builder: (context, snapshot) {
+                                  final pendingCount = snapshot.hasData
+                                      ? snapshot.data!.docs.length
+                                      : 0;
+
+                                  // Get latest 2 requests for preview
+                                  List<String> previewLines = [];
+                                  if (snapshot.hasData &&
+                                      snapshot.data!.docs.isNotEmpty) {
+                                    final docs = snapshot.data!.docs.take(2);
+                                    for (var doc in docs) {
+                                      final data =
+                                          doc.data() as Map<String, dynamic>;
+                                      final type =
+                                          data["requestType"] ?? "Request";
+                                      final location = data["location"] ?? "";
+                                      previewLines.add(
+                                        "${type.replaceAll('_', ' ')}\n$location",
+                                      );
+                                    }
+                                  }
+
+                                  if (previewLines.isEmpty) {
+                                    previewLines = ['No pending\nrequests'];
+                                  }
+
+                                  return GestureDetector(
+                                    onTap: () {
+                                      Navigator.push(
+                                        context,
+                                        MaterialPageRoute(
+                                          builder: (context) =>
+                                              const SecurityRequestsPage(),
+                                        ),
+                                      );
+                                    },
+                                    child: _GlassCard(
+                                      gradient: const LinearGradient(
+                                        colors: [
+                                          Color(0xFFEAF5FF),
+                                          Color(0xFFE3F1FF),
+                                        ],
+                                      ),
+                                      title: 'Resident\nRequests\nto Security',
+                                      mainValue: pendingCount > 0
+                                          ? pendingCount.toString().padLeft(
+                                              2,
+                                              '0',
+                                            )
+                                          : '',
+                                      subtitleLines: previewLines,
+                                    ),
+                                  );
+                                },
                               ),
                             ),
                           ],
@@ -200,7 +287,13 @@ class _SecurityDashboardPageState extends State<SecurityDashboardPage> {
                             Expanded(
                               child: GestureDetector(
                                 onTap: () {
-                                  // TODO: Chat functionality
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (context) =>
+                                          const SecurityChatPage(),
+                                    ),
+                                  );
                                 },
                                 child: _GlassCard(
                                   gradient: const LinearGradient(
@@ -257,19 +350,31 @@ class _SecurityDashboardPageState extends State<SecurityDashboardPage> {
                         Row(
                           children: [
                             Expanded(
-                              child: _GlassCard(
-                                gradient: const LinearGradient(
-                                  colors: [
-                                    Color(0xFFFDE7F2),
-                                    Color(0xFFF9E9FF),
+                              child: GestureDetector(
+                                onTap: () {
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (context) =>
+                                          const IncidentReportPage(),
+                                    ),
+                                  );
+                                },
+                                child: _GlassCard(
+                                  gradient: const LinearGradient(
+                                    colors: [
+                                      Color(0xFFFDE7F2),
+                                      Color(0xFFF9E9FF),
+                                    ],
+                                  ),
+                                  title: 'Report\nIncident',
+                                  mainValue: '',
+                                  subtitleLines: const [
+                                    'Report incidents to\nAuthority Team',
                                   ],
+                                  leadingIcon:
+                                      Icons.report_gmailerrorred_rounded,
                                 ),
-                                title: 'Report\nIncident',
-                                mainValue: '',
-                                subtitleLines: const [
-                                  'Report incidents to\nAuthority Team',
-                                ],
-                                leadingIcon: Icons.report_gmailerrorred_rounded,
                               ),
                             ),
                             const SizedBox(width: 12),

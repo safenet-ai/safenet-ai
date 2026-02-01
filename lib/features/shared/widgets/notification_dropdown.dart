@@ -4,7 +4,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
 class NotificationDropdown extends StatefulWidget {
-  final String role; // "user" or "authority"
+  final String role; // "user", "worker", "security", or "authority"
 
   const NotificationDropdown({super.key, required this.role});
 
@@ -40,7 +40,9 @@ class _NotificationDropdownState extends State<NotificationDropdown> {
         .collection("notifications")
         .where("isRead", isEqualTo: false);
 
-    if (widget.role == "user" || widget.role == "worker") {
+    if (widget.role == "user" ||
+        widget.role == "worker" ||
+        widget.role == "security") {
       query = query.where("toUid", isEqualTo: uid);
     } else if (widget.role == "authority") {
       query = query.where("toRole", isEqualTo: "authority");
@@ -62,7 +64,9 @@ class _NotificationDropdownState extends State<NotificationDropdown> {
     try {
       QuerySnapshot notifications;
 
-      if (widget.role == "user" || widget.role == "worker") {
+      if (widget.role == "user" ||
+          widget.role == "worker" ||
+          widget.role == "security") {
         notifications = await FirebaseFirestore.instance
             .collection("notifications")
             .where("toUid", isEqualTo: uid)
@@ -109,7 +113,9 @@ class _NotificationDropdownState extends State<NotificationDropdown> {
     try {
       QuerySnapshot notifications;
 
-      if (widget.role == "user" || widget.role == "worker") {
+      if (widget.role == "user" ||
+          widget.role == "worker" ||
+          widget.role == "security") {
         notifications = await FirebaseFirestore.instance
             .collection("notifications")
             .where("toUid", isEqualTo: uid)
@@ -163,7 +169,9 @@ class _NotificationDropdownState extends State<NotificationDropdown> {
     // Build query based on role
     Query query = FirebaseFirestore.instance.collection("notifications");
 
-    if (widget.role == "user" || widget.role == "worker") {
+    if (widget.role == "user" ||
+        widget.role == "worker" ||
+        widget.role == "security") {
       if (uid != null) {
         query = query
             .where("toUid", isEqualTo: uid)

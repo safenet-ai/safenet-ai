@@ -26,6 +26,8 @@ class _AuthorityWaitingListPageState extends State<AuthorityWaitingListPage> {
     QuerySnapshot? residentActiveCache;
     QuerySnapshot? workerWaitingCache;
     QuerySnapshot? workerActiveCache;
+    QuerySnapshot? securityWaitingCache;
+    QuerySnapshot? securityActiveCache;
 
     void combineAndEmit() {
       List<Map<String, dynamic>> combined = [];
@@ -76,6 +78,32 @@ class _AuthorityWaitingListPageState extends State<AuthorityWaitingListPage> {
             "id": doc.id,
             "name": doc["workerName"] ?? "Worker",
             "type": "worker",
+            "status": "active",
+            "createdAt": doc["createdAt"],
+          });
+        }
+      }
+
+      // Add waiting security
+      if (securityWaitingCache != null) {
+        for (var doc in securityWaitingCache!.docs) {
+          combined.add({
+            "id": doc.id,
+            "name": doc["securityName"] ?? "Security",
+            "type": "security",
+            "status": "waiting",
+            "createdAt": doc["createdAt"],
+          });
+        }
+      }
+
+      // Add active security
+      if (securityActiveCache != null) {
+        for (var doc in securityActiveCache!.docs) {
+          combined.add({
+            "id": doc.id,
+            "name": doc["securityName"] ?? "Security",
+            "type": "security",
             "status": "active",
             "createdAt": doc["createdAt"],
           });
@@ -159,6 +187,38 @@ class _AuthorityWaitingListPageState extends State<AuthorityWaitingListPage> {
           },
           onError: (error) {
             print("Error listening to active worker requests: $error");
+          },
+        );
+
+    // Listen to waiting security requests
+    FirebaseFirestore.instance
+        .collection("security_support_requests")
+        .where("status", isEqualTo: "waiting")
+        .snapshots()
+        .listen(
+          (snapshot) {
+            print("Security waiting requests: ${snapshot.docs.length}");
+            securityWaitingCache = snapshot;
+            combineAndEmit();
+          },
+          onError: (error) {
+            print("Error listening to security requests: $error");
+          },
+        );
+
+    // Listen to active security requests
+    FirebaseFirestore.instance
+        .collection("security_support_requests")
+        .where("status", isEqualTo: "active")
+        .snapshots()
+        .listen(
+          (snapshot) {
+            print("Security active requests: ${snapshot.docs.length}");
+            securityActiveCache = snapshot;
+            combineAndEmit();
+          },
+          onError: (error) {
+            print("Error listening to active security requests: $error");
           },
         );
   }
@@ -299,9 +359,12 @@ class _AuthorityWaitingListPageState extends State<AuthorityWaitingListPage> {
     required String status,
   }) {
     final bool isWorker = type == "worker";
+    final bool isSecurity = type == "security";
     final bool isActive = status == "active";
     final String collection = isWorker
         ? "worker_support_requests"
+        : isSecurity
+        ? "security_support_requests"
         : "support_requests";
 
     return GestureDetector(
@@ -337,6 +400,30 @@ class _AuthorityWaitingListPageState extends State<AuthorityWaitingListPage> {
               }
             } catch (e) {
               print("⚠️ Error sending notification to worker: $e");
+            }
+          } else if (isSecurity) {
+            // Send notification to security
+            try {
+              final requestDoc = await FirebaseFirestore.instance
+                  .collection(collection)
+                  .doc(docId)
+                  .get();
+
+              final securityId = requestDoc.data()?["securityId"];
+              if (securityId != null) {
+                await FirebaseFirestore.instance.collection("notifications").add({
+                  "toUid": securityId,
+                  "toRole": "security",
+                  "title": "Authority Connected",
+                  "message":
+                      "Authority has joined your chat. You can now talk with them.",
+                  "isRead": false,
+                  "timestamp": FieldValue.serverTimestamp(),
+                });
+                print("✅ Notification sent to security: $securityId");
+              }
+            } catch (e) {
+              print("⚠️ Error sending notification to security: $e");
             }
           } else {
             // Send notification to resident
@@ -400,11 +487,17 @@ class _AuthorityWaitingListPageState extends State<AuthorityWaitingListPage> {
               decoration: BoxDecoration(
                 color: isWorker
                     ? const Color(0xFFE7DFFC)
+                    : isSecurity
+                    ? const Color(0xFFFFE5B4)
                     : const Color(0xFF6EA7A0),
                 shape: BoxShape.circle,
               ),
               child: Icon(
-                isWorker ? Icons.engineering : Icons.person,
+                isWorker
+                    ? Icons.engineering
+                    : isSecurity
+                    ? Icons.security
+                    : Icons.person,
                 color: Colors.white,
               ),
             ),
@@ -424,7 +517,11 @@ class _AuthorityWaitingListPageState extends State<AuthorityWaitingListPage> {
                     ),
                   ),
                   Text(
-                    isWorker ? "Worker" : "Resident",
+                    isWorker
+                        ? "Worker"
+                        : isSecurity
+                        ? "Security"
+                        : "Resident",
                     style: TextStyle(fontSize: 12, color: Colors.grey[600]),
                   ),
                 ],

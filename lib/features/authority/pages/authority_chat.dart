@@ -4,7 +4,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 class AuthorityChatPage extends StatefulWidget {
   final String conversationId;
   final String userName;
-  final String userType; // "resident" or "worker"
+  final String userType; // "resident", "worker", or "security"
 
   const AuthorityChatPage({
     super.key,
@@ -30,6 +30,8 @@ class _AuthorityChatPageState extends State<AuthorityChatPage> {
 
     final chatCollection = widget.userType == "worker"
         ? "worker_support_chats"
+        : widget.userType == "security"
+        ? "security_support_chats"
         : "support_chats";
 
     await FirebaseFirestore.instance
@@ -86,9 +88,13 @@ class _AuthorityChatPageState extends State<AuthorityChatPage> {
     try {
       final chatCollection = widget.userType == "worker"
           ? "worker_support_chats"
+          : widget.userType == "security"
+          ? "security_support_chats"
           : "support_chats";
       final requestCollection = widget.userType == "worker"
           ? "worker_support_requests"
+          : widget.userType == "security"
+          ? "security_support_requests"
           : "support_requests";
 
       // Delete all messages in the chat
@@ -199,7 +205,11 @@ class _AuthorityChatPageState extends State<AuthorityChatPage> {
                     borderRadius: BorderRadius.circular(20),
                   ),
                   child: Text(
-                    "Connected to ${widget.userType == "worker" ? "Worker" : "Resident"}",
+                    "Connected to ${widget.userType == "worker"
+                        ? "Worker"
+                        : widget.userType == "security"
+                        ? "Security"
+                        : "Resident"}",
                     style: const TextStyle(
                       color: Colors.green,
                       fontWeight: FontWeight.w600,
@@ -216,6 +226,8 @@ class _AuthorityChatPageState extends State<AuthorityChatPage> {
                         .collection(
                           widget.userType == "worker"
                               ? "worker_support_chats"
+                              : widget.userType == "security"
+                              ? "security_support_chats"
                               : "support_chats",
                         )
                         .doc(widget.conversationId)

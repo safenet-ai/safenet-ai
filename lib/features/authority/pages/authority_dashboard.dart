@@ -6,6 +6,7 @@ import './authority_servicereq.dart';
 import './authority_announcement.dart';
 import './authority_view_announcements.dart';
 import './authority_waste.dart';
+import './authority_security_alerts.dart';
 import '../../shared/widgets/notification_dropdown.dart';
 import '../../shared/widgets/profile_sidebar.dart';
 
@@ -179,7 +180,13 @@ class _AuthorityDashboardPageState extends State<AuthorityDashboardPage> {
                                 0.40, // responsive smaller card
                             child: GestureDetector(
                               onTap: () {
-                                // Navigator.push(context, MaterialPageRoute(builder: (context) => PendingApprovalPage()));
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (context) =>
+                                        const AuthoritySecurityAlertsPage(),
+                                  ),
+                                );
                               },
                               child: DashboardTile(
                                 color: Color(0xFFF7D6DE),

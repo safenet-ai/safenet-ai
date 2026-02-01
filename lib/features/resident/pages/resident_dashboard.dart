@@ -3,6 +3,7 @@ import './resident_complaint.dart';
 import './resident_service.dart';
 import './resident_waste.dart';
 import './resident_chat.dart';
+import './resident_security_requests_list.dart';
 import '../../../notice_board.dart';
 import 'dart:async';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -159,14 +160,13 @@ class _ResidentDashboardPageState extends State<ResidentDashboardPage> {
 
                       const SizedBox(height: 32),
 
-                      // ---------------- GRID 2×2 ----------------
+                      // ---------------- GRID 3×2 ----------------
                       Wrap(
                         spacing: 22,
                         runSpacing: 22,
                         children: [
                           InkWell(
                             onTap: () {
-                              // TODO: Navigate to My Complaints page
                               Navigator.push(
                                 context,
                                 MaterialPageRoute(
@@ -184,7 +184,6 @@ class _ResidentDashboardPageState extends State<ResidentDashboardPage> {
 
                           InkWell(
                             onTap: () {
-                              // TODO: Navigate to Service Requests page
                               Navigator.push(
                                 context,
                                 MaterialPageRoute(
@@ -202,7 +201,6 @@ class _ResidentDashboardPageState extends State<ResidentDashboardPage> {
 
                           InkWell(
                             onTap: () {
-                              // TODO: Navigate to Waste Pickup page
                               Navigator.push(
                                 context,
                                 MaterialPageRoute(
@@ -220,13 +218,57 @@ class _ResidentDashboardPageState extends State<ResidentDashboardPage> {
 
                           InkWell(
                             onTap: () {
-                              // TODO: Navigate to AI Alerts page
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (_) =>
+                                      const ResidentSecurityRequestsListPage(),
+                                ),
+                              );
                             },
                             child: _dashboardCard(
                               size: cardSize,
-                              icon: Icons.shield_moon_outlined,
-                              label: "AI\nAlerts",
-                              color: const Color(0xFFD9F4F6),
+                              icon: Icons.security_outlined,
+                              label: "Security\nRequests",
+                              color: const Color(0xFFFFE6E6),
+                            ),
+                          ),
+
+                          InkWell(
+                            onTap: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (_) => SupportChatPage(),
+                                ),
+                              );
+                            },
+                            child: _dashboardCard(
+                              size: cardSize,
+                              icon: Icons.chat_bubble_outline,
+                              label: "Chat\nSupport",
+                              color: const Color(0xFFEFE4F9),
+                            ),
+                          ),
+
+                          InkWell(
+                            onTap: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (_) => NoticeBoardPage(
+                                    role: "users",
+                                    displayRole: "Resident",
+                                    userCollection: "users",
+                                  ),
+                                ),
+                              );
+                            },
+                            child: _dashboardCard(
+                              size: cardSize,
+                              icon: Icons.campaign_outlined,
+                              label: "Notice\nBoard",
+                              color: const Color(0xFFFFE5B4),
                             ),
                           ),
                         ],
@@ -234,121 +276,52 @@ class _ResidentDashboardPageState extends State<ResidentDashboardPage> {
 
                       const SizedBox(height: 26),
 
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Expanded(
-                            child: InkWell(
-                              onTap: () {
-                                Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder: (_) => SupportChatPage(),
-                                  ),
-                                );
-                              },
-                              child: Container(
-                                height: cardSize * 0.75,
-                                decoration: BoxDecoration(
-                                  color: const Color(0xFFEFE4F9),
-                                  borderRadius: BorderRadius.circular(28),
-                                  boxShadow: [
-                                    BoxShadow(
-                                      color: Colors.black.withOpacity(0.12),
-                                      offset: const Offset(6, 6),
-                                      blurRadius: 14,
-                                      spreadRadius: 1,
-                                    ),
-                                    BoxShadow(
-                                      color: Colors.white.withOpacity(0.05),
-                                      offset: const Offset(-6, -6),
-                                      blurRadius: 14,
-                                      spreadRadius: 1,
-                                    ),
-                                  ],
-                                ),
-                                child: Column(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: [
-                                    Icon(
-                                      Icons.chat_bubble_outline,
-                                      size: 42,
-                                      color: Colors.black54,
-                                    ),
-                                    const SizedBox(height: 14),
-                                    Text(
-                                      "Chat",
-                                      textAlign: TextAlign.center,
-                                      style: TextStyle(
-                                        fontSize: 16,
-                                        fontWeight: FontWeight.w700,
-                                        color: Colors.black87,
-                                      ),
-                                    ),
-                                  ],
+                      // AI Alerts (kept separate as it may need special styling)
+                      InkWell(
+                        onTap: () {
+                          // TODO: Navigate to AI Alerts page
+                        },
+                        child: Container(
+                          height: cardSize * 0.85,
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFD9F4F6),
+                            borderRadius: BorderRadius.circular(28),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withOpacity(0.12),
+                                offset: const Offset(6, 6),
+                                blurRadius: 14,
+                                spreadRadius: 1,
+                              ),
+                              BoxShadow(
+                                color: Colors.white.withOpacity(0.05),
+                                offset: const Offset(-6, -6),
+                                blurRadius: 14,
+                                spreadRadius: 1,
+                              ),
+                            ],
+                          ),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(
+                                Icons.shield_moon_outlined,
+                                size: 42,
+                                color: Colors.black54,
+                              ),
+                              const SizedBox(width: 14),
+                              Text(
+                                "AI Security Alerts",
+                                textAlign: TextAlign.center,
+                                style: TextStyle(
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.w700,
+                                  color: Colors.black87,
                                 ),
                               ),
-                            ),
+                            ],
                           ),
-                          const SizedBox(width: 22),
-                          Expanded(
-                            child: InkWell(
-                              onTap: () {
-                                Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder: (_) => NoticeBoardPage(
-                                      role: "users",
-                                      displayRole: "Resident",
-                                      userCollection: "users",
-                                    ),
-                                  ),
-                                );
-                              },
-                              child: Container(
-                                height: cardSize * 0.75,
-                                decoration: BoxDecoration(
-                                  color: const Color(0xFFFFE5B4),
-                                  borderRadius: BorderRadius.circular(28),
-                                  boxShadow: [
-                                    BoxShadow(
-                                      color: Colors.black.withOpacity(0.12),
-                                      offset: const Offset(6, 6),
-                                      blurRadius: 14,
-                                      spreadRadius: 1,
-                                    ),
-                                    BoxShadow(
-                                      color: Colors.white.withOpacity(0.05),
-                                      offset: const Offset(-6, -6),
-                                      blurRadius: 14,
-                                      spreadRadius: 1,
-                                    ),
-                                  ],
-                                ),
-                                child: Column(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: [
-                                    Icon(
-                                      Icons.campaign_outlined,
-                                      size: 42,
-                                      color: Colors.black54,
-                                    ),
-                                    const SizedBox(height: 14),
-                                    Text(
-                                      "Notice Board",
-                                      textAlign: TextAlign.center,
-                                      style: TextStyle(
-                                        fontSize: 16,
-                                        fontWeight: FontWeight.w700,
-                                        color: Colors.black87,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ),
-                          ),
-                        ],
+                        ),
                       ),
 
                       const SizedBox(height: 40),
