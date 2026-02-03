@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import './resident_complaint.dart';
 import './resident_service.dart';
 import './resident_waste.dart';
+import './resident_ai_alerts.dart';
 import './resident_chat.dart';
 import './resident_security_requests_list.dart';
 import '../../../notice_board.dart';
@@ -279,7 +280,12 @@ class _ResidentDashboardPageState extends State<ResidentDashboardPage> {
                       // AI Alerts (kept separate as it may need special styling)
                       InkWell(
                         onTap: () {
-                          // TODO: Navigate to AI Alerts page
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => const ResidentAIAlertsPage(),
+                            ),
+                          );
                         },
                         child: Container(
                           height: cardSize * 0.85,

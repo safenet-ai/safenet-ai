@@ -121,6 +121,8 @@ class _WorkersRegisterPageState extends State<WorkersRegisterPage> {
         // Web: signInWithPhoneNumber (uses reCAPTCHA)
         _webConfirmationResult = await _auth.signInWithPhoneNumber(phoneNumber);
 
+        if (!mounted) return;
+
         setState(() {
           _otpSent = true;
         });
@@ -181,6 +183,8 @@ class _WorkersRegisterPageState extends State<WorkersRegisterPage> {
         // Sign out temp phone user to avoid conflicts with email/password signup
         await _auth.signOut();
 
+        if (!mounted) return;
+
         _setOtpStatus(success: true);
         _msg("Phone verified successfully");
       } else {
@@ -200,6 +204,8 @@ class _WorkersRegisterPageState extends State<WorkersRegisterPage> {
 
         // Sign out temp phone user
         await _auth.signOut();
+
+        if (!mounted) return;
 
         _setOtpStatus(success: true);
         _msg("Phone verified successfully");
@@ -306,10 +312,14 @@ class _WorkersRegisterPageState extends State<WorkersRegisterPage> {
         "approvedAt": null,*/
       });
 
+      if (!mounted) return;
+
       _msg("Registration successful!");
 
       // Delay 2 seconds before redirect
       await Future.delayed(const Duration(seconds: 2));
+
+      if (!mounted) return;
 
       // Redirect based on profession
       final lower = finalProfession.toLowerCase();

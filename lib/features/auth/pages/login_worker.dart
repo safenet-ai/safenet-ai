@@ -70,6 +70,8 @@ class _SafeNetLoginPageState extends State<WorkerLoginPage> {
       final uid = userCred.user!.uid;
       final userDoc = await workers.doc(uid).get();
 
+      if (!mounted) return;
+
       if (!userDoc.exists || userDoc["role"] != "worker") {
         FirebaseAuth.instance.signOut();
         _showMsg("Access Denied! Not a worker.");
@@ -84,7 +86,11 @@ class _SafeNetLoginPageState extends State<WorkerLoginPage> {
       await prefs.remove('authority_uid');
       await prefs.setString('user_role', 'worker');
 
+      if (!mounted) return;
+
       await Future.delayed(const Duration(seconds: 2));
+
+      if (!mounted) return;
 
       Navigator.pushReplacement(
         context,

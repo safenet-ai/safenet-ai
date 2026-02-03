@@ -6,7 +6,7 @@ import 'firebase_options.dart';
 import 'features/auth/pages/welcome.dart';
 import 'features/resident/pages/resident_dashboard.dart';
 import 'features/worker/pages/worker_dashboard.dart';
-import 'features/security/pages/security_dashbaord.dart';
+import 'features/security/pages/security_dashboard.dart';
 import 'features/authority/pages/authority_dashboard.dart';
 
 void main() async {

@@ -4,7 +4,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import './role_selection.dart';
-import '../../security/pages/security_dashbaord.dart';
+import '../../security/pages/security_dashboard.dart';
 
 class SecurityLoginPage extends StatefulWidget {
   const SecurityLoginPage({super.key});

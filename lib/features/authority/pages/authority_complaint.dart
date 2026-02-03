@@ -231,11 +231,121 @@ class _AuthorityComplaintsPageState extends State<AuthorityComplaintsPage> {
                 data["description"] ?? "No description provided",
                 style: const TextStyle(fontSize: 14, color: Colors.black87),
               ),
+
+              // Status Actions
+              const SizedBox(height: 24),
+              if (data["status"] == "Pending") ...[
+                Row(
+                  children: [
+                    Expanded(
+                      child: ElevatedButton.icon(
+                        onPressed: () {
+                          Navigator.pop(context);
+                          _updateStatus(docId, "In Progress", data["userId"]);
+                        },
+                        icon: const Icon(Icons.play_arrow),
+                        label: const Text("Start Progress"),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.orange,
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: ElevatedButton.icon(
+                        onPressed: () {
+                          Navigator.pop(context);
+                          _updateStatus(docId, "Resolved", data["userId"]);
+                        },
+                        icon: const Icon(Icons.check_circle),
+                        label: const Text("Resolve"),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.green,
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ] else if (data["status"] == "In Progress") ...[
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton.icon(
+                    onPressed: () {
+                      Navigator.pop(context);
+                      _updateStatus(docId, "Resolved", data["userId"]);
+                    },
+                    icon: const Icon(Icons.check_circle),
+                    label: const Text("Mark as Resolved"),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.green,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
             ],
           ),
         ),
       ),
     );
+  }
+
+  Future<void> _updateStatus(
+    String docId,
+    String newStatus,
+    String? userId,
+  ) async {
+    try {
+      await FirebaseFirestore.instance
+          .collection("complaints")
+          .doc(docId)
+          .update({
+            "status": newStatus,
+            "updatedAt": FieldValue.serverTimestamp(),
+          });
+
+      // Send notification to resident
+      if (userId != null) {
+        await FirebaseFirestore.instance.collection("notifications").add({
+          "title": "Complaint Update",
+          "message": "Your complaint has been marked as $newStatus.",
+          "toUid": userId,
+          "isRead": false,
+          "timestamp": FieldValue.serverTimestamp(),
+        });
+      }
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text("Complaint marked as $newStatus"),
+            backgroundColor: newStatus == "Resolved"
+                ? Colors.green
+                : Colors.orange,
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text("Error updating status: $e")));
+      }
+    }
   }
 
   Widget _detailRow(String label, String value) {

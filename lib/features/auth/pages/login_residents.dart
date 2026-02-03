@@ -98,6 +98,8 @@ class _SafeNetLoginPageState extends State<ResidentLoginPage> {
           .doc(uid)
           .get();
 
+      if (!mounted) return;
+
       if (!userDoc.exists || userDoc["role"] != "resident") {
         FirebaseAuth.instance.signOut();
         _showMsg("Access denied! You are not a Resident.");
@@ -111,7 +113,8 @@ class _SafeNetLoginPageState extends State<ResidentLoginPage> {
       await prefs.remove('authority_uid');
       await prefs.setString('user_role', 'resident');
 
-      // TODO → Navigate to Resident Dashboard
+      if (!mounted) return;
+
       Navigator.push(
         context,
         MaterialPageRoute(builder: (_) => ResidentDashboardPage()),

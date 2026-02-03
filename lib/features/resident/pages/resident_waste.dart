@@ -93,7 +93,6 @@ class _WastePickupPageState extends State<WastePickupPage> {
                       padding: const EdgeInsets.symmetric(horizontal: 6),
                       child: GestureDetector(
                         onTap: () {
-                          // TODO: Navigate to New Complaint Page
                           Navigator.push(
                             context,
                             MaterialPageRoute(

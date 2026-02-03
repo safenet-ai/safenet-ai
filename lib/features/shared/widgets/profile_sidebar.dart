@@ -3,6 +3,8 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../auth/pages/role_selection.dart';
+import '../pages/edit_profile_page.dart';
+import '../pages/settings_page.dart';
 
 class ProfileSidebar extends StatelessWidget {
   final VoidCallback onClose;
@@ -168,8 +170,12 @@ class ProfileSidebar extends StatelessWidget {
             "Edit Profile",
             Icons.edit,
             onTap: () {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text("Edit Profile - Coming Soon")),
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) =>
+                      EditProfilePage(userCollection: userCollection),
+                ),
               );
             },
           ),
@@ -179,8 +185,9 @@ class ProfileSidebar extends StatelessWidget {
             "Settings",
             Icons.settings,
             onTap: () {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text("Settings - Coming Soon")),
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const SettingsPage()),
               );
             },
           ),

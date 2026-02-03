@@ -149,6 +149,8 @@ class _NewWastePickupRequestPageState extends State<NewWastePickupRequestPage> {
         "timestamp": FieldValue.serverTimestamp(),
       });
 
+      if (!mounted) return;
+
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text("Waste pickup submitted as $pickupId"),

@@ -8,7 +8,6 @@ import './worker_myjob.dart';
 import './worker_work_history.dart';
 import './worker_chat.dart';
 import '../../../notice_board.dart';
-//import 'test.dart';
 
 class WorkerDashboardPage extends StatefulWidget {
   const WorkerDashboardPage({super.key});
@@ -172,7 +171,6 @@ class _WorkerDashboardPageState extends State<WorkerDashboardPage> {
                           Expanded(
                             child: GestureDetector(
                               onTap: () {
-                                // TODO: Navigate to Worker My Jobs page
                                 Navigator.push(
                                   context,
                                   MaterialPageRoute(
