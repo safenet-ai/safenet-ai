@@ -167,7 +167,9 @@ class _WorkerMyJobsPageState extends State<WorkerMyJobsPage> {
                         child: Text(
                           isWastePickup
                               ? "Waste Pickup"
-                              : (job["title"] ?? "No Title"),
+                              : job["_jobType"] == "water"
+                                  ? "Water Supply"
+                                  : (job["title"] ?? "No Title"),
                           textAlign: TextAlign.center,
                           style: const TextStyle(
                             fontSize: 32,
@@ -220,6 +222,22 @@ class _WorkerMyJobsPageState extends State<WorkerMyJobsPage> {
                             ],
                           ),
                         ],
+                      ] else if (job["_jobType"] == "water") ...[
+                        _popupInfoRow("Order ID", job["orderId"] ?? "N/A"),
+                        const SizedBox(height: 12),
+                        _popupInfoRow("Water Type", job["type"] ?? "N/A"),
+                        const SizedBox(height: 12),
+                        _popupInfoRow("Quantity", "${job["quantity"] ?? 0}"),
+                        const SizedBox(height: 12),
+                        _popupInfoRow(
+                          "Date",
+                          job["timestamp"] != null
+                              ? (job["timestamp"] as Timestamp)
+                                  .toDate()
+                                  .toString()
+                                  .substring(0, 10)
+                              : "N/A",
+                        ),
                       ] else ...[
                         _popupInfoRow("Service ID", job["service_id"] ?? ""),
                         const SizedBox(height: 12),
@@ -489,6 +507,7 @@ class _WorkerMyJobsPageState extends State<WorkerMyJobsPage> {
 
     List<Map<String, dynamic>> serviceJobs = [];
     List<Map<String, dynamic>> wasteJobs = [];
+    List<Map<String, dynamic>> waterJobs = [];
 
     // Listen to service requests
     final serviceSub = FirebaseFirestore.instance
@@ -504,7 +523,7 @@ class _WorkerMyJobsPageState extends State<WorkerMyJobsPage> {
             return data;
           }).toList();
 
-          _emitCombinedJobs(controller, serviceJobs, wasteJobs);
+          _emitCombinedJobs(controller, serviceJobs, wasteJobs, waterJobs);
         });
 
     // Listen to waste pickups
@@ -521,12 +540,30 @@ class _WorkerMyJobsPageState extends State<WorkerMyJobsPage> {
             return data;
           }).toList();
 
-          _emitCombinedJobs(controller, serviceJobs, wasteJobs);
+          _emitCombinedJobs(controller, serviceJobs, wasteJobs, waterJobs);
+        });
+
+    // Listen to water orders
+    final waterSub = FirebaseFirestore.instance
+        .collection("water_orders")
+        .where("assignedWorker.id", isEqualTo: workerId)
+        .where("status", whereIn: ["Pending", "Out for Delivery"]) // Removed "Delivered" 
+        .snapshots()
+        .listen((snapshot) {
+          waterJobs = snapshot.docs.map((doc) {
+            var data = doc.data();
+            data["_docId"] = doc.id;
+            data["_jobType"] = "water";
+            return data;
+          }).toList();
+
+          _emitCombinedJobs(controller, serviceJobs, wasteJobs, waterJobs);
         });
 
     controller.onCancel = () {
       serviceSub.cancel();
       wasteSub.cancel();
+      waterSub.cancel();
     };
 
     return controller.stream;
@@ -536,8 +573,9 @@ class _WorkerMyJobsPageState extends State<WorkerMyJobsPage> {
     StreamController<List<Map<String, dynamic>>> controller,
     List<Map<String, dynamic>> serviceJobs,
     List<Map<String, dynamic>> wasteJobs,
+    List<Map<String, dynamic>> waterJobs,
   ) {
-    List<Map<String, dynamic>> allJobs = [...serviceJobs, ...wasteJobs];
+    List<Map<String, dynamic>> allJobs = [...serviceJobs, ...wasteJobs, ...waterJobs];
 
     // Sort by timestamp
     allJobs.sort((a, b) {
@@ -723,6 +761,7 @@ class _WorkerMyJobsPageState extends State<WorkerMyJobsPage> {
   // ================= JOB CARD =================
   Widget _jobCardFromFirestore(Map<String, dynamic> job) {
     final isWastePickup = job["_jobType"] == "waste";
+    final isWaterOrder = job["_jobType"] == "water";
 
     return Container(
       margin: const EdgeInsets.only(bottom: 18),
@@ -756,6 +795,19 @@ class _WorkerMyJobsPageState extends State<WorkerMyJobsPage> {
                       _infoRow("Worker", job["assignedWorker"] ?? "—"),
                       _infoRow("Pickup Date", job["date"] ?? "N/A"),
                       _infoRow("Pickup Time", job["time"] ?? "N/A"),
+                    ] else if (isWaterOrder) ...[
+                      _infoRow("Order ID", job["orderId"] ?? "N/A"),
+                      _infoRow("Type", job["type"] ?? "N/A"),
+                      _infoRow("Quantity", "${job["quantity"] ?? 0}"),
+                      _infoRow(
+                        "Date",
+                        job["timestamp"] != null
+                            ? (job["timestamp"] as Timestamp)
+                                .toDate()
+                                .toString()
+                                .substring(0, 10)
+                            : "N/A",
+                      ),
                     ] else ...[
                       _infoRow("Req ID", job["service_id"]),
                       _infoRow("Resident", job["username"]),
@@ -899,6 +951,46 @@ class _WorkerMyJobsPageState extends State<WorkerMyJobsPage> {
           },
           child: const Text(
             "Mark as Completed",
+            style: TextStyle(fontWeight: FontWeight.w700),
+          ),
+        ),
+      );
+    }
+
+    // FOR WATER ORDERS - Mark as Delivered
+    if (job["_jobType"] == "water" && (status == "Pending" || status == "Out for Delivery")) {
+      return SizedBox(
+        width: double.infinity,
+        height: 45,
+        child: ElevatedButton(
+          style: ElevatedButton.styleFrom(
+            backgroundColor: const Color(0xFFBBF3C1),
+            foregroundColor: Colors.black87,
+            elevation: 0,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(18),
+            ),
+          ),
+          onPressed: () async {
+            await FirebaseFirestore.instance
+                .collection("water_orders")
+                .doc(jobId)
+                .update({
+                  "status": "Delivered",
+                  "deliveredAt": FieldValue.serverTimestamp(),
+                });
+
+            if (context.mounted) {
+              Navigator.pop(context);
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text("Water order marked as delivered"),
+                ),
+              );
+            }
+          },
+          child: const Text(
+            "Mark as Delivered",
             style: TextStyle(fontWeight: FontWeight.w700),
           ),
         ),

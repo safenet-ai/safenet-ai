@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import './resident_complaint.dart';
 import './resident_service.dart';
 import './resident_waste.dart';
+import './water_supply.dart';
 import './resident_ai_alerts.dart';
 import './resident_chat.dart';
 import './resident_security_requests_list.dart';
@@ -214,6 +215,23 @@ class _ResidentDashboardPageState extends State<ResidentDashboardPage> {
                               icon: Icons.delete_outline,
                               label: "Waste\nPickup",
                               color: const Color(0xFFD7F5E8),
+                            ),
+                          ),
+
+                          InkWell(
+                            onTap: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (_) => const WaterSupplyPage(),
+                                ),
+                              );
+                            },
+                            child: _dashboardCard(
+                              size: cardSize,
+                              icon: Icons.water_drop_outlined,
+                              label: "Water\nSupply",
+                              color: const Color(0xFFB9EFE0),
                             ),
                           ),
 

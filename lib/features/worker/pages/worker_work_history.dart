@@ -34,6 +34,7 @@ class _WorkerHistoryPageState extends State<WorkerHistoryPage> {
 
     List<Map<String, dynamic>> serviceJobs = [];
     List<Map<String, dynamic>> wasteJobs = [];
+    List<Map<String, dynamic>> waterJobs = [];
 
     // Listen to completed service requests
     final serviceSub = FirebaseFirestore.instance
@@ -49,7 +50,7 @@ class _WorkerHistoryPageState extends State<WorkerHistoryPage> {
             return data;
           }).toList();
 
-          _emitCompletedJobs(controller, serviceJobs, wasteJobs);
+          _emitCompletedJobs(controller, serviceJobs, wasteJobs, waterJobs);
         });
 
     // Listen to completed waste pickups
@@ -66,12 +67,30 @@ class _WorkerHistoryPageState extends State<WorkerHistoryPage> {
             return data;
           }).toList();
 
-          _emitCompletedJobs(controller, serviceJobs, wasteJobs);
+          _emitCompletedJobs(controller, serviceJobs, wasteJobs, waterJobs);
+        });
+
+    // Listen to completed water orders
+    final waterSub = FirebaseFirestore.instance
+        .collection("water_orders")
+        .where("assignedWorker.id", isEqualTo: workerId)
+        .where("status", isEqualTo: "Delivered")
+        .snapshots()
+        .listen((snapshot) {
+          waterJobs = snapshot.docs.map((doc) {
+            var data = doc.data();
+            data["_docId"] = doc.id;
+            data["_jobType"] = "water";
+            return data;
+          }).toList();
+
+          _emitCompletedJobs(controller, serviceJobs, wasteJobs, waterJobs);
         });
 
     controller.onCancel = () {
       serviceSub.cancel();
       wasteSub.cancel();
+      waterSub.cancel();
     };
 
     return controller.stream;
@@ -81,8 +100,9 @@ class _WorkerHistoryPageState extends State<WorkerHistoryPage> {
     StreamController<List<Map<String, dynamic>>> controller,
     List<Map<String, dynamic>> serviceJobs,
     List<Map<String, dynamic>> wasteJobs,
+    List<Map<String, dynamic>> waterJobs,
   ) {
-    List<Map<String, dynamic>> allJobs = [...serviceJobs, ...wasteJobs];
+    List<Map<String, dynamic>> allJobs = [...serviceJobs, ...wasteJobs, ...waterJobs];
 
     // Sort by timestamp (most recent first)
     allJobs.sort((a, b) {
@@ -133,6 +153,7 @@ class _WorkerHistoryPageState extends State<WorkerHistoryPage> {
   // ================= HISTORY DETAILS POPUP =================
   void _showHistoryPopup(BuildContext context, Map<String, dynamic> job) {
     final isWastePickup = job["_jobType"] == "waste";
+    final isWaterOrder = job["_jobType"] == "water";
 
     showDialog(
       context: context,
@@ -167,7 +188,9 @@ class _WorkerHistoryPageState extends State<WorkerHistoryPage> {
                     child: Text(
                       isWastePickup
                           ? "Waste Pickup"
-                          : (job["title"] ?? "No Title"),
+                          : isWaterOrder
+                              ? "Water Supply"
+                              : (job["title"] ?? "No Title"),
                       textAlign: TextAlign.center,
                       style: const TextStyle(
                         fontSize: 28,
@@ -228,6 +251,49 @@ class _WorkerHistoryPageState extends State<WorkerHistoryPage> {
                         ],
                       ),
                     ],
+                  ] else if (isWaterOrder) ...[
+                    _popupInfoRow("Order ID", job["orderId"] ?? "N/A"),
+                    const SizedBox(height: 8),
+                    _popupInfoRow("Water Type", job["type"] ?? "N/A"),
+                    const SizedBox(height: 8),
+                    _popupInfoRow("Quantity", "${job["quantity"] ?? 0}"),
+                    const SizedBox(height: 8),
+                    _popupInfoRow(
+                      "Date",
+                      (job["timestamp"] as Timestamp?)
+                              ?.toDate()
+                              .toString()
+                              .substring(0, 10) ??
+                          "",
+                    ),
+                    const SizedBox(height: 15),
+                    
+                    // Delivered At
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const SizedBox(
+                          width: 110,
+                          child: Text(
+                            "Delivered At:",
+                            style: TextStyle(
+                              fontWeight: FontWeight.w700,
+                              fontSize: 15,
+                            ),
+                          ),
+                        ),
+                        Expanded(
+                          child: Text(
+                            _formatCompletedDate(job),
+                            style: const TextStyle(
+                              fontSize: 15,
+                              color: Colors.black87,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
                   ] else ...[
                     _popupInfoRow("Service ID", job["service_id"] ?? ""),
                     const SizedBox(height: 8),
@@ -289,7 +355,7 @@ class _WorkerHistoryPageState extends State<WorkerHistoryPage> {
                   const Divider(height: 40, thickness: 1),
 
                   // -------- WORKER COMPLETION DETAILS (Only for service requests) --------
-                  if (!isWastePickup) ...[
+                  if (!isWastePickup && !isWaterOrder) ...[
                     const Text(
                       "Work Completion Report",
                       style: TextStyle(
@@ -631,6 +697,7 @@ class _WorkerHistoryPageState extends State<WorkerHistoryPage> {
   // ================= CARD WIDGET =================
   Widget _historyCard(Map<String, dynamic> job) {
     final isWastePickup = job["_jobType"] == "waste";
+    final isWaterOrder = job["_jobType"] == "water";
 
     return Container(
       margin: const EdgeInsets.only(bottom: 18),
@@ -658,8 +725,8 @@ class _WorkerHistoryPageState extends State<WorkerHistoryPage> {
               borderRadius: BorderRadius.circular(12),
             ),
             child: Icon(
-              isWastePickup ? Icons.delete : Icons.check_circle,
-              color: Colors.green,
+              isWastePickup ? Icons.delete : isWaterOrder ? Icons.water_drop : Icons.check_circle,
+              color: isWaterOrder ? Colors.blue : Colors.green,
             ),
           ),
           const SizedBox(width: 15),
@@ -672,7 +739,9 @@ class _WorkerHistoryPageState extends State<WorkerHistoryPage> {
                 Text(
                   isWastePickup
                       ? "Waste Pickup - ${job["wasteType"] ?? "N/A"}"
-                      : (job["title"] ?? "Service"),
+                      : isWaterOrder
+                          ? "Water Supply - ${job["type"] ?? "N/A"}"
+                          : (job["title"] ?? "Service"),
                   style: const TextStyle(
                     fontSize: 18,
                     fontWeight: FontWeight.bold,
@@ -681,9 +750,11 @@ class _WorkerHistoryPageState extends State<WorkerHistoryPage> {
                 ),
                 const SizedBox(height: 6),
                 Text(
-                  isWastePickup
-                      ? "ID: ${job["pickup_id"] ?? "—"}"
-                      : "ID: ${job["service_id"] ?? "—"}",
+                  isWaterOrder 
+                    ? "ID: ${job["orderId"] ?? "—"}"
+                    : isWastePickup
+                        ? "ID: ${job["pickup_id"] ?? "—"}"
+                        : "ID: ${job["service_id"] ?? "—"}",
                   style: TextStyle(
                     fontSize: 13,
                     color: Colors.grey[600],
@@ -728,8 +799,8 @@ class _WorkerHistoryPageState extends State<WorkerHistoryPage> {
   }
 
   String _formatCompletedDate(Map<String, dynamic> job) {
-    // Try completedAt first (for new completions), fallback to timestamp (for old completions)
-    final dateField = job["completedAt"] ?? job["timestamp"];
+    // Try completedAt first (for new completions), fallback to timestamp (for old completions) or deliveredAt
+    final dateField = job["completedAt"] ?? job["deliveredAt"] ?? job["timestamp"];
     if (dateField == null) return "Date unknown";
 
     try {

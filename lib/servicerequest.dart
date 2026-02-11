@@ -615,10 +615,7 @@ class _NewServiceRequestpage extends State<NewServiceRequestpage> {
                             value: "Cleaner",
                             child: Text("Cleaning"),
                           ),
-                          DropdownMenuItem(
-                            value: "Water Supplier",
-                            child: Text("Water Supply"),
-                          ),
+
                           DropdownMenuItem(
                             value: "Other",
                             child: Text("Other"),
