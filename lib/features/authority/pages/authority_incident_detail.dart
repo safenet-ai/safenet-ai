@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../../shared/widgets/image_viewer.dart';
+import '../../../services/notification_service.dart';
 
 class AuthorityIncidentDetailPage extends StatefulWidget {
   final String incidentId;
@@ -360,15 +361,14 @@ class _AuthorityIncidentDetailPageState
       // Send notification to security personnel
       final reportedBy = widget.incidentData["reportedBy"];
       if (reportedBy != null) {
-        await FirebaseFirestore.instance.collection("notifications").add({
-          "toUid": reportedBy,
-          "toRole": "security",
-          "title": "Incident Acknowledged",
-          "message":
-              "Your ${widget.incidentData["type"]} incident report at ${widget.incidentData["location"]} has been acknowledged by authority.",
-          "timestamp": FieldValue.serverTimestamp(),
-          "isRead": false,
-        });
+        await NotificationService.sendNotification(
+          userId: reportedBy,
+          userRole: 'security',
+          title: 'Incident Acknowledged',
+          body: 'Your ${widget.incidentData["type"]} incident report at ${widget.incidentData["location"]} has been acknowledged by authority.',
+          type: 'incident_update',
+          additionalData: {'incidentId': widget.incidentId},
+        );
       }
 
       if (mounted) {
@@ -450,15 +450,14 @@ class _AuthorityIncidentDetailPageState
       // Send notification to security personnel
       final reportedBy = widget.incidentData["reportedBy"];
       if (reportedBy != null) {
-        await FirebaseFirestore.instance.collection("notifications").add({
-          "toUid": reportedBy,
-          "toRole": "security",
-          "title": "Incident Resolved",
-          "message":
-              "Your ${widget.incidentData["type"]} incident report at ${widget.incidentData["location"]} has been resolved. ${notes.isNotEmpty ? 'Resolution: $notes' : ''}",
-          "timestamp": FieldValue.serverTimestamp(),
-          "isRead": false,
-        });
+        await NotificationService.sendNotification(
+          userId: reportedBy,
+          userRole: 'security',
+          title: 'Incident Resolved',
+          body: 'Your ${widget.incidentData["type"]} incident report at ${widget.incidentData["location"]} has been resolved. ${notes.isNotEmpty ? 'Resolution: $notes' : ''}',
+          type: 'incident_update',
+          additionalData: {'incidentId': widget.incidentId},
+        );
       }
 
       if (mounted) {

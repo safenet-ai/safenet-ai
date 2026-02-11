@@ -6,6 +6,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'features/shared/widgets/profile_sidebar.dart';
 import 'features/shared/widgets/notification_dropdown.dart';
+import 'services/notification_service.dart';
 
 class NewComplaintPage extends StatefulWidget {
   const NewComplaintPage({super.key});
@@ -153,6 +154,29 @@ class _NewComplaintPageState extends State<NewComplaintPage> {
         "status": "Pending",
         "timestamp": Timestamp.now(),
       });
+
+      // Notify authority about new complaint
+      try {
+        final authorities = await FirebaseFirestore.instance
+            .collection('authorities')
+            .limit(1)
+            .get();
+        
+        if (authorities.docs.isNotEmpty) {
+          await NotificationService.sendNotification(
+            userId: authorities.docs.first.id,
+            userRole: 'authority',
+            title: 'New Complaint',
+            body: '$username submitted a complaint: ${titleController.text.trim()}',
+            type: 'new_complaint',
+            additionalData: {'complaintId': complaintId},
+          );
+        }
+      } catch (e) {
+        print('Error sending notification: $e');
+      }
+
+      if (!mounted) return;
 
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(

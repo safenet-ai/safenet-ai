@@ -3,6 +3,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../shared/widgets/filter_tabs.dart';
 import '../../shared/widgets/profile_sidebar.dart';
 import '../../shared/widgets/notification_dropdown.dart';
+import '../../../services/notification_service.dart';
 
 class AuthorityWasteManagementPage extends StatefulWidget {
   const AuthorityWasteManagementPage({super.key});
@@ -426,6 +427,18 @@ class _AuthorityWasteManagementPageState
     String workerId,
   ) async {
     try {
+      // Get waste pickup data for resident ID
+      final pickupDoc = await FirebaseFirestore.instance
+          .collection("waste_pickups")
+          .doc(docId)
+          .get();
+      
+      if (!pickupDoc.exists) return;
+      final pickupData = pickupDoc.data()!;
+      final residentUid = pickupData["uid"];
+      final pickupId = pickupData["pickup_id"];
+      final wasteType = pickupData["wasteType"];
+
       // Get worker name
       final workerDoc = await FirebaseFirestore.instance
           .collection("workers")
@@ -447,6 +460,28 @@ class _AuthorityWasteManagementPageState
             "status": "Pending",
           });
 
+      // Notify Worker
+      NotificationService.sendNotification(
+        userId: workerId,
+        userRole: 'worker',
+        title: 'New Waste Pickup Assigned',
+        body: 'You have been assigned a $wasteType pickup ($pickupId)',
+        type: 'waste_pickup_assigned',
+        additionalData: {'pickupId': docId},
+      );
+
+      // Notify Resident
+      if (residentUid != null) {
+        NotificationService.sendNotification(
+          userId: residentUid,
+          userRole: 'user',
+          title: 'Waste Pickup Assigned',
+          body: 'A worker ($workerName) has been assigned to your $wasteType pickup request',
+          type: 'waste_pickup_assigned',
+          additionalData: {'pickupId': docId},
+        );
+      }
+
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -465,10 +500,33 @@ class _AuthorityWasteManagementPageState
 
   Future<void> _updateStatus(String docId, String newStatus) async {
     try {
-      await FirebaseFirestore.instance
+      final pickupDoc = await FirebaseFirestore.instance
           .collection("waste_pickups")
           .doc(docId)
-          .update({"status": newStatus});
+          .get();
+      
+      if (pickupDoc.exists) {
+        final data = pickupDoc.data()!;
+        final residentUid = data["uid"];
+        final wasteType = data["wasteType"];
+
+        await FirebaseFirestore.instance
+            .collection("waste_pickups")
+            .doc(docId)
+            .update({"status": newStatus});
+
+        // Notify Resident on status change (e.g. Completed)
+        if (residentUid != null) {
+          NotificationService.sendNotification(
+            userId: residentUid,
+            userRole: 'user',
+            title: 'Waste Pickup Updated',
+            body: 'Your $wasteType pickup request is now $newStatus',
+            type: 'waste_pickup_status_update',
+            additionalData: {'pickupId': docId},
+          );
+        }
+      }
 
       if (mounted) {
         ScaffoldMessenger.of(

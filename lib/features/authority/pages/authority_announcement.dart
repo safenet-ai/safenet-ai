@@ -4,6 +4,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:io';
+import '../../../services/notification_service.dart';
 
 class AuthorityAnnouncementPage extends StatefulWidget {
   const AuthorityAnnouncementPage({super.key});
@@ -190,13 +191,17 @@ class _AuthorityAnnouncementPageState extends State<AuthorityAnnouncementPage> {
       int sent = 0;
       for (var userDoc in usersSnapshot.docs) {
         final docId = userDoc.id;
-        await FirebaseFirestore.instance.collection("notifications").add({
-          "title": "New Announcement: $category",
-          "message": title,
-          "toUid": docId,
-          "isRead": false,
-          "timestamp": FieldValue.serverTimestamp(),
-        });
+        
+        // Use NotificationService for consistency and FCM support
+        await NotificationService.sendNotification(
+          userId: docId,
+          userRole: collection == 'users' ? 'user' : (collection == 'workers' ? 'worker' : 'security'),
+          title: 'New Announcement: $category',
+          body: title,
+          type: 'announcement',
+          additionalData: {'category': category},
+        );
+
         print("Notification sent to $collection user: $docId");
         sent++;
       }

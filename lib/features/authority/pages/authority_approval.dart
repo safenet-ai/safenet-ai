@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../../shared/widgets/filter_tabs.dart';
 import '../../shared/widgets/profile_sidebar.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import '../../../services/notification_service.dart';
 
 class PendingApprovalPage extends StatefulWidget {
   const PendingApprovalPage({super.key});
@@ -58,11 +59,12 @@ class _PendingApprovalPageState extends State<PendingApprovalPage> {
       action: "approved",
     );
 
-    await _sendNotification(
-      uid: uid,
+    await NotificationService.sendNotification(
+      userId: uid,
+      userRole: selectedTab == "Residents" ? 'user' : 'worker',
       title: "Account Approved",
-      message:
-          "Your SafeNet ${selectedTab.toLowerCase()} account has been approved. You can now use the app.",
+      body: "Your SafeNet ${selectedTab.toLowerCase()} account has been approved. You can now use the app.",
+      type: "account_status",
     );
   }
 
@@ -88,11 +90,12 @@ class _PendingApprovalPageState extends State<PendingApprovalPage> {
       action: "rejected",
     );
 
-    await _sendNotification(
-      uid: uid,
+    await NotificationService.sendNotification(
+      userId: uid,
+      userRole: selectedTab == "Residents" ? 'user' : 'worker',
       title: "Account Rejected",
-      message:
-          "Your SafeNet ${selectedTab.toLowerCase()} account was rejected by the authority.",
+      body: "Your SafeNet ${selectedTab.toLowerCase()} account was rejected by the authority.",
+      type: "account_status",
     );
   }
 
@@ -116,19 +119,6 @@ class _PendingApprovalPageState extends State<PendingApprovalPage> {
     });
   }
 
-  Future<void> _sendNotification({
-    required String uid,
-    required String title,
-    required String message,
-  }) async {
-    await FirebaseFirestore.instance.collection("notifications").add({
-      "toUid": uid,
-      "title": title,
-      "message": message,
-      "isRead": false,
-      "timestamp": FieldValue.serverTimestamp(),
-    });
-  }
 
   @override
   Widget build(BuildContext context) {

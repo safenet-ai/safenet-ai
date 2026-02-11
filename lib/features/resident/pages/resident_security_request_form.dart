@@ -7,6 +7,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../../shared/widgets/profile_sidebar.dart';
 import '../../shared/widgets/notification_dropdown.dart';
+import '../../../services/notification_service.dart';
 
 class ResidentSecurityRequestFormPage extends StatefulWidget {
   const ResidentSecurityRequestFormPage({super.key});
@@ -48,7 +49,6 @@ class _ResidentSecurityRequestFormPageState
     "normal": Colors.blue,
     "medium": Colors.orange,
     "urgent": Colors.red,
-    "high": Colors.purple,
   };
 
   // Compress file before upload
@@ -187,6 +187,31 @@ class _ResidentSecurityRequestFormPageState
         "resolutionNotes": null,
       });
 
+      // Send notifications to Authority and Security
+      await NotificationService.sendNotification(
+        toRole: "authority",
+        userRole: "resident",
+        title: "New Security Request",
+        body: "A new ${requestTypeLabels[selectedRequestType]} has been reported by $residentName at ${locationController.text}.",
+        type: "security_request",
+        additionalData: {
+          "requestType": selectedRequestType,
+          "priority": selectedPriority,
+        },
+      );
+
+      await NotificationService.sendNotification(
+        toRole: "security",
+        userRole: "resident",
+        title: "Security Alert: $selectedPriority",
+        body: "New ${requestTypeLabels[selectedRequestType]} at ${locationController.text}.",
+        type: "security_request",
+        additionalData: {
+          "requestType": selectedRequestType,
+          "priority": selectedPriority,
+        },
+      );
+
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text("Security request submitted successfully!"),
@@ -315,7 +340,7 @@ class _ResidentSecurityRequestFormPageState
                         _sectionTitle("Priority Level *"),
                         const SizedBox(height: 8),
                         Row(
-                          children: ["normal", "medium", "urgent", "high"].map((
+                          children: ["normal", "medium", "urgent"].map((
                             priority,
                           ) {
                             final isSelected = selectedPriority == priority;

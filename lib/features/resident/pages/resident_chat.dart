@@ -5,6 +5,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../../shared/widgets/profile_sidebar.dart';
 import '../../shared/widgets/notification_dropdown.dart';
+import '../../../services/notification_service.dart';
 
 class SupportChatPage extends StatefulWidget {
   const SupportChatPage({super.key});
@@ -480,6 +481,29 @@ class _SupportChatPageState extends State<SupportChatPage> {
           "text": text,
           "timestamp": FieldValue.serverTimestamp(),
         });
+
+    // Notify Authority
+    try {
+      final uid = FirebaseAuth.instance.currentUser?.uid;
+      String residentName = "Resident";
+      if (uid != null) {
+        final residentDoc = await FirebaseFirestore.instance.collection("users").doc(uid).get();
+        if (residentDoc.exists) {
+          residentName = residentDoc.data()?["username"] ?? "Resident";
+        }
+      }
+
+      await NotificationService.sendNotification(
+        toRole: "authority",
+        userRole: "authority",
+        title: "New Message from $residentName",
+        body: text,
+        type: "chat_message",
+        additionalData: {"conversationId": conversationId},
+      );
+    } catch (e) {
+      print("Error sending chat notification to authority: $e");
+    }
 
     _scrollToBottom();
   }

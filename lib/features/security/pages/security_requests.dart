@@ -4,6 +4,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../../shared/widgets/profile_sidebar.dart';
 import '../../shared/widgets/notification_dropdown.dart';
+import '../../../services/notification_service.dart';
 import 'security_request_detail.dart';
 
 class SecurityRequestsPage extends StatefulWidget {
@@ -226,7 +227,6 @@ class _SecurityRequestsPageState extends State<SecurityRequestsPage> {
 
     switch (priority.toLowerCase()) {
       case "urgent":
-      case "high":
         priorityColor = Colors.red;
         break;
       case "medium":
@@ -489,14 +489,14 @@ class _SecurityRequestsPageState extends State<SecurityRequestsPage> {
 
       // Send notification to resident
       if (residentId != null) {
-        await FirebaseFirestore.instance.collection("notifications").add({
-          "title": "Request Accepted",
-          "message":
-              "$securityName has accepted your ${requestType.replaceAll('_', ' ')} request and will address it soon.",
-          "toUid": residentId,
-          "isRead": false,
-          "timestamp": FieldValue.serverTimestamp(),
-        });
+        await NotificationService.sendNotification(
+          userId: residentId,
+          userRole: 'user',
+          title: "Request Accepted",
+          body: "$securityName has accepted your ${requestType.replaceAll('_', ' ')} request and will address it soon.",
+          type: "security_request_update",
+          additionalData: {"requestId": requestId},
+        );
       }
 
       if (mounted) {
@@ -538,14 +538,14 @@ class _SecurityRequestsPageState extends State<SecurityRequestsPage> {
 
       // Send notification to resident
       if (residentId != null) {
-        await FirebaseFirestore.instance.collection("notifications").add({
-          "title": "Work Started",
-          "message":
-              "Security has started working on your ${requestType.replaceAll('_', ' ')} request.",
-          "toUid": residentId,
-          "isRead": false,
-          "timestamp": FieldValue.serverTimestamp(),
-        });
+        await NotificationService.sendNotification(
+          userId: residentId,
+          userRole: 'user',
+          title: "Work Started",
+          body: "Security has started working on your ${requestType.replaceAll('_', ' ')} request.",
+          type: "security_request_update",
+          additionalData: {"requestId": requestId},
+        );
       }
 
       if (mounted) {
@@ -635,14 +635,14 @@ class _SecurityRequestsPageState extends State<SecurityRequestsPage> {
 
       // Send notification to resident
       if (residentId != null) {
-        await FirebaseFirestore.instance.collection("notifications").add({
-          "title": "Request Resolved",
-          "message":
-              "Your ${requestType.replaceAll('_', ' ')} request has been resolved. ${notes.isNotEmpty ? 'Notes: $notes' : ''}",
-          "toUid": residentId,
-          "isRead": false,
-          "timestamp": FieldValue.serverTimestamp(),
-        });
+        await NotificationService.sendNotification(
+          userId: residentId,
+          userRole: 'user',
+          title: "Request Resolved",
+          body: "Your ${requestType.replaceAll('_', ' ')} request has been resolved. ${notes.isNotEmpty ? 'Notes: $notes' : ''}",
+          type: "security_request_update",
+          additionalData: {"requestId": requestId},
+        );
       }
 
       if (mounted) {

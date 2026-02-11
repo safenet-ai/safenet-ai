@@ -9,6 +9,7 @@ import 'features/resident/pages/resident_dashboard.dart';
 import 'features/worker/pages/worker_dashboard.dart';
 import 'features/security/pages/security_dashboard.dart';
 import 'features/authority/pages/authority_dashboard.dart';
+import 'services/notification_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -20,6 +21,9 @@ void main() async {
   await FirebaseAppCheck.instance.activate(
     androidProvider: AndroidProvider.debug,
   );
+
+  // 🔔 Initialize Notification Service
+  await NotificationService.initialize();
 
   runApp(const SafeNetApp());
 }

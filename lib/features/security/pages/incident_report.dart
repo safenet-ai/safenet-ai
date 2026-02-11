@@ -8,6 +8,7 @@ import 'package:file_picker/file_picker.dart';
 import '../../shared/widgets/profile_sidebar.dart';
 import '../../shared/widgets/notification_dropdown.dart';
 import 'security_incident_history.dart';
+import '../../../services/notification_service.dart';
 
 class IncidentReportPage extends StatefulWidget {
   const IncidentReportPage({super.key});
@@ -460,7 +461,7 @@ class _IncidentReportPageState extends State<IncidentReportPage> {
       }
 
       // Create incident report document
-      await FirebaseFirestore.instance.collection("incidents").add({
+      final docRef = await FirebaseFirestore.instance.collection("incidents").add({
         "type": _selectedType,
         "severity": _selectedSeverity.toLowerCase(),
         "location": _locationController.text,
@@ -470,6 +471,25 @@ class _IncidentReportPageState extends State<IncidentReportPage> {
         "timestamp": FieldValue.serverTimestamp(),
         "status": "pending",
       });
+
+      // Send notifications to Authority and Security
+      await NotificationService.sendNotification(
+        toRole: 'authority',
+        userRole: 'authority',
+        title: 'New Incident Reported',
+        body: 'A new ${_selectedSeverity.toLowerCase()} severity $_selectedType incident has been reported at ${_locationController.text}',
+        type: 'new_incident',
+        additionalData: {'incidentId': docRef.id},
+      );
+
+      await NotificationService.sendNotification(
+        toRole: 'security',
+        userRole: 'security',
+        title: 'New Incident Reported',
+        body: 'New incident: $_selectedType at ${_locationController.text}',
+        type: 'new_incident',
+        additionalData: {'incidentId': docRef.id},
+      );
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(

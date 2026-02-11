@@ -9,6 +9,7 @@ import 'package:file_picker/file_picker.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../../shared/widgets/notification_dropdown.dart';
 import '../../shared/widgets/profile_sidebar.dart';
+import '../../../services/notification_service.dart';
 
 class WorkerMyJobsPage extends StatefulWidget {
   const WorkerMyJobsPage({super.key});
@@ -387,25 +388,25 @@ class _WorkerMyJobsPageState extends State<WorkerMyJobsPage> {
   }
 
   Future<void> _sendStartNotification(Map<String, dynamic> job) async {
-    final now = Timestamp.now();
-
     // TO RESIDENT
-    await FirebaseFirestore.instance.collection("notifications").add({
-      "title": "Service Started",
-      "message": "Your service request '${job["title"]}' has been started.",
-      "toUid": job["userId"],
-      "isRead": false,
-      "timestamp": now,
-    });
+    await NotificationService.sendNotification(
+      userId: job["userId"],
+      userRole: 'user',
+      title: 'Service Started',
+      body: 'Your service request \'${job["title"]}\' has been started.',
+      type: 'service_started',
+      additionalData: {'serviceId': job["_docId"]},
+    );
 
     // TO AUTHORITY
-    await FirebaseFirestore.instance.collection("notifications").add({
-      "title": "Service Started",
-      "message": "Worker has started service '${job["title"]}'.",
-      "toRole": "authority",
-      "isRead": false,
-      "timestamp": now,
-    });
+    await NotificationService.sendNotification(
+      toRole: 'authority',
+      userRole: 'authority',
+      title: 'Service Started',
+      body: 'Worker has started service \'${job["title"]}\'.',
+      type: 'service_started',
+      additionalData: {'serviceId': job["_docId"]},
+    );
   }
 
   Future<void> _rejectJob(
@@ -460,24 +461,24 @@ class _WorkerMyJobsPageState extends State<WorkerMyJobsPage> {
           });
 
       // Send notification to authority
-      await FirebaseFirestore.instance.collection("notifications").add({
-        "title": "Job Rejected",
-        "message":
-            "Worker $workerName rejected service request '$serviceTitle' (ID: $serviceId).",
-        "toRole": "authority",
-        "isRead": false,
-        "timestamp": Timestamp.now(),
-      });
+      await NotificationService.sendNotification(
+        toRole: 'authority',
+        userRole: 'authority',
+        title: 'Job Rejected',
+        body: 'Worker $workerName rejected service request \'$serviceTitle\' (ID: $serviceId).',
+        type: 'job_rejected',
+        additionalData: {'serviceId': jobId},
+      );
 
       // Send notification to resident
-      await FirebaseFirestore.instance.collection("notifications").add({
-        "title": "Service Update",
-        "message":
-            "Worker $workerName rejected your service request '$serviceTitle' (ID: $serviceId). A new worker will be assigned soon.",
-        "toUid": job["userId"],
-        "isRead": false,
-        "timestamp": Timestamp.now(),
-      });
+      await NotificationService.sendNotification(
+        userId: job["userId"],
+        userRole: 'user',
+        title: 'Service Update',
+        body: 'Worker $workerName rejected your service request \'$serviceTitle\' (ID: $serviceId). A new worker will be assigned soon.',
+        type: 'job_rejected',
+        additionalData: {'serviceId': jobId},
+      );
 
       if (context.mounted) {
         Navigator.pop(context);
@@ -940,6 +941,20 @@ class _WorkerMyJobsPageState extends State<WorkerMyJobsPage> {
                   "completedAt": FieldValue.serverTimestamp(),
                 });
 
+            // Notify resident about completion
+            try {
+              await NotificationService.sendNotification(
+                userId: job["userId"],
+                userRole: 'user',
+                title: 'Waste Pickup Completed',
+                body: 'Your waste pickup has been completed',
+                type: 'waste_pickup_completed',
+                additionalData: {'pickupId': job["pickup_id"]},
+              );
+            } catch (e) {
+              print('Error sending notification: $e');
+            }
+
             if (context.mounted) {
               Navigator.pop(context);
               ScaffoldMessenger.of(context).showSnackBar(
@@ -979,6 +994,20 @@ class _WorkerMyJobsPageState extends State<WorkerMyJobsPage> {
                   "status": "Delivered",
                   "deliveredAt": FieldValue.serverTimestamp(),
                 });
+
+            // Notify resident about delivery
+            try {
+              await NotificationService.sendNotification(
+                userId: job["userId"],
+                userRole: 'user',
+                title: 'Water Order Delivered',
+                body: 'Your water order has been delivered',
+                type: 'water_order_delivered',
+                additionalData: {'orderId': job["orderId"]},
+              );
+            } catch (e) {
+              print('Error sending notification: $e');
+            }
 
             if (context.mounted) {
               Navigator.pop(context);
@@ -1244,6 +1273,26 @@ class _WorkerMyJobsPageState extends State<WorkerMyJobsPage> {
                             "completionFiles": workFiles,
                             "completedAt": FieldValue.serverTimestamp(),
                           });
+
+                      // Notify Resident & Authority
+                      await NotificationService.sendNotification(
+                        userId: job["userId"],
+                        userRole: 'user',
+                        title: 'Service Request Completed',
+                        body: 'Your service request \'${job["title"]}\' has been completed.',
+                        type: 'service_completed',
+                        additionalData: {'serviceId': jobId},
+                      );
+
+                      await NotificationService.sendNotification(
+                        toRole: 'authority',
+                        userRole: 'authority',
+                        title: 'Service Request Completed',
+                        body: 'Worker has completed service \'${job["title"]}\'.',
+                        type: 'service_completed',
+                        additionalData: {'serviceId': jobId},
+                      );
+
                       Navigator.pop(context);
 
                       selectedFiles.clear();

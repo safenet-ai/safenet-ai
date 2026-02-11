@@ -220,7 +220,6 @@ class _AuthoritySecurityRequestsPageState
 
     switch (priority.toLowerCase()) {
       case "urgent":
-      case "high":
         priorityColor = Colors.red;
         break;
       case "medium":

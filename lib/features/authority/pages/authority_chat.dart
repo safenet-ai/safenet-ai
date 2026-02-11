@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import '../../../services/notification_service.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 class AuthorityChatPage extends StatefulWidget {
   final String conversationId;
@@ -43,6 +45,44 @@ class _AuthorityChatPageState extends State<AuthorityChatPage> {
           "text": text,
           "timestamp": FieldValue.serverTimestamp(),
         });
+
+    // Notify recipient
+    try {
+      final requestCollection = widget.userType == "worker"
+          ? "worker_support_requests"
+          : widget.userType == "security"
+          ? "security_support_requests"
+          : "support_requests";
+          
+      final requestDoc = await FirebaseFirestore.instance
+          .collection(requestCollection)
+          .doc(widget.conversationId)
+          .get();
+          
+      if (requestDoc.exists) {
+        String? targetUid;
+        if (widget.userType == "worker") {
+          targetUid = requestDoc.data()?["workerId"];
+        } else if (widget.userType == "security") {
+          targetUid = requestDoc.data()?["securityId"];
+        } else {
+          targetUid = requestDoc.data()?["residentId"];
+        }
+        
+        if (targetUid != null) {
+          await NotificationService.sendNotification(
+            userId: targetUid,
+            userRole: widget.userType == "resident" ? "user" : widget.userType,
+            title: "New Message from Authority",
+            body: text,
+            type: "chat_message",
+            additionalData: {"conversationId": widget.conversationId},
+          );
+        }
+      }
+    } catch (e) {
+      print("Error sending chat notification: $e");
+    }
 
     _scrollToBottom();
   }

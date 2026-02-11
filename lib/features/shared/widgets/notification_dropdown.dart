@@ -2,6 +2,7 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import '../../../services/notification_service.dart';
 
 class NotificationDropdown extends StatefulWidget {
   final String role; // "user", "worker", "security", or "authority"
@@ -295,6 +296,20 @@ class _NotificationDropdownState extends State<NotificationDropdown> {
                         ),
 
                         const SizedBox(height: 12),
+                        
+                        // TEST NOTIFICATION BUTTON (Verification)
+                        Center(
+                          child: Wrap(
+                            spacing: 8,
+                            children: [
+                              _testButton(label: "Normal", priority: "normal", color: Colors.blue),
+                              _testButton(label: "Medium", priority: "medium", color: Colors.orange),
+                              _testButton(label: "URGENT", priority: "urgent", color: Colors.red),
+                            ],
+                          ),
+                        ),
+
+                        const SizedBox(height: 12),
 
                         Flexible(
                           child: StreamBuilder<QuerySnapshot>(
@@ -487,6 +502,41 @@ class _NotificationDropdownState extends State<NotificationDropdown> {
               ),
             ),
         ],
+      ),
+    );
+  }
+
+  Widget _testButton({
+    required String label,
+    required String priority,
+    required MaterialColor color,
+  }) {
+    return GestureDetector(
+      onTap: () async {
+        await NotificationService.sendNotification(
+          toRole: widget.role,
+          userRole: widget.role,
+          title: "$label Priority Test",
+          body: "This is a ${label.toLowerCase()} priority security update.",
+          type: "test_$priority",
+          priority: priority,
+        );
+      },
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+        decoration: BoxDecoration(
+          color: color.withOpacity(0.1),
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: color.withOpacity(0.3)),
+        ),
+        child: Text(
+          label,
+          style: TextStyle(
+            fontSize: 11,
+            fontWeight: FontWeight.bold,
+            color: color.shade700,
+          ),
+        ),
       ),
     );
   }

@@ -5,6 +5,7 @@ import 'package:intl/intl.dart';
 import '../../shared/widgets/profile_sidebar.dart';
 import '../../shared/widgets/filter_tabs.dart';
 import '../../shared/widgets/notification_dropdown.dart';
+import '../../../services/notification_service.dart';
 
 class WaterSupplyPage extends StatefulWidget {
   const WaterSupplyPage({super.key});
@@ -628,6 +629,27 @@ class _WaterSupplyPageState extends State<WaterSupplyPage> {
           "role": selectedWorker!['role'],
         }
       });
+
+      // Notify authority about new water order
+      try {
+        final authorities = await FirebaseFirestore.instance
+            .collection('authorities')
+            .limit(1)
+            .get();
+        
+        if (authorities.docs.isNotEmpty) {
+          await NotificationService.sendNotification(
+            userId: authorities.docs.first.id,
+            userRole: 'authority',
+            title: 'New Water Order',
+            body: 'New water order for $_selectedType (Qty: $_quantity)',
+            type: 'new_water_order',
+            additionalData: {'orderId': orderId},
+          );
+        }
+      } catch (e) {
+        print('Error sending notification: $e');
+      }
 
       Navigator.pop(context);
       _showSuccessDialog(orderId);

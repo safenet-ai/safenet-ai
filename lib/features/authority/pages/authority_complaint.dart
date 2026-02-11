@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../shared/widgets/filter_tabs.dart';
 import '../../shared/widgets/profile_sidebar.dart';
+import '../../../services/notification_service.dart';
 
 class AuthorityComplaintsPage extends StatefulWidget {
   const AuthorityComplaintsPage({super.key});
@@ -320,13 +321,14 @@ class _AuthorityComplaintsPageState extends State<AuthorityComplaintsPage> {
 
       // Send notification to resident
       if (userId != null) {
-        await FirebaseFirestore.instance.collection("notifications").add({
-          "title": "Complaint Update",
-          "message": "Your complaint has been marked as $newStatus.",
-          "toUid": userId,
-          "isRead": false,
-          "timestamp": FieldValue.serverTimestamp(),
-        });
+        await NotificationService.sendNotification(
+          userId: userId,
+          userRole: 'user',
+          title: 'Complaint Update',
+          body: 'Your complaint has been marked as $newStatus.',
+          type: 'complaint_update',
+          additionalData: {'complaintId': docId},
+        );
       }
 
       if (mounted) {

@@ -9,6 +9,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'features/shared/widgets/profile_sidebar.dart';
 import 'features/shared/widgets/notification_dropdown.dart';
+import 'services/notification_service.dart';
 
 class NewServiceRequestpage extends StatefulWidget {
   const NewServiceRequestpage({super.key});
@@ -218,6 +219,27 @@ class _NewServiceRequestpage extends State<NewServiceRequestpage> {
               }
             : null,
       });
+
+      // Notify authority about new service request
+      try {
+        final authorities = await FirebaseFirestore.instance
+            .collection('authorities')
+            .limit(1)
+            .get();
+        
+        if (authorities.docs.isNotEmpty) {
+          await NotificationService.sendNotification(
+            userId: authorities.docs.first.id,
+            userRole: 'authority',
+            title: 'New Service Request',
+            body: '$username submitted a new service request: ${titleController.text.trim()}',
+            type: 'new_service_request',
+            additionalData: {'requestId': serviceId},
+          );
+        }
+      } catch (e) {
+        print('Error sending notification: $e');
+      }
 
       if (mounted) Navigator.pop(context); // close loading
 

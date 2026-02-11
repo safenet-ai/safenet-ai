@@ -151,7 +151,6 @@ class _SecurityRequestDetailPageState extends State<SecurityRequestDetailPage> {
 
     switch (priority.toLowerCase()) {
       case "urgent":
-      case "high":
         priorityColor = Colors.red;
         break;
       case "medium":

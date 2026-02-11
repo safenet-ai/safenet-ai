@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import './authority_chat.dart';
+import '../../../services/notification_service.dart';
 
 class AuthorityWaitingListPage extends StatefulWidget {
   const AuthorityWaitingListPage({super.key});
@@ -376,79 +377,40 @@ class _AuthorityWaitingListPageState extends State<AuthorityWaitingListPage> {
               .doc(docId)
               .update({"status": "active"});
 
-          // ✅ SEND NOTIFICATION TO WORKER
-          if (isWorker) {
-            try {
-              // Get worker ID from the request
-              final requestDoc = await FirebaseFirestore.instance
-                  .collection(collection)
-                  .doc(docId)
-                  .get();
+          // Send notification based on type
+          try {
+            final requestDoc = await FirebaseFirestore.instance
+                .collection(collection)
+                .doc(docId)
+                .get();
 
-              final workerId = requestDoc.data()?["workerId"];
-              if (workerId != null) {
-                await FirebaseFirestore.instance.collection("notifications").add({
-                  "toUid": workerId,
-                  "toRole": "worker",
-                  "title": "Authority Connected",
-                  "message":
-                      "Authority has joined your chat. You can now talk with them.",
-                  "isRead": false,
-                  "timestamp": FieldValue.serverTimestamp(),
-                });
-                print("✅ Notification sent to worker: $workerId");
-              }
-            } catch (e) {
-              print("⚠️ Error sending notification to worker: $e");
+            String? targetUid;
+            String targetRole;
+            
+            if (isWorker) {
+              targetUid = requestDoc.data()?["workerId"];
+              targetRole = 'worker';
+            } else if (isSecurity) {
+              targetUid = requestDoc.data()?["securityId"];
+              targetRole = 'security';
+            } else {
+              targetUid = requestDoc.data()?["residentId"];
+              targetRole = 'user';
             }
-          } else if (isSecurity) {
-            // Send notification to security
-            try {
-              final requestDoc = await FirebaseFirestore.instance
-                  .collection(collection)
-                  .doc(docId)
-                  .get();
 
-              final securityId = requestDoc.data()?["securityId"];
-              if (securityId != null) {
-                await FirebaseFirestore.instance.collection("notifications").add({
-                  "toUid": securityId,
-                  "toRole": "security",
-                  "title": "Authority Connected",
-                  "message":
-                      "Authority has joined your chat. You can now talk with them.",
-                  "isRead": false,
-                  "timestamp": FieldValue.serverTimestamp(),
-                });
-                print("✅ Notification sent to security: $securityId");
-              }
-            } catch (e) {
-              print("⚠️ Error sending notification to security: $e");
+            if (targetUid != null) {
+              await NotificationService.sendNotification(
+                userId: targetUid,
+                userRole: targetRole,
+                title: 'Authority Connected',
+                body: 'Authority has joined your chat. You can now talk with them.',
+                type: 'chat_connected',
+                additionalData: {'conversationId': docId},
+              );
+              print("✅ Notification sent to $targetRole: $targetUid");
             }
-          } else {
-            // Send notification to resident
-            try {
-              final requestDoc = await FirebaseFirestore.instance
-                  .collection(collection)
-                  .doc(docId)
-                  .get();
-
-              final residentId = requestDoc.data()?["residentId"];
-              if (residentId != null) {
-                await FirebaseFirestore.instance.collection("notifications").add({
-                  "toUid": residentId,
-                  "toRole": "user",
-                  "title": "Authority Connected",
-                  "message":
-                      "Authority has joined your chat. You can now talk with them.",
-                  "isRead": false,
-                  "timestamp": FieldValue.serverTimestamp(),
-                });
-                print("✅ Notification sent to resident: $residentId");
-              }
-            } catch (e) {
-              print("⚠️ Error sending notification to resident: $e");
-            }
+          } catch (e) {
+            print("⚠️ Error sending notification for $type: $e");
           }
         }
 

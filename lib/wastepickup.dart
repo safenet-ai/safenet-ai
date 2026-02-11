@@ -6,6 +6,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'features/shared/widgets/profile_sidebar.dart';
 import 'features/shared/widgets/notification_dropdown.dart';
+import 'services/notification_service.dart';
 
 class NewWastePickupRequestPage extends StatefulWidget {
   const NewWastePickupRequestPage({super.key});
@@ -148,6 +149,27 @@ class _NewWastePickupRequestPageState extends State<NewWastePickupRequestPage> {
         "status": "Scheduled",
         "timestamp": FieldValue.serverTimestamp(),
       });
+
+      // Notify authority about new waste pickup
+      try {
+        final authorities = await FirebaseFirestore.instance
+            .collection('authorities')
+            .limit(1)
+            .get();
+        
+        if (authorities.docs.isNotEmpty) {
+          await NotificationService.sendNotification(
+            userId: authorities.docs.first.id,
+            userRole: 'authority',
+            title: 'New Waste Pickup Request',
+            body: '$username requested waste pickup for $selectedWasteType',
+            type: 'new_waste_pickup',
+            additionalData: {'pickupId': pickupId},
+          );
+        }
+      } catch (e) {
+        print('Error sending notification: $e');
+      }
 
       if (!mounted) return;
 

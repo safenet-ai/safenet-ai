@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:url_launcher/url_launcher.dart';
+import '../../../services/notification_service.dart';
 
 class AuthoritySecurityRequestDetailPage extends StatefulWidget {
   final String requestId;
@@ -55,6 +56,20 @@ class _AuthoritySecurityRequestDetailPageState
           .doc(widget.requestId)
           .update(updateData);
 
+      // Send notification to Resident
+      final residentId = widget.requestData["residentId"];
+      if (residentId != null) {
+        String statusText = newStatus.replaceAll('_', ' ').toUpperCase();
+        await NotificationService.sendNotification(
+          userId: residentId,
+          userRole: 'user',
+          title: 'Security Request Updated',
+          body: 'Your security request (${widget.requestData["requestType"]}) status is now $statusText',
+          type: 'security_request_update',
+          additionalData: {'requestId': widget.requestId},
+        );
+      }
+
       setState(() => currentStatus = newStatus);
 
       if (mounted) {
@@ -105,7 +120,6 @@ class _AuthoritySecurityRequestDetailPageState
     Color priorityColor;
     switch (priority.toLowerCase()) {
       case "urgent":
-      case "high":
         priorityColor = Colors.red;
         break;
       case "medium":

@@ -3,6 +3,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'dart:async';
 import '../../shared/widgets/filter_tabs.dart';
 import '../../shared/widgets/profile_sidebar.dart';
+import '../../../services/notification_service.dart';
 
 class AuthorityServiceManagementPage extends StatefulWidget {
   const AuthorityServiceManagementPage({super.key});
@@ -335,27 +336,36 @@ class _AuthorityServiceManagementPageState
                                                                  // Or just "Assigned" if we want to track it that way.
                                                                  // Worker dashboard looks for "Out for Delivery".
                                                                  // Let's us "Out for Delivery" for water.
-          });
-
-      // Send notification to worker
-      await FirebaseFirestore.instance.collection("notifications").add({
-        "title": "New Service Assigned",
-        "message":
-            "You have been assigned to service: ${serviceData["title"] ?? serviceData["category"]}",
-        "toUid": workerId,
-        "isRead": false,
-        "timestamp": FieldValue.serverTimestamp(),
       });
 
-      // Send notification to resident
-      await FirebaseFirestore.instance.collection("notifications").add({
-        "title": "Worker Assigned",
-        "message":
-            "Worker $workerName has been assigned to your service request",
-        "toUid": serviceData["userId"],
-        "isRead": false,
-        "timestamp": FieldValue.serverTimestamp(),
-      });
+      // Send notification to worker using NotificationService
+      await NotificationService.sendNotification(
+        userId: workerId,
+        userRole: 'worker',
+        title: 'New Job Assigned',
+        body: isWater 
+            ? 'You have been assigned a water order: ${serviceData["type"] ?? "Water Supply"}'
+            : 'You have been assigned to service: ${serviceData["title"] ?? serviceData["category"]}',
+        type: isWater ? 'water_order_assigned' : 'service_request_assigned',
+        additionalData: {
+          'requestId': isWater ? serviceData["orderId"] : serviceData["service_id"],
+          'docId': serviceDocId,
+        },
+      );
+
+      // Send notification to resident using NotificationService
+      await NotificationService.sendNotification(
+        userId: serviceData["userId"],
+        userRole: 'user',
+        title: 'Worker Assigned',
+        body: 'Worker $workerName has been assigned to your ${isWater ? "water order" : "service request"}',
+        type: isWater ? 'water_order_assigned' : 'service_request_assigned',
+        additionalData: {
+          'requestId': isWater ? serviceData["orderId"] : serviceData["service_id"],
+          'workerId': workerId,
+          'workerName': workerName,
+        },
+      );
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
