@@ -34,6 +34,7 @@ class _WorkersRegisterPageState extends State<WorkersRegisterPage> {
     "Carpenter",
     "Security",
     "Cleaner",
+    "Water Supplier",
     "Other",
   ];
 
