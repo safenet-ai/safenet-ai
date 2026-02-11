@@ -186,14 +186,15 @@ class _AuthorityDashboardPageState extends State<AuthorityDashboardPage> {
                                   context,
                                   MaterialPageRoute(
                                     builder: (context) =>
-                                        const AuthoritySecurityAlertsPage(),
+                                    const AuthoritySecurityRequestsPage(),
+                                        //const AuthoritySecurityAlertsPage(),
                                   ),
                                 );
                               },
                               child: DashboardTile(
                                 color: Color(0xFFF7D6DE),
                                 icon: Icons.report_problem_outlined,
-                                title: "Security\nAlerts",
+                                title: "Emergency\nAlerts",
                               ),
                             ),
                           ),
@@ -290,14 +291,15 @@ class _AuthorityDashboardPageState extends State<AuthorityDashboardPage> {
                                   context,
                                   MaterialPageRoute(
                                     builder: (context) =>
-                                        const AuthoritySecurityRequestsPage(),
+                                    const AuthoritySecurityAlertsPage(),
+                                      //  const AuthoritySecurityRequestsPage(),
                                   ),
                                 );
                               },
                               child: DashboardTile(
                                 color: Color(0xFFE8EAF6),
                                 icon: Icons.security_outlined,
-                                title: "Security\nRequests",
+                                title: "Security\nAlerts",
                               ),
                             ),
                           ),

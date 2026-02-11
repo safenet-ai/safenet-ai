@@ -47,7 +47,7 @@ class _AuthoritySecurityRequestsPageState
                         onTap: () => Navigator.pop(context),
                       ),
                       const Text(
-                        "Security Requests",
+                        "Emergency Alerts",
                         style: TextStyle(
                           fontSize: 22,
                           fontWeight: FontWeight.w700,
