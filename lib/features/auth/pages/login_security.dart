@@ -91,9 +91,10 @@ class _SecurityLoginPageState extends State<SecurityLoginPage> {
         await prefs.remove('authority_uid');
         await prefs.setString('user_role', 'security');
 
-        Navigator.push(
+        Navigator.pushAndRemoveUntil(
           context,
           MaterialPageRoute(builder: (_) => SecurityDashboardPage()),
+          (route) => false,
         );
       } else {
         _showMsg("This account is NOT a security worker");

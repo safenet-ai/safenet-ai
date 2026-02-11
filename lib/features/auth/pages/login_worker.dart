@@ -92,9 +92,10 @@ class _SafeNetLoginPageState extends State<WorkerLoginPage> {
 
       if (!mounted) return;
 
-      Navigator.pushReplacement(
+      Navigator.pushAndRemoveUntil(
         context,
         MaterialPageRoute(builder: (_) => WorkerDashboardPage()),
+        (route) => false,
       );
     } catch (e) {
       _showMsg("Login failed: $e");

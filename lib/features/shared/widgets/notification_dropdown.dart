@@ -42,7 +42,8 @@ class _NotificationDropdownState extends State<NotificationDropdown> {
 
     if (widget.role == "user" ||
         widget.role == "worker" ||
-        widget.role == "security") {
+        widget.role == "security" ||
+        widget.role == "resident") {
       query = query.where("toUid", isEqualTo: uid);
     } else if (widget.role == "authority") {
       query = query.where("toRole", isEqualTo: "authority");
@@ -66,7 +67,8 @@ class _NotificationDropdownState extends State<NotificationDropdown> {
 
       if (widget.role == "user" ||
           widget.role == "worker" ||
-          widget.role == "security") {
+          widget.role == "security" ||
+          widget.role == "resident") {
         notifications = await FirebaseFirestore.instance
             .collection("notifications")
             .where("toUid", isEqualTo: uid)
@@ -115,7 +117,8 @@ class _NotificationDropdownState extends State<NotificationDropdown> {
 
       if (widget.role == "user" ||
           widget.role == "worker" ||
-          widget.role == "security") {
+          widget.role == "security" ||
+          widget.role == "resident") {
         notifications = await FirebaseFirestore.instance
             .collection("notifications")
             .where("toUid", isEqualTo: uid)
@@ -171,7 +174,8 @@ class _NotificationDropdownState extends State<NotificationDropdown> {
 
     if (widget.role == "user" ||
         widget.role == "worker" ||
-        widget.role == "security") {
+        widget.role == "security" ||
+        widget.role == "resident") {
       if (uid != null) {
         query = query
             .where("toUid", isEqualTo: uid)

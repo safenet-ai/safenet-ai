@@ -309,6 +309,16 @@ class _NewServiceRequestpage extends State<NewServiceRequestpage> {
                           );
                         }
 
+                        // SORT: On Duty first
+                        docs.sort((a, b) {
+                          final aData = a.data() as Map<String, dynamic>;
+                          final bData = b.data() as Map<String, dynamic>;
+                          final aAvail = aData['isAvailable'] ?? false;
+                          final bAvail = bData['isAvailable'] ?? false;
+                          if (aAvail == bAvail) return 0;
+                          return aAvail ? -1 : 1;
+                        });
+
                         return ListView.separated(
                           controller: controller,
                           itemCount: docs.length,
@@ -326,6 +336,7 @@ class _NewServiceRequestpage extends State<NewServiceRequestpage> {
                                 "rating": (data["rating"] ?? 0).toDouble(),
                                 "completed": data["completedWorks"] ?? 0,
                                 "avatarColor": Colors.blueGrey,
+                                "isAvailable": data['isAvailable'] ?? false, // ✅ Added status
                               },
                               () {
                                 Navigator.pop(context, {
@@ -339,6 +350,7 @@ class _NewServiceRequestpage extends State<NewServiceRequestpage> {
                               },
                             );
                           },
+
                         );
                       },
                     ),
@@ -426,6 +438,23 @@ class _NewServiceRequestpage extends State<NewServiceRequestpage> {
                       const SizedBox(height: 6),
                       Row(
                         children: [
+                          // Status Indicator
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: (w['isAvailable'] ?? false) ? Colors.green : Colors.grey,
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                            child: Text(
+                              (w['isAvailable'] ?? false) ? "On Duty" : "Off Duty",
+                              style: const TextStyle(
+                                fontSize: 10,
+                                color: Colors.white,
+                                fontWeight: FontWeight.bold
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
                           const Icon(
                             Icons.star,
                             size: 14,

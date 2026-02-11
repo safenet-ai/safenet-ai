@@ -115,9 +115,10 @@ class _SafeNetLoginPageState extends State<ResidentLoginPage> {
 
       if (!mounted) return;
 
-      Navigator.push(
+      Navigator.pushAndRemoveUntil(
         context,
         MaterialPageRoute(builder: (_) => ResidentDashboardPage()),
+        (route) => false,
       );
     } catch (e) {
       _showMsg("Login Failed: $e");

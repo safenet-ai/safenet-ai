@@ -18,6 +18,14 @@ class WorkerDashboardPage extends StatefulWidget {
 
 class _WorkerDashboardPageState extends State<WorkerDashboardPage> {
   bool _isProfileOpen = false;
+  bool _isAvailable = false;
+  bool _isLoadingStatus = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchWorkerStatus();
+  }
 
   Future<String> _fetchWorkerName() async {
     final uid = FirebaseAuth.instance.currentUser?.uid;
@@ -33,6 +41,48 @@ class _WorkerDashboardPageState extends State<WorkerDashboardPage> {
     }
 
     return "Worker";
+  }
+
+  Future<void> _fetchWorkerStatus() async {
+    final uid = FirebaseAuth.instance.currentUser?.uid;
+    if (uid == null) return;
+
+    final doc = await FirebaseFirestore.instance.collection("workers").doc(uid).get();
+    if (doc.exists && mounted) {
+      setState(() {
+        _isAvailable = doc.data()?['isAvailable'] ?? false;
+        _isLoadingStatus = false;
+      });
+    }
+  }
+
+  Future<void> _toggleStatus(bool value) async {
+    final uid = FirebaseAuth.instance.currentUser?.uid;
+    if (uid == null) return;
+
+    setState(() => _isAvailable = value);
+
+    try {
+      await FirebaseFirestore.instance.collection("workers").doc(uid).update({
+        'isAvailable': value,
+      });
+      if (mounted) {
+         ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(value ? "You are now On Duty" : "You are now Off Duty"),
+            backgroundColor: value ? Colors.teal : Colors.grey,
+            duration: const Duration(seconds: 2),
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _isAvailable = !value); // Revert on error
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("Failed to update status: $e")),
+        );
+      }
+    }
   }
 
   @override
@@ -152,6 +202,67 @@ class _WorkerDashboardPageState extends State<WorkerDashboardPage> {
                           );
                         },
                       ),
+
+                      const SizedBox(height: 30),
+
+                      // ------------------ STATUS TOGGLE ------------------
+                      if (!_isLoadingStatus)
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withOpacity(0.6),
+                            borderRadius: BorderRadius.circular(20),
+                            border: Border.all(
+                              color: Colors.white.withOpacity(0.5),
+                              width: 1.5,
+                            ),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withOpacity(0.05),
+                                blurRadius: 10,
+                                offset: const Offset(0, 4),
+                              ),
+                            ],
+                          ),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    "Current Status",
+                                    style: TextStyle(
+                                      fontSize: 14,
+                                      color: Colors.grey.shade600,
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    _isAvailable ? "ON DUTY" : "OFF DUTY",
+                                    style: TextStyle(
+                                      fontSize: 18,
+                                      fontWeight: FontWeight.bold,
+                                      color: _isAvailable ? Colors.teal : Colors.grey.shade700,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              Transform.scale(
+                                scale: 1.2,
+                                child: Switch(
+                                  value: _isAvailable,
+                                  onChanged: _toggleStatus,
+                                  activeColor: Colors.teal,
+                                  activeTrackColor: Colors.teal.shade100,
+                                  inactiveThumbColor: Colors.grey.shade400,
+                                  inactiveTrackColor: Colors.grey.shade200,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
 
                       const SizedBox(height: 25),
 

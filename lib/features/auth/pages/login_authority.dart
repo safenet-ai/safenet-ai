@@ -82,9 +82,10 @@ class _SafeNetLoginPageState extends State<AuthorityLoginPage> {
       await Future.delayed(const Duration(seconds: 2));
 
       // ⭐ REDIRECT AFTER DELAY
-      Navigator.pushReplacement(
+      Navigator.pushAndRemoveUntil(
         context,
         MaterialPageRoute(builder: (_) => const AuthorityDashboardPage()),
+        (route) => false,
       );
     } catch (e) {
       _showMsg("Login failed. Please try again.");

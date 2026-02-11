@@ -7,6 +7,8 @@ import './authority_announcement.dart';
 import './authority_view_announcements.dart';
 import './authority_waste.dart';
 import './authority_security_alerts.dart';
+import './authority_security_requests.dart';
+import './authority_worker_monitoring.dart';
 import '../../shared/widgets/notification_dropdown.dart';
 import '../../shared/widgets/profile_sidebar.dart';
 
@@ -269,6 +271,55 @@ class _AuthorityDashboardPageState extends State<AuthorityDashboardPage> {
                                 color: Color(0xFFDFEFE6),
                                 icon: Icons.handyman_outlined,
                                 title: "Service\nOversight",
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+
+                      const SizedBox(height: 20),
+
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          SizedBox(
+                            width: MediaQuery.of(context).size.width * 0.40,
+                            child: GestureDetector(
+                              onTap: () {
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (context) =>
+                                        const AuthoritySecurityRequestsPage(),
+                                  ),
+                                );
+                              },
+                              child: DashboardTile(
+                                color: Color(0xFFE8EAF6),
+                                icon: Icons.security_outlined,
+                                title: "Security\nRequests",
+                              ),
+                            ),
+                          ),
+
+                          const SizedBox(width: 20),
+
+                          SizedBox(
+                            width: MediaQuery.of(context).size.width * 0.40,
+                            child: GestureDetector(
+                              onTap: () {
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (context) =>
+                                        const AuthorityWorkerMonitoringPage(),
+                                  ),
+                                );
+                              },
+                              child: DashboardTile(
+                                color: Color(0xFFFFF9C4), // Light Yellow
+                                icon: Icons.engineering_outlined,
+                                title: "Worker\nStatus",
                               ),
                             ),
                           ),
