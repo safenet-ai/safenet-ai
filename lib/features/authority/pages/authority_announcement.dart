@@ -20,6 +20,7 @@ class _AuthorityAnnouncementPageState extends State<AuthorityAnnouncementPage> {
 
   String selectedCategory = "General Notice";
   String selectedAudience = "All Residents";
+  String selectedPriority = "normal";
   File? _selectedImage;
   String? _imageFileName;
   bool _isLoading = false;
@@ -40,6 +41,12 @@ class _AuthorityAnnouncementPageState extends State<AuthorityAnnouncementPage> {
     "All Workers",
     "All Security",
     "Everyone",
+  ];
+
+  final List<Map<String, dynamic>> priorities = [
+    {"name": "Normal", "value": "normal", "icon": Icons.notifications_none},
+    {"name": "Medium", "value": "medium", "icon": Icons.notifications},
+    {"name": "Urgent", "value": "urgent", "icon": Icons.notifications_active},
   ];
 
   Future<void> _pickImage() async {
@@ -115,6 +122,7 @@ class _AuthorityAnnouncementPageState extends State<AuthorityAnnouncementPage> {
         "description": _descriptionCtrl.text.trim(),
         "imageUrl": imageUrl ?? "",
         "targetAudience": targetCollection,
+        "priority": selectedPriority,
         "authorityUid": authorityUid,
         "timestamp": FieldValue.serverTimestamp(),
         "isActive": true,
@@ -131,6 +139,7 @@ class _AuthorityAnnouncementPageState extends State<AuthorityAnnouncementPage> {
       setState(() {
         selectedCategory = "General Notice";
         selectedAudience = "All Residents";
+        selectedPriority = "normal";
         _selectedImage = null;
         _imageFileName = null;
       });
@@ -191,14 +200,17 @@ class _AuthorityAnnouncementPageState extends State<AuthorityAnnouncementPage> {
       int sent = 0;
       for (var userDoc in usersSnapshot.docs) {
         final docId = userDoc.id;
-        
+
         // Use NotificationService for consistency and FCM support
         await NotificationService.sendNotification(
           userId: docId,
-          userRole: collection == 'users' ? 'user' : (collection == 'workers' ? 'worker' : 'security'),
+          userRole: collection == 'users'
+              ? 'user'
+              : (collection == 'workers' ? 'worker' : 'security'),
           title: 'New Announcement: $category',
           body: title,
           type: 'announcement',
+          priority: selectedPriority,
           additionalData: {'category': category},
         );
 
@@ -308,6 +320,38 @@ class _AuthorityAnnouncementPageState extends State<AuthorityAnnouncementPage> {
 
                     const SizedBox(height: 24),
 
+                    // Priority Label
+                    const Text(
+                      "Notification Priority",
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                        color: Colors.black87,
+                      ),
+                    ),
+
+                    const SizedBox(height: 12),
+
+                    // Priority Dropdown
+                    _buildDropdown(
+                      value: selectedPriority,
+                      items: priorities
+                          .map((p) => p["value"] as String)
+                          .toList(),
+                      hint: "Select Priority",
+                      onChanged: (value) {
+                        setState(() => selectedPriority = value!);
+                      },
+                      itemLabel: (value) => priorities.firstWhere(
+                        (p) => p["value"] == value,
+                      )["name"],
+                      prefixIcon: priorities.firstWhere(
+                        (p) => p["value"] == selectedPriority,
+                      )["icon"],
+                    ),
+
+                    const SizedBox(height: 24),
+
                     // Select Target Audience Label
                     const Text(
                       "Select Target Audience",
@@ -391,6 +435,7 @@ class _AuthorityAnnouncementPageState extends State<AuthorityAnnouncementPage> {
     required List<String> items,
     required String hint,
     required Function(String?) onChanged,
+    String Function(String)? itemLabel,
     IconData? prefixIcon,
   }) {
     return Container(
@@ -425,7 +470,7 @@ class _AuthorityAnnouncementPageState extends State<AuthorityAnnouncementPage> {
                 items: items.map((String item) {
                   return DropdownMenuItem<String>(
                     value: item,
-                    child: Text(item),
+                    child: Text(itemLabel != null ? itemLabel(item) : item),
                   );
                 }).toList(),
                 onChanged: onChanged,

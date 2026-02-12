@@ -1,29 +1,23 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import '../../shared/widgets/profile_sidebar.dart';
 
-class VisitorManagementPage extends StatefulWidget {
-  const VisitorManagementPage({super.key});
+class AuthorityVisitorLogPage extends StatefulWidget {
+  const AuthorityVisitorLogPage({super.key});
 
   @override
-  State<VisitorManagementPage> createState() => _VisitorManagementPageState();
+  State<AuthorityVisitorLogPage> createState() =>
+      _AuthorityVisitorLogPageState();
 }
 
-class _VisitorManagementPageState extends State<VisitorManagementPage> {
+class _AuthorityVisitorLogPageState extends State<AuthorityVisitorLogPage> {
   bool _isProfileOpen = false;
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.transparent,
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: _showAddVisitorDialog,
-        backgroundColor: Colors.blue,
-        icon: const Icon(Icons.add),
-        label: const Text("Add Visitor"),
-      ),
       body: Stack(
         children: [
           // Background
@@ -70,7 +64,10 @@ class _VisitorManagementPageState extends State<VisitorManagementPage> {
                 // Visitor list
                 Expanded(
                   child: StreamBuilder<QuerySnapshot>(
-                    stream: _getVisitorStream(),
+                    stream: FirebaseFirestore.instance
+                        .collection("visitors")
+                        .orderBy("timestamp", descending: true)
+                        .snapshots(),
                     builder: (context, snapshot) {
                       if (snapshot.connectionState == ConnectionState.waiting) {
                         return const Center(child: CircularProgressIndicator());
@@ -134,7 +131,7 @@ class _VisitorManagementPageState extends State<VisitorManagementPage> {
                                     ),
                                   ),
                                 ),
-                              _visitorCard(visitors[index].id, data),
+                              _visitorCard(data),
                             ],
                           );
                         },
@@ -162,7 +159,7 @@ class _VisitorManagementPageState extends State<VisitorManagementPage> {
               right: 0,
               width: 280,
               child: ProfileSidebar(
-                userCollection: "workers",
+                userCollection: "authority",
                 onClose: () => setState(() => _isProfileOpen = false),
               ),
             ),
@@ -170,13 +167,6 @@ class _VisitorManagementPageState extends State<VisitorManagementPage> {
         ],
       ),
     );
-  }
-
-  Stream<QuerySnapshot> _getVisitorStream() {
-    return FirebaseFirestore.instance
-        .collection("visitors")
-        .orderBy("timestamp", descending: true)
-        .snapshots();
   }
 
   bool _shouldShowDateHeader(List<QueryDocumentSnapshot> visitors, int index) {
@@ -229,111 +219,7 @@ class _VisitorManagementPageState extends State<VisitorManagementPage> {
     }
   }
 
-  Future<void> _showAddVisitorDialog() async {
-    final nameController = TextEditingController();
-    final phoneController = TextEditingController();
-    final flatController = TextEditingController();
-    final purposeController = TextEditingController();
-
-    await showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text("Add Visitor"),
-        content: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextField(
-                controller: nameController,
-                decoration: const InputDecoration(
-                  labelText: "Visitor Name",
-                  prefixIcon: Icon(Icons.person),
-                ),
-              ),
-              const SizedBox(height: 12),
-              TextField(
-                controller: phoneController,
-                keyboardType: TextInputType.phone,
-                decoration: const InputDecoration(
-                  labelText: "Phone Number",
-                  prefixIcon: Icon(Icons.phone),
-                ),
-              ),
-              const SizedBox(height: 12),
-              TextField(
-                controller: flatController,
-                decoration: const InputDecoration(
-                  labelText: "Flat No / Resident",
-                  prefixIcon: Icon(Icons.home),
-                ),
-              ),
-              const SizedBox(height: 12),
-              TextField(
-                controller: purposeController,
-                decoration: const InputDecoration(
-                  labelText: "Purpose",
-                  prefixIcon: Icon(Icons.description),
-                ),
-              ),
-            ],
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text("Cancel"),
-          ),
-          ElevatedButton(
-            onPressed: () async {
-              if (nameController.text.trim().isEmpty ||
-                  flatController.text.trim().isEmpty) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text("Name and Flat No are required"),
-                  ),
-                );
-                return;
-              }
-
-              Navigator.pop(context); // Close dialog
-
-              try {
-                await FirebaseFirestore.instance.collection("visitors").add({
-                  "name": nameController.text.trim(),
-                  "phone": phoneController.text.trim(),
-                  "flatNo": flatController.text.trim(),
-                  "purposeOfVisit": purposeController.text.trim(),
-                  "residentName": "Manual Entry",
-                  "status": "checked-in",
-                  "timestamp": FieldValue.serverTimestamp(),
-                  "actualArrival": FieldValue.serverTimestamp(),
-                  "addedBy": FirebaseAuth.instance.currentUser?.uid,
-                });
-
-                if (mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text("Visitor added and checked in"),
-                      backgroundColor: Colors.green,
-                    ),
-                  );
-                }
-              } catch (e) {
-                if (mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text("Error adding visitor: $e")),
-                  );
-                }
-              }
-            },
-            child: const Text("Add & Check-In"),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _visitorCard(String visitorId, Map<String, dynamic> data) {
+  Widget _visitorCard(Map<String, dynamic> data) {
     final status = data["status"] ?? "checked-in";
     final name = data["name"] ?? "Unknown";
     final phone = data["phone"] ?? "N/A";
@@ -419,30 +305,28 @@ class _VisitorManagementPageState extends State<VisitorManagementPage> {
             ),
             const SizedBox(height: 12),
             _infoRow(Icons.description, "Purpose: $purpose"),
-
-            // Action buttons
-            if (isActive) ...[
-              const SizedBox(height: 12),
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton.icon(
-                  onPressed: () => _checkOutVisitor(visitorId),
-                  icon: const Icon(Icons.logout, size: 18),
-                  label: const Text("Check Out"),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.orange,
-                    foregroundColor: Colors.white,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                  ),
-                ),
+            if (data["actualArrival"] != null)
+              _infoRow(
+                Icons.login,
+                "In: ${_formatTimestamp(data["actualArrival"])}",
               ),
-            ],
+            if (data["actualDeparture"] != null)
+              _infoRow(
+                Icons.logout,
+                "Out: ${_formatTimestamp(data["actualDeparture"])}",
+              ),
           ],
         ),
       ),
     );
+  }
+
+  String _formatTimestamp(dynamic timestamp) {
+    if (timestamp is Timestamp) {
+      final dt = timestamp.toDate();
+      return "${dt.hour}:${dt.minute.toString().padLeft(2, '0')}, ${dt.day}/${dt.month}";
+    }
+    return "N/A";
   }
 
   Widget _infoRow(IconData icon, String text) {
@@ -461,34 +345,6 @@ class _VisitorManagementPageState extends State<VisitorManagementPage> {
         ],
       ),
     );
-  }
-
-  Future<void> _checkOutVisitor(String visitorId) async {
-    try {
-      await FirebaseFirestore.instance
-          .collection("visitors")
-          .doc(visitorId)
-          .update({
-            "status": "completed",
-            "actualDeparture": FieldValue.serverTimestamp(),
-            "checkedOutBy": FirebaseAuth.instance.currentUser?.uid,
-          });
-
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text("Visitor checked out successfully"),
-            backgroundColor: Colors.orange,
-          ),
-        );
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text("Error: $e")));
-      }
-    }
   }
 
   Widget _circleButton(IconData icon, {VoidCallback? onTap}) {

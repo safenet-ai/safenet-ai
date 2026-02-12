@@ -413,11 +413,48 @@ class _NoticeBoardPageState extends State<NoticeBoardPage> {
                     : "Unknown",
                 style: TextStyle(fontSize: 12, color: Colors.grey[600]),
               ),
+              const Spacer(),
+              if (data["priority"] != null)
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 4,
+                  ),
+                  decoration: BoxDecoration(
+                    color: _getPriorityColor(data["priority"]).withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(
+                      color: _getPriorityColor(
+                        data["priority"],
+                      ).withOpacity(0.5),
+                    ),
+                  ),
+                  child: Text(
+                    data["priority"].toString().toUpperCase(),
+                    style: TextStyle(
+                      fontSize: 10,
+                      fontWeight: FontWeight.bold,
+                      color: _getPriorityColor(data["priority"]),
+                    ),
+                  ),
+                ),
             ],
           ),
         ],
       ),
     );
+  }
+
+  Color _getPriorityColor(String? priority) {
+    switch (priority?.toLowerCase()) {
+      case 'urgent':
+        return Colors.red;
+      case 'medium':
+        return Colors.orange;
+      case 'normal':
+      default:
+        return Colors.blue;
+    }
   }
 
   Widget _circleIcon(IconData icon, {VoidCallback? onTap}) {

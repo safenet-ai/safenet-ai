@@ -3,8 +3,9 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../auth/pages/role_selection.dart';
-import '../pages/edit_profile_page.dart';
+import '../pages/profile_page.dart';
 import '../pages/settings_page.dart';
+import '../../resident/pages/authority_contact_list.dart';
 
 class ProfileSidebar extends StatelessWidget {
   final VoidCallback onClose;
@@ -167,14 +168,13 @@ class ProfileSidebar extends StatelessWidget {
 
           _btn(
             context,
-            "Edit Profile",
-            Icons.edit,
+            "View Profile",
+            Icons.person_outline,
             onTap: () {
               Navigator.push(
                 context,
                 MaterialPageRoute(
-                  builder: (_) =>
-                      EditProfilePage(userCollection: userCollection),
+                  builder: (_) => ProfilePage(userCollection: userCollection),
                 ),
               );
             },
@@ -192,6 +192,25 @@ class ProfileSidebar extends StatelessWidget {
             },
           ),
           const SizedBox(height: 16),
+
+          // Contact Authority - Only for Residents
+          if (userCollection == "users") ...[
+            _btn(
+              context,
+              "Contact Authority",
+              Icons.contact_phone,
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => const AuthorityContactListPage(),
+                  ),
+                );
+              },
+            ),
+            const SizedBox(height: 16),
+          ],
+
           _btn(
             context,
             "Logout",

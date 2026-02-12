@@ -321,7 +321,8 @@ class _SecurityDashboardPageState extends State<SecurityDashboardPage> {
                                       builder: (_) => NoticeBoardPage(
                                         role: "security",
                                         displayRole: "Security",
-                                        userCollection: "security",
+                                        userCollection:
+                                            "workers", // ✅ Correct collection
                                       ),
                                     ),
                                   );
@@ -419,7 +420,7 @@ class _SecurityDashboardPageState extends State<SecurityDashboardPage> {
                 right: 0,
                 width: 280,
                 child: ProfileSidebar(
-                  userCollection: "security",
+                  userCollection: "workers", // ✅ Correct collection
                   onClose: () => setState(() => _isProfileOpen = false),
                 ),
               ),

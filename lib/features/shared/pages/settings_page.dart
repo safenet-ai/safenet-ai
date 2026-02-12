@@ -1,5 +1,8 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import '../../../services/notification_service.dart';
 
 class SettingsPage extends StatefulWidget {
   const SettingsPage({super.key});
@@ -10,7 +13,111 @@ class SettingsPage extends StatefulWidget {
 
 class _SettingsPageState extends State<SettingsPage> {
   bool _notificationsEnabled = true;
+  bool _isLoading = true;
   //bool _darkModeEnabled = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadNotificationPreference();
+  }
+
+  Future<void> _loadNotificationPreference() async {
+    final prefs = await SharedPreferences.getInstance();
+    final enabled = prefs.getBool('notifications_enabled') ?? true;
+
+    // Check actual permission status
+    final messaging = FirebaseMessaging.instance;
+    final settings = await messaging.getNotificationSettings();
+
+    setState(() {
+      _notificationsEnabled =
+          enabled &&
+          settings.authorizationStatus == AuthorizationStatus.authorized;
+      _isLoading = false;
+    });
+  }
+
+  Future<void> _toggleNotifications(bool value) async {
+    final messaging = FirebaseMessaging.instance;
+    final prefs = await SharedPreferences.getInstance();
+
+    if (value) {
+      // 1. Request permission
+      final settings = await messaging.requestPermission(
+        alert: true,
+        badge: true,
+        sound: true,
+      );
+
+      if (settings.authorizationStatus == AuthorizationStatus.authorized) {
+        // 2. Permission granted - Get/Update Token
+        await prefs.setBool('notifications_enabled', true);
+
+        // Re-initialize notification service to save token and start listeners
+        await NotificationService.initialize();
+
+        setState(() {
+          _notificationsEnabled = true;
+        });
+
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Push notifications enabled'),
+              backgroundColor: Colors.green,
+            ),
+          );
+        }
+      } else {
+        // Permission denied
+        setState(() {
+          _notificationsEnabled = false;
+        });
+
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text(
+                'Notification permission denied. Please enable in system settings.',
+              ),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+      }
+    } else {
+      // 1. Disable notifications in preference
+      await prefs.setBool('notifications_enabled', false);
+
+      try {
+        // 2. Remove token from Firestore, delete locally, and stop listeners
+        await NotificationService.removeFCMToken();
+        await messaging.deleteToken();
+        NotificationService.stopListening();
+        print('FCM Token deleted and listeners stopped successfully.');
+      } catch (e) {
+        print('Error disabling FCM tokens/listeners: $e');
+      }
+
+      setState(() {
+        _notificationsEnabled = false;
+      });
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              'Push notifications disabled (System alerts stopped)',
+            ),
+          ),
+        );
+      }
+    }
+  }
+
+  // Helper import for RE-INITIALIZING
+  // (Assuming NotificationService is accessible)
 
   @override
   Widget build(BuildContext context) {
@@ -35,105 +142,112 @@ class _SettingsPageState extends State<SettingsPage> {
           style: TextStyle(color: Colors.black87, fontWeight: FontWeight.bold),
         ),
       ),
-      body: Stack(
-        children: [
-          // Background
-          Positioned.fill(
-            child: Image.asset('assets/bg1_img.png', fit: BoxFit.cover),
-          ),
+      body: SizedBox.expand(
+        child: Stack(
+          children: [
+            // Background
+            Positioned.fill(
+              child: Image.asset('assets/bg1_img.png', fit: BoxFit.cover),
+            ),
 
-          SafeArea(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.all(20),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  _sectionHeader("Preferences"),
-                  const SizedBox(height: 10),
-                  _glassContainer(
-                    child: Column(
-                      children: [
-                        _switchTile(
-                          "Push Notifications",
-                          Icons.notifications_active_outlined,
-                          _notificationsEnabled,
-                          (val) => setState(() => _notificationsEnabled = val),
-                        ),
-                        // Divider(height: 1, color: Colors.black12), // Optional
-                        // _switchTile(
-                        //   "Dark Mode",
-                        //   Icons.dark_mode_outlined,
-                        //   _darkModeEnabled,
-                        //   (val) => setState(() => _darkModeEnabled = val)
-                        // ),
-                      ],
-                    ),
-                  ),
-
-                  const SizedBox(height: 30),
-
-                  _sectionHeader("Account"),
-                  const SizedBox(height: 10),
-                  _glassContainer(
-                    child: Column(
-                      children: [
-                        _actionTile(
-                          "Change Password",
-                          Icons.lock_outline,
-                          onTap: () {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content: Text(
-                                  "Change Password feature coming soon",
+            SafeArea(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.all(20),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _sectionHeader("Preferences"),
+                    const SizedBox(height: 10),
+                    _glassContainer(
+                      child: Column(
+                        children: [
+                          _isLoading
+                              ? const Padding(
+                                  padding: EdgeInsets.all(16.0),
+                                  child: CircularProgressIndicator(),
+                                )
+                              : _switchTile(
+                                  "Push Notifications",
+                                  Icons.notifications_active_outlined,
+                                  _notificationsEnabled,
+                                  _toggleNotifications,
                                 ),
-                              ),
-                            );
-                          },
-                        ),
-                        const Divider(height: 1, color: Colors.black12),
-                        _actionTile(
-                          "Privacy Policy",
-                          Icons.privacy_tip_outlined,
-                          onTap: () {
-                            // Open URL or Show Dialog
-                          },
-                        ),
-                      ],
+                          // Divider(height: 1, color: Colors.black12), // Optional
+                          // _switchTile(
+                          //   "Dark Mode",
+                          //   Icons.dark_mode_outlined,
+                          //   _darkModeEnabled,
+                          //   (val) => setState(() => _darkModeEnabled = val)
+                          // ),
+                        ],
+                      ),
                     ),
-                  ),
 
-                  const SizedBox(height: 30),
+                    const SizedBox(height: 30),
 
-                  _sectionHeader("About"),
-                  const SizedBox(height: 10),
-                  _glassContainer(
-                    child: Column(
-                      children: [
-                        _actionTile(
-                          "Version 1.0.0",
-                          Icons.info_outline,
-                          showArrow: false,
-                        ),
-                        const Divider(height: 1, color: Colors.black12),
-                        _actionTile(
-                          "Check for Updates",
-                          Icons.update,
-                          onTap: () {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content: Text("App is up to date!"),
-                              ),
-                            );
-                          },
-                        ),
-                      ],
+                    _sectionHeader("Account"),
+                    const SizedBox(height: 10),
+                    _glassContainer(
+                      child: Column(
+                        children: [
+                          _actionTile(
+                            "Change Password",
+                            Icons.lock_outline,
+                            onTap: () {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text(
+                                    "Change Password feature coming soon",
+                                  ),
+                                ),
+                              );
+                            },
+                          ),
+                          const Divider(height: 1, color: Colors.black12),
+                          _actionTile(
+                            "Privacy Policy",
+                            Icons.privacy_tip_outlined,
+                            onTap: () {
+                              // Open URL or Show Dialog
+                            },
+                          ),
+                        ],
+                      ),
                     ),
-                  ),
-                ],
+
+                    const SizedBox(height: 30),
+
+                    _sectionHeader("About"),
+                    const SizedBox(height: 10),
+                    _glassContainer(
+                      child: Column(
+                        children: [
+                          _actionTile(
+                            "Version 1.0.0",
+                            Icons.info_outline,
+                            showArrow: false,
+                          ),
+                          const Divider(height: 1, color: Colors.black12),
+                          _actionTile(
+                            "Check for Updates",
+                            Icons.update,
+                            onTap: () {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text("App is up to date!"),
+                                ),
+                              );
+                            },
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }

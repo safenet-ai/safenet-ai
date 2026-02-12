@@ -18,55 +18,74 @@ Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
 /// Centralized notification service for handling both in-app and push notifications
 class NotificationService {
   static final FirebaseMessaging _fcm = FirebaseMessaging.instance;
-  static final FlutterLocalNotificationsPlugin _localNotifications = FlutterLocalNotificationsPlugin();
+  static final FlutterLocalNotificationsPlugin _localNotifications =
+      FlutterLocalNotificationsPlugin();
   static StreamSubscription<QuerySnapshot>? _notificationSubscription;
+  static StreamSubscription<RemoteMessage>? _onMessageSubscription;
+  static StreamSubscription<RemoteMessage>? _onMessageOpenedAppSubscription;
 
-  static const AndroidNotificationChannel _urgentChannel = AndroidNotificationChannel(
-    'urgent_security_channel_v2', // Versioned ID to force sound/importance update
+  static const AndroidNotificationChannel
+  _urgentChannel = AndroidNotificationChannel(
+    'urgent_security_channel_v3', // Versioned ID to force sound/importance update
     'Urgent Security Alerts',
     description: 'Critical updates and security alerts.',
     importance: Importance.max,
     playSound: true,
     enableVibration: true,
-    sound: RawResourceAndroidNotificationSound('urgent_alarm'), // Refers to res/raw/urgent_alarm.mp3
+    sound: RawResourceAndroidNotificationSound(
+      'urgent_alarm',
+    ), // Refers to res/raw/urgent_alarm.mp3
+    audioAttributesUsage: AudioAttributesUsage.alarm,
   );
 
-  static const AndroidNotificationChannel _mediumChannel = AndroidNotificationChannel(
-    'medium_security_channel_v2',
-    'Medium Security Updates',
-    description: 'Important status updates.',
-    importance: Importance.high,
-    playSound: true,
-  );
+  static const AndroidNotificationChannel _mediumChannel =
+      AndroidNotificationChannel(
+        'medium_security_channel_v3',
+        'Medium Security Updates',
+        description: 'Important status updates.',
+        importance: Importance.high,
+        playSound: true,
+      );
 
-  static const AndroidNotificationChannel _normalChannel = AndroidNotificationChannel(
-    'normal_security_channel_v2',
-    'Normal Updates',
-    description: 'General app notifications.',
-    importance: Importance.defaultImportance,
-    playSound: true,
-  );
+  static const AndroidNotificationChannel _normalChannel =
+      AndroidNotificationChannel(
+        'normal_security_channel_v3',
+        'Normal Updates',
+        description: 'General app notifications.',
+        importance: Importance.defaultImportance,
+        playSound: true,
+      );
 
   /// Initialize notification service
   static Future<void> initialize() async {
-    // 0. Register background handler
+    // 🛡️ Pre-cleanup: Cancel any existing subscriptions to avoid duplicates
+    _onMessageSubscription?.cancel();
+    _onMessageOpenedAppSubscription?.cancel();
+    _notificationSubscription?.cancel();
+
+    // 🛡️ Check user preference before requesting any permissions or registering tokens
+    final prefs = await SharedPreferences.getInstance();
+    final bool isEnabled = prefs.getBool('notifications_enabled') ?? true;
+
+    // 0. Register background handler (always do this to prevent crashes)
     FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
 
     // 1. Initialize Local Notifications
     const AndroidInitializationSettings initializationSettingsAndroid =
         AndroidInitializationSettings('@mipmap/ic_launcher');
-    
+
     final DarwinInitializationSettings initializationSettingsDarwin =
         DarwinInitializationSettings(
-      requestAlertPermission: false,
-      requestBadgePermission: false,
-      requestSoundPermission: false,
-    );
+          requestAlertPermission: false,
+          requestBadgePermission: false,
+          requestSoundPermission: false,
+        );
 
-    final InitializationSettings initializationSettings = InitializationSettings(
-      android: initializationSettingsAndroid,
-      iOS: initializationSettingsDarwin,
-    );
+    final InitializationSettings initializationSettings =
+        InitializationSettings(
+          android: initializationSettingsAndroid,
+          iOS: initializationSettingsDarwin,
+        );
 
     await _localNotifications.initialize(
       initializationSettings,
@@ -81,10 +100,13 @@ class NotificationService {
       try {
         final androidPlugin = _localNotifications
             .resolvePlatformSpecificImplementation<
-                AndroidFlutterLocalNotificationsPlugin>();
-        
+              AndroidFlutterLocalNotificationsPlugin
+            >();
+
         // Delete legacy channel
-        await androidPlugin?.deleteNotificationChannel('high_importance_channel');
+        await androidPlugin?.deleteNotificationChannel(
+          'high_importance_channel',
+        );
 
         await androidPlugin?.createNotificationChannel(_urgentChannel);
         await androidPlugin?.createNotificationChannel(_mediumChannel);
@@ -92,8 +114,16 @@ class NotificationService {
         print('🔔 Notification channels initialized successfully.');
       } catch (e) {
         print('🚨 Error creating notification channels: $e');
-        // If this fails, notifications might still work with default settings
       }
+    }
+
+    // If notifications are disabled, stop here (except for the listener which already checks)
+    if (!isEnabled) {
+      print(
+        '🔔 NotificationService: Initialization stopped (disabled by user).',
+      );
+      _startFirestoreListener(); // Still listen to handle unread counts if needed, but it checks preference
+      return;
     }
 
     // 3. Request FCM permissions
@@ -118,10 +148,13 @@ class NotificationService {
     );
 
     // Handle foreground messages
-    FirebaseMessaging.onMessage.listen(_handleForegroundMessage);
+    _onMessageSubscription = FirebaseMessaging.onMessage.listen(
+      _handleForegroundMessage,
+    );
 
     // Handle background message taps
-    FirebaseMessaging.onMessageOpenedApp.listen(_handleNotificationTap);
+    _onMessageOpenedAppSubscription = FirebaseMessaging.onMessageOpenedApp
+        .listen(_handleNotificationTap);
 
     // Request permissions for Android 13+
     await _requestPermissions();
@@ -137,69 +170,81 @@ class NotificationService {
     if (Platform.isAndroid) {
       await _localNotifications
           .resolvePlatformSpecificImplementation<
-              AndroidFlutterLocalNotificationsPlugin>()
+            AndroidFlutterLocalNotificationsPlugin
+          >()
           ?.requestNotificationsPermission();
     }
   }
 
   /// Save FCM token to current user's document
   static Future<void> _saveFCMToken() async {
-    final user = FirebaseAuth.instance.currentUser;
-    if (user == null) return;
-
-    final token = await _fcm.getToken();
-    if (token == null) return;
-
-    // Determine user collection based on role
-    final userDoc = await FirebaseFirestore.instance
-        .collection('users')
-        .doc(user.uid)
-        .get();
-
-    String collection = 'users';
-    if (!userDoc.exists) {
-      final workerDoc = await FirebaseFirestore.instance
-          .collection('workers')
-          .doc(user.uid)
-          .get();
-      if (workerDoc.exists) {
-        collection = 'workers';
-      } else {
-        final authorityDoc = await FirebaseFirestore.instance
-            .collection('authorities')
-            .doc(user.uid)
-            .get();
-        if (authorityDoc.exists) {
-          collection = 'authorities';
-        } else {
-          final securityDoc = await FirebaseFirestore.instance
-              .collection('security')
-              .doc(user.uid)
-              .get();
-          if (securityDoc.exists) {
-            collection = 'security';
-          }
-        }
+    try {
+      final user = FirebaseAuth.instance.currentUser;
+      if (user == null) {
+        print(
+          '🔔 NotificationService: No user logged in, skipping token save.',
+        );
+        return;
       }
+
+      final token = await _fcm.getToken();
+      if (token == null) {
+        print('🔔 NotificationService: Failed to get FCM token.');
+        return;
+      }
+
+      final prefs = await SharedPreferences.getInstance();
+      final userRole = prefs.getString('user_role') ?? 'resident';
+      String collection = _getCollectionForRole(userRole);
+
+      // Save token to user document
+      await FirebaseFirestore.instance
+          .collection(collection)
+          .doc(user.uid)
+          .update({
+            'fcmToken': token,
+            'fcmTokenUpdatedAt': FieldValue.serverTimestamp(),
+          });
+
+      print('FCM token saved to $collection for UID: ${user.uid}');
+    } catch (e) {
+      print('Error saving FCM token: $e');
     }
+  }
 
-    // Save token to user document
-    await FirebaseFirestore.instance.collection(collection).doc(user.uid).update({
-      'fcmToken': token,
-      'fcmTokenUpdatedAt': FieldValue.serverTimestamp(),
-    });
+  /// Remove FCM token from user document
+  static Future<void> removeFCMToken() async {
+    try {
+      final user = FirebaseAuth.instance.currentUser;
+      if (user == null) return;
 
-    print('FCM token saved: $token');
+      // Determine user collection based on role
+      final prefs = await SharedPreferences.getInstance();
+      final userRole = prefs.getString('user_role') ?? 'resident';
+      String collection = _getCollectionForRole(userRole);
+
+      // Verify document exists first if possible, or just try to update
+      await FirebaseFirestore.instance
+          .collection(collection)
+          .doc(user.uid)
+          .update({
+            'fcmToken': FieldValue.delete(),
+            'fcmTokenLastRemoved': FieldValue.serverTimestamp(),
+          });
+      print('FCM token removed from Firestore for UID: ${user.uid}');
+    } catch (e) {
+      print('Error removing FCM token from Firestore: $e');
+    }
   }
 
   /// Handle foreground messages
   static void _handleForegroundMessage(RemoteMessage message) {
     print('Foreground message: ${message.notification?.title}');
-    
+
     RemoteNotification? notification = message.notification;
     AndroidNotification? android = message.notification?.android;
 
-    // If `onMessage` is triggered, FCM will NOT automatically show a notification bar alert 
+    // If `onMessage` is triggered, FCM will NOT automatically show a notification bar alert
     // when the app is in the foreground. We must show it manually using local notifications.
     if (notification != null) {
       _showLocalNotification(
@@ -220,8 +265,16 @@ class NotificationService {
     String priority = 'normal',
   }) async {
     try {
+      // 🛡️ Check user preference before showing any notification
+      final prefs = await SharedPreferences.getInstance();
+      final enabled = prefs.getBool('notifications_enabled') ?? true;
+      if (!enabled) {
+        print('🔔 Notification suppressed by user preference.');
+        return;
+      }
+
       print('🔔 Showing alert: Priority=$priority, Title=$title');
-      
+
       // Select channel based on priority
       AndroidNotificationChannel targetChannel = _normalChannel;
       if (priority.toLowerCase() == 'urgent') {
@@ -229,7 +282,7 @@ class NotificationService {
       } else if (priority.toLowerCase() == 'medium') {
         targetChannel = _mediumChannel;
       }
-      
+
       print('🔔 Channel selected: ${targetChannel.id}. Attempting to show...');
 
       await _localNotifications.show(
@@ -247,17 +300,29 @@ class NotificationService {
             ticker: 'SafeNet AI Notification',
             playSound: true,
             enableVibration: true,
-            vibrationPattern: priority.toLowerCase() == 'urgent' 
-                ? Int64List.fromList([0, 500, 200, 500, 200, 1000]) // Aggressive pattern for Urgent
+            vibrationPattern: priority.toLowerCase() == 'urgent'
+                ? Int64List.fromList([
+                    0,
+                    500,
+                    200,
+                    500,
+                    200,
+                    1000,
+                  ]) // Aggressive pattern for Urgent
                 : null,
             sound: priority.toLowerCase() == 'urgent'
                 ? const RawResourceAndroidNotificationSound('urgent_alarm')
                 : null,
+            audioAttributesUsage: priority.toLowerCase() == 'urgent'
+                ? AudioAttributesUsage.alarm
+                : AudioAttributesUsage.notification,
           ),
           iOS: const DarwinNotificationDetails(
             presentAlert: true,
             presentBadge: true,
             presentSound: true,
+            sound:
+                'urgent_alarm.aiff', // Assuming iOS uses aiff or caf, but keeping consistent with original logic if possible or standard sound
           ),
         ),
         payload: payload,
@@ -291,71 +356,94 @@ class NotificationService {
         .collection('notifications')
         .where('isRead', isEqualTo: false)
         .snapshots()
-        .listen((snapshot) async {
-      final user = FirebaseAuth.instance.currentUser;
-      final prefs = await SharedPreferences.getInstance();
-      
-      final authorityUid = prefs.getString('authority_uid');
-      final currentUid = user?.uid ?? authorityUid;
-      final userRole = prefs.getString('user_role');
-
-      print('🔔 Firestore Signal: UID=$currentUid, Role=$userRole. IsFirst=$_isFirstSnapshot, Docs: ${snapshot.docs.length}');
-
-      // If it's the first snapshot, we just mark everything as processed
-      // to avoid alerting for old unread notifications on every restart.
-      if (_isFirstSnapshot) {
-        for (var doc in snapshot.docs) {
-          _processedNotificationIds.add(doc.id);
-        }
-        _isFirstSnapshot = false;
-        print('🔔 First snapshot processed: ${_processedNotificationIds.length} existing unread notifications marked.');
-        return; 
-      }
-
-      for (var change in snapshot.docChanges) {
-        if (change.type == DocumentChangeType.added) {
-          final docId = change.doc.id;
-          
-          // Deduplication: Only process each document ID once per session
-          if (_processedNotificationIds.contains(docId)) continue;
-          _processedNotificationIds.add(docId);
-
-          final data = change.doc.data() as Map<String, dynamic>;
-          final fromUid = data['fromUid'];
-
-          // Skip if I am the one who sent it
-          if (fromUid != null && currentUid != null && fromUid == currentUid) {
-            print('🔔 Skipping self-notification.');
-            continue;
-          }
-
-          final toUid = data['toUid'];
-          final toRole = data['toRole'];
-
-          bool isForMe = false;
-          if (toUid != null && currentUid != null && toUid == currentUid) {
-            isForMe = true;
-          } else if (toRole != null && userRole != null) {
-            if (toRole == userRole || (toRole == 'user' && userRole == 'resident')) {
-              isForMe = true;
+        .listen(
+          (snapshot) async {
+            // 🛡️ Check user preference first
+            final prefs = await SharedPreferences.getInstance();
+            final enabled = prefs.getBool('notifications_enabled') ?? true;
+            if (!enabled) {
+              print(
+                '🔔 Firestore Listener: Skipping alerts (notifications disabled).',
+              );
+              return;
             }
-          }
 
-          if (isForMe) {
-            print('🔔 TRIGGERING SYSTEM TRAY ALERT: ${data['title']} (Priority: ${data['priority']})');
-            _showLocalNotification(
-              id: docId.hashCode,
-              title: data['title'] ?? 'SafeNet AI',
-              body: data['message'] ?? '',
-              payload: data['type'],
-              priority: data['priority'] ?? 'normal',
+            final user = FirebaseAuth.instance.currentUser;
+
+            final authorityUid = prefs.getString('authority_uid');
+            final currentUid = user?.uid ?? authorityUid;
+            final userRole = prefs.getString('user_role');
+
+            print(
+              '🔔 Firestore Signal: UID=$currentUid, Role=$userRole. IsFirst=$_isFirstSnapshot, Docs: ${snapshot.docs.length}',
             );
-          }
-        }
-      }
-    }, onError: (e) {
-      print('🔔 Firestore Listener Error: $e');
-    });
+
+            // If it's the first snapshot, we just mark everything as processed
+            // to avoid alerting for old unread notifications on every restart.
+            if (_isFirstSnapshot) {
+              for (var doc in snapshot.docs) {
+                _processedNotificationIds.add(doc.id);
+              }
+              _isFirstSnapshot = false;
+              print(
+                '🔔 First snapshot processed: ${_processedNotificationIds.length} existing unread notifications marked.',
+              );
+              return;
+            }
+
+            for (var change in snapshot.docChanges) {
+              if (change.type == DocumentChangeType.added) {
+                final docId = change.doc.id;
+
+                // Deduplication: Only process each document ID once per session
+                if (_processedNotificationIds.contains(docId)) continue;
+                _processedNotificationIds.add(docId);
+
+                final data = change.doc.data() as Map<String, dynamic>;
+                final fromUid = data['fromUid'];
+
+                // Skip if I am the one who sent it
+                if (fromUid != null &&
+                    currentUid != null &&
+                    fromUid == currentUid) {
+                  print('🔔 Skipping self-notification.');
+                  continue;
+                }
+
+                final toUid = data['toUid'];
+                final toRole = data['toRole'];
+
+                bool isForMe = false;
+                if (toUid != null &&
+                    currentUid != null &&
+                    toUid == currentUid) {
+                  isForMe = true;
+                } else if (toRole != null && userRole != null) {
+                  if (toRole == userRole ||
+                      (toRole == 'user' && userRole == 'resident')) {
+                    isForMe = true;
+                  }
+                }
+
+                if (isForMe) {
+                  print(
+                    '🔔 TRIGGERING SYSTEM TRAY ALERT: ${data['title']} (Priority: ${data['priority']})',
+                  );
+                  _showLocalNotification(
+                    id: docId.hashCode,
+                    title: data['title'] ?? 'SafeNet AI',
+                    body: data['message'] ?? '',
+                    payload: data['type'],
+                    priority: data['priority'] ?? 'normal',
+                  );
+                }
+              }
+            }
+          },
+          onError: (e) {
+            print('🔔 Firestore Listener Error: $e');
+          },
+        );
   }
 
   /// Send notification to a specific user or role
@@ -389,7 +477,9 @@ class NotificationService {
         ...?additionalData,
       };
 
-      await FirebaseFirestore.instance.collection('notifications').add(notificationData);
+      await FirebaseFirestore.instance
+          .collection('notifications')
+          .add(notificationData);
 
       // (Local Preview logic removed: Handled by _startFirestoreListener)
 
@@ -402,7 +492,9 @@ class NotificationService {
             .get();
 
         if (!userDoc.exists) {
-          print('User document not found for notification: $userId in $collection');
+          print(
+            'User document not found for notification: $userId in $collection',
+          );
           return;
         }
 
@@ -425,7 +517,10 @@ class NotificationService {
   static Future<bool> _isUserInRole(String? uid, String role) async {
     if (uid == null) return false;
     final collection = _getCollectionForRole(role);
-    final doc = await FirebaseFirestore.instance.collection(collection).doc(uid).get();
+    final doc = await FirebaseFirestore.instance
+        .collection(collection)
+        .doc(uid)
+        .get();
     return doc.exists;
   }
 
@@ -436,11 +531,10 @@ class NotificationService {
       case 'resident':
         return 'users';
       case 'worker':
+      case 'security':
         return 'workers';
       case 'authority':
         return 'authorities';
-      case 'security':
-        return 'security';
       default:
         return 'users';
     }
@@ -465,5 +559,18 @@ class NotificationService {
         additionalData: additionalData,
       );
     }
+  }
+
+  /// Stop the Firestore listener
+  static void stopListening() {
+    print('🔔 Firestore Listener: Stopping...');
+    _notificationSubscription?.cancel();
+    _notificationSubscription = null;
+
+    print('🔔 FCM Listeners: Stopping...');
+    _onMessageSubscription?.cancel();
+    _onMessageSubscription = null;
+    _onMessageOpenedAppSubscription?.cancel();
+    _onMessageOpenedAppSubscription = null;
   }
 }

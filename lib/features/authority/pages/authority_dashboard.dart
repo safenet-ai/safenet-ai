@@ -9,6 +9,7 @@ import './authority_waste.dart';
 import './authority_security_alerts.dart';
 import './authority_security_requests.dart';
 import './authority_worker_monitoring.dart';
+import './authority_visitor_log.dart';
 import '../../shared/widgets/notification_dropdown.dart';
 import '../../shared/widgets/profile_sidebar.dart';
 
@@ -186,8 +187,8 @@ class _AuthorityDashboardPageState extends State<AuthorityDashboardPage> {
                                   context,
                                   MaterialPageRoute(
                                     builder: (context) =>
-                                    const AuthoritySecurityRequestsPage(),
-                                        //const AuthoritySecurityAlertsPage(),
+                                        const AuthoritySecurityRequestsPage(),
+                                    //const AuthoritySecurityAlertsPage(),
                                   ),
                                 );
                               },
@@ -291,8 +292,7 @@ class _AuthorityDashboardPageState extends State<AuthorityDashboardPage> {
                                   context,
                                   MaterialPageRoute(
                                     builder: (context) =>
-                                    const AuthoritySecurityAlertsPage(),
-                                      //  const AuthoritySecurityRequestsPage(),
+                                        const AuthoritySecurityAlertsPage(),
                                   ),
                                 );
                               },
@@ -322,6 +322,33 @@ class _AuthorityDashboardPageState extends State<AuthorityDashboardPage> {
                                 color: Color(0xFFFFF9C4), // Light Yellow
                                 icon: Icons.engineering_outlined,
                                 title: "Worker\nStatus",
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+
+                      const SizedBox(height: 20),
+
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          SizedBox(
+                            width: MediaQuery.of(context).size.width * 0.40,
+                            child: GestureDetector(
+                              onTap: () {
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (context) =>
+                                        const AuthorityVisitorLogPage(),
+                                  ),
+                                );
+                              },
+                              child: DashboardTile(
+                                color: Color(0xFFE0F7FA), // Light Cyan
+                                icon: Icons.people_alt_outlined,
+                                title: "Visitor\nLog",
                               ),
                             ),
                           ),

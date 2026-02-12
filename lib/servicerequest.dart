@@ -22,6 +22,13 @@ class _NewServiceRequestpage extends State<NewServiceRequestpage> {
   bool _isProfileOpen = false;
 
   String? selectedCategory;
+  String selectedPriority = "normal"; // Default priority
+
+  final Map<String, Color> priorityColors = {
+    "normal": Colors.blue,
+    "medium": Colors.orange,
+    "urgent": Colors.red,
+  };
 
   final TextEditingController titleController = TextEditingController();
   final TextEditingController descController = TextEditingController();
@@ -203,6 +210,7 @@ class _NewServiceRequestpage extends State<NewServiceRequestpage> {
         "files": files,
         "userId": user.uid,
         "username": username, // ✅ NEW
+        "priority": selectedPriority, // ✅ Added Priority
         "status": "Pending",
         "isStarted": false,
         "timestamp": Timestamp.now(),
@@ -220,25 +228,44 @@ class _NewServiceRequestpage extends State<NewServiceRequestpage> {
             : null,
       });
 
-      // Notify authority about new service request
+      // 1. Notify Authorities (Broadcast to Role)
       try {
-        final authorities = await FirebaseFirestore.instance
-            .collection('authorities')
-            .limit(1)
-            .get();
-        
-        if (authorities.docs.isNotEmpty) {
-          await NotificationService.sendNotification(
-            userId: authorities.docs.first.id,
-            userRole: 'authority',
-            title: 'New Service Request',
-            body: '$username submitted a new service request: ${titleController.text.trim()}',
-            type: 'new_service_request',
-            additionalData: {'requestId': serviceId},
-          );
-        }
+        await NotificationService.sendNotification(
+          toRole: 'authority', // ✅ Send to ALL authorities
+          userRole: 'authority', // Target role collection
+          title: 'New Service Request (${selectedPriority.toUpperCase()})',
+          body:
+              '$username submitted a new service request: ${titleController.text.trim()}',
+          type: 'new_service_request',
+          priority: selectedPriority,
+          additionalData: {
+            'requestId': serviceId,
+            'priority': selectedPriority,
+          },
+        );
       } catch (e) {
-        print('Error sending notification: $e');
+        print('Error sending authority notification: $e');
+      }
+
+      // 2. Notify Assigned Worker (if any)
+      if (selectedWorker != null) {
+        try {
+          await NotificationService.sendNotification(
+            userId: selectedWorker!['id'],
+            userRole: 'worker', // Target role collection
+            title: 'New Job Assigned (${selectedPriority.toUpperCase()})',
+            body:
+                'You have been assigned a new request: ${titleController.text.trim()}',
+            type: 'job_assigned',
+            priority: selectedPriority,
+            additionalData: {
+              'requestId': serviceId,
+              'priority': selectedPriority,
+            },
+          );
+        } catch (e) {
+          print('Error sending worker notification: $e');
+        }
       }
 
       if (mounted) Navigator.pop(context); // close loading
@@ -358,7 +385,9 @@ class _NewServiceRequestpage extends State<NewServiceRequestpage> {
                                 "rating": (data["rating"] ?? 0).toDouble(),
                                 "completed": data["completedWorks"] ?? 0,
                                 "avatarColor": Colors.blueGrey,
-                                "isAvailable": data['isAvailable'] ?? false, // ✅ Added status
+                                "isAvailable":
+                                    data['isAvailable'] ??
+                                    false, // ✅ Added status
                               },
                               () {
                                 Navigator.pop(context, {
@@ -372,7 +401,6 @@ class _NewServiceRequestpage extends State<NewServiceRequestpage> {
                               },
                             );
                           },
-
                         );
                       },
                     ),
@@ -462,17 +490,24 @@ class _NewServiceRequestpage extends State<NewServiceRequestpage> {
                         children: [
                           // Status Indicator
                           Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 6,
+                              vertical: 2,
+                            ),
                             decoration: BoxDecoration(
-                              color: (w['isAvailable'] ?? false) ? Colors.green : Colors.grey,
+                              color: (w['isAvailable'] ?? false)
+                                  ? Colors.green
+                                  : Colors.grey,
                               borderRadius: BorderRadius.circular(4),
                             ),
                             child: Text(
-                              (w['isAvailable'] ?? false) ? "On Duty" : "Off Duty",
+                              (w['isAvailable'] ?? false)
+                                  ? "On Duty"
+                                  : "Off Duty",
                               style: const TextStyle(
                                 fontSize: 10,
                                 color: Colors.white,
-                                fontWeight: FontWeight.bold
+                                fontWeight: FontWeight.bold,
                               ),
                             ),
                           ),
@@ -670,6 +705,59 @@ class _NewServiceRequestpage extends State<NewServiceRequestpage> {
                       ),
                     ),
                   ],
+
+                  const SizedBox(height: 18),
+
+                  // PRIORITY SELECTOR
+                  const Text(
+                    "Priority Level",
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w700,
+                      color: Colors.black87,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Row(
+                    children: ["normal", "medium", "urgent"].map((priority) {
+                      final isSelected = selectedPriority == priority;
+                      return Expanded(
+                        child: GestureDetector(
+                          onTap: () =>
+                              setState(() => selectedPriority = priority),
+                          child: Container(
+                            margin: const EdgeInsets.only(right: 8),
+                            padding: const EdgeInsets.symmetric(vertical: 12),
+                            decoration: BoxDecoration(
+                              color: isSelected
+                                  ? priorityColors[priority]!.withOpacity(0.2)
+                                  : Colors.white.withOpacity(0.7),
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(
+                                color: isSelected
+                                    ? priorityColors[priority]!
+                                    : Colors.grey[300]!,
+                                width: isSelected ? 2 : 1,
+                              ),
+                            ),
+                            child: Text(
+                              priority.toUpperCase(),
+                              textAlign: TextAlign.center,
+                              style: TextStyle(
+                                fontSize: 11,
+                                fontWeight: isSelected
+                                    ? FontWeight.w700
+                                    : FontWeight.w600,
+                                color: isSelected
+                                    ? priorityColors[priority]
+                                    : Colors.black54,
+                              ),
+                            ),
+                          ),
+                        ),
+                      );
+                    }).toList(),
+                  ),
 
                   const SizedBox(height: 18),
 
