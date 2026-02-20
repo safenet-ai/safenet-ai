@@ -2,10 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import '../../auth/pages/role_selection.dart';
+//import '../../auth/pages/role_selection.dart';
 import '../pages/profile_page.dart';
 import '../pages/settings_page.dart';
 import '../../resident/pages/authority_contact_list.dart';
+import 'package:safenetai/home.dart';
 
 class ProfileSidebar extends StatelessWidget {
   final VoidCallback onClose;
@@ -100,7 +101,7 @@ class ProfileSidebar extends StatelessWidget {
       // Navigate to role selection page and clear stack
       if (context.mounted) {
         Navigator.of(context).pushAndRemoveUntil(
-          MaterialPageRoute(builder: (_) => const RoleSelectionPage()),
+          MaterialPageRoute(builder: (_) => const Homepage()),
           (route) => false,
         );
       }
