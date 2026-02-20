@@ -188,6 +188,12 @@ class _AuthorityAnnouncementPageState extends State<AuthorityAnnouncementPage> {
       // For workers, only send to approved/active ones
       if (collection == "workers") {
         query = query.where("isActive", isEqualTo: true);
+      } else if (collection == "security") {
+        // Security users are in 'workers' collection with profession 'Security'
+        query = FirebaseFirestore.instance
+            .collection("workers")
+            .where("profession", isEqualTo: "Security")
+            .where("isActive", isEqualTo: true);
       }
 
       final usersSnapshot = await query.get();

@@ -5,6 +5,7 @@ import '../../../approval_guard.dart';
 import '../../../notice_board.dart';
 import '../../shared/widgets/profile_sidebar.dart';
 import '../../shared/widgets/notification_dropdown.dart';
+import '../../../services/notification_service.dart'; // Added Import
 import 'visitor_management.dart';
 import 'security_requests.dart';
 import 'ai_alerts.dart';
@@ -20,6 +21,20 @@ class SecurityDashboardPage extends StatefulWidget {
 
 class _SecurityDashboardPageState extends State<SecurityDashboardPage> {
   bool _isProfileOpen = false;
+
+  @override
+  void initState() {
+    super.initState();
+    // 🔔 Force token refresh and listener start
+    _refreshNotifications();
+  }
+
+  Future<void> _refreshNotifications() async {
+    // Save token to 'workers' collection since this is Security Dashboard
+    // The service handles collection selection based on SharedPreferences
+    await NotificationService.saveFCMToken();
+    NotificationService.startFirestoreListener();
+  }
 
   @override
   Widget build(BuildContext context) {

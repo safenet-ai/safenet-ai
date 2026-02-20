@@ -12,6 +12,7 @@ import './authority_worker_monitoring.dart';
 import './authority_visitor_log.dart';
 import '../../shared/widgets/notification_dropdown.dart';
 import '../../shared/widgets/profile_sidebar.dart';
+import '../../../services/notification_service.dart'; // Added Import
 
 class AuthorityDashboardPage extends StatefulWidget {
   const AuthorityDashboardPage({super.key});
@@ -22,6 +23,18 @@ class AuthorityDashboardPage extends StatefulWidget {
 
 class _AuthorityDashboardPageState extends State<AuthorityDashboardPage> {
   bool _isProfileOpen = false;
+
+  @override
+  void initState() {
+    super.initState();
+    // 🔔 Force token refresh and listener start
+    _refreshNotifications();
+  }
+
+  Future<void> _refreshNotifications() async {
+    await NotificationService.saveFCMToken();
+    NotificationService.startFirestoreListener();
+  }
 
   @override
   Widget build(BuildContext context) {

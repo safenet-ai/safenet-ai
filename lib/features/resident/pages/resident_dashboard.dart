@@ -14,6 +14,8 @@ import '../../shared/widgets/profile_sidebar.dart';
 import '../../../approval_guard.dart';
 import '../../shared/widgets/notification_dropdown.dart';
 
+import '../../../services/notification_service.dart'; // Added Import
+
 class ResidentDashboardPage extends StatefulWidget {
   const ResidentDashboardPage({super.key});
 
@@ -23,6 +25,18 @@ class ResidentDashboardPage extends StatefulWidget {
 
 class _ResidentDashboardPageState extends State<ResidentDashboardPage> {
   bool _isProfileOpen = false;
+
+  @override
+  void initState() {
+    super.initState();
+    // 🔔 Force token refresh and listener start
+    _refreshNotifications();
+  }
+
+  Future<void> _refreshNotifications() async {
+    await NotificationService.saveFCMToken();
+    NotificationService.startFirestoreListener();
+  }
 
   Future<String> _fetchResidentName() async {
     final uid = FirebaseAuth.instance.currentUser?.uid;

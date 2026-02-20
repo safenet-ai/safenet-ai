@@ -3,6 +3,7 @@ import 'dart:ui';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../../../services/notification_service.dart'; // Added Import
 import './role_selection.dart';
 import '../../security/pages/security_dashboard.dart';
 
@@ -90,6 +91,9 @@ class _SecurityLoginPageState extends State<SecurityLoginPage> {
         final prefs = await SharedPreferences.getInstance();
         await prefs.remove('authority_uid');
         await prefs.setString('user_role', 'security');
+
+        // 🔔 Save FCM Token immediately
+        await NotificationService.saveFCMToken();
 
         Navigator.pushAndRemoveUntil(
           context,

@@ -1,8 +1,10 @@
 import 'package:firebase_messaging/firebase_messaging.dart';
+import 'package:firebase_core/firebase_core.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../firebase_options.dart';
 import 'dart:io';
 import 'dart:async';
 import 'dart:typed_data';
@@ -10,9 +12,64 @@ import 'dart:typed_data';
 /// Top-level background message handler for FCM
 @pragma('vm:entry-point')
 Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
-  // If you're going to use other Firebase services in the background, such as Firestore,
-  // make sure you call `Firebase.initializeApp()` first.
+  // 1. Initialize Firebase
+  await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+
   print('Handling background message: ${message.messageId}');
+
+  // 2. Check if we need to show a local notification manually
+  // (This handles "Data-Only" messages or waking up logic)
+  if (message.notification == null) {
+    final data = message.data;
+    final title = data['title'] ?? data['category'] ?? 'New Notification';
+    final body = data['body'] ?? '';
+    final priority = data['priority']?.toString().toLowerCase() ?? 'normal';
+
+    if (title.isNotEmpty && body.isNotEmpty) {
+      // Initialize Local Notifications just for this isolate
+      final FlutterLocalNotificationsPlugin localNotifications =
+          FlutterLocalNotificationsPlugin();
+
+      const AndroidInitializationSettings initializationSettingsAndroid =
+          AndroidInitializationSettings('@mipmap/ic_launcher');
+      final InitializationSettings initializationSettings =
+          InitializationSettings(android: initializationSettingsAndroid);
+
+      await localNotifications.initialize(initializationSettings);
+
+      // Select Channel
+      String channelId = 'normal_security_channel_v4';
+      if (priority == 'urgent')
+        channelId = 'urgent_security_channel_v4';
+      else if (priority == 'medium')
+        channelId = 'medium_security_channel_v4';
+
+      await localNotifications.show(
+        message.hashCode,
+        title,
+        body,
+        NotificationDetails(
+          android: AndroidNotificationDetails(
+            channelId,
+            priority == 'urgent'
+                ? 'Urgent Security Alerts'
+                : (priority == 'medium'
+                      ? 'Medium Security Updates'
+                      : 'Normal Updates'),
+            importance: priority == 'urgent'
+                ? Importance.max
+                : Importance.defaultImportance,
+            priority: Priority.max,
+            icon: '@mipmap/ic_launcher',
+            playSound: true,
+            sound: priority == 'urgent'
+                ? const RawResourceAndroidNotificationSound('urgent_alarm')
+                : null,
+          ),
+        ),
+      );
+    }
+  }
 }
 
 /// Centralized notification service for handling both in-app and push notifications
@@ -26,7 +83,7 @@ class NotificationService {
 
   static const AndroidNotificationChannel
   _urgentChannel = AndroidNotificationChannel(
-    'urgent_security_channel_v3', // Versioned ID to force sound/importance update
+    'urgent_security_channel_v4', // Versioned ID to force sound/importance update
     'Urgent Security Alerts',
     description: 'Critical updates and security alerts.',
     importance: Importance.max,
@@ -40,7 +97,7 @@ class NotificationService {
 
   static const AndroidNotificationChannel _mediumChannel =
       AndroidNotificationChannel(
-        'medium_security_channel_v3',
+        'medium_security_channel_v4',
         'Medium Security Updates',
         description: 'Important status updates.',
         importance: Importance.high,
@@ -49,7 +106,7 @@ class NotificationService {
 
   static const AndroidNotificationChannel _normalChannel =
       AndroidNotificationChannel(
-        'normal_security_channel_v3',
+        'normal_security_channel_v4',
         'Normal Updates',
         description: 'General app notifications.',
         importance: Importance.defaultImportance,
@@ -122,7 +179,7 @@ class NotificationService {
       print(
         '🔔 NotificationService: Initialization stopped (disabled by user).',
       );
-      _startFirestoreListener(); // Still listen to handle unread counts if needed, but it checks preference
+      startFirestoreListener(); // Still listen to handle unread counts if needed, but it checks preference
       return;
     }
 
@@ -160,10 +217,10 @@ class NotificationService {
     await _requestPermissions();
 
     // Save FCM token to user document
-    await _saveFCMToken();
+    await saveFCMToken();
 
     // 4. Start real-time Firestore listener for system tray alerts
-    _startFirestoreListener();
+    startFirestoreListener();
   }
 
   static Future<void> _requestPermissions() async {
@@ -176,8 +233,8 @@ class NotificationService {
     }
   }
 
-  /// Save FCM token to current user's document
-  static Future<void> _saveFCMToken() async {
+  /// Save FCM token to current user's document (Public for manual refresh)
+  static Future<void> saveFCMToken() async {
     try {
       final user = FirebaseAuth.instance.currentUser;
       if (user == null) {
@@ -242,16 +299,20 @@ class NotificationService {
     print('Foreground message: ${message.notification?.title}');
 
     RemoteNotification? notification = message.notification;
-    AndroidNotification? android = message.notification?.android;
 
     // If `onMessage` is triggered, FCM will NOT automatically show a notification bar alert
     // when the app is in the foreground. We must show it manually using local notifications.
     if (notification != null) {
+      // Extract priority from data if available
+      String priority =
+          message.data['priority']?.toString().toLowerCase() ?? 'normal';
+
       _showLocalNotification(
         id: notification.hashCode,
         title: notification.title ?? 'SafeNet AI',
         body: notification.body ?? '',
         payload: message.data.toString(),
+        priority: priority,
       );
     }
   }
@@ -321,8 +382,7 @@ class NotificationService {
             presentAlert: true,
             presentBadge: true,
             presentSound: true,
-            sound:
-                'urgent_alarm.aiff', // Assuming iOS uses aiff or caf, but keeping consistent with original logic if possible or standard sound
+            sound: 'urgent_alarm.aiff',
           ),
         ),
         payload: payload,
@@ -338,14 +398,13 @@ class NotificationService {
   static void _handleNotificationTap(RemoteMessage message) {
     print('Notification tapped: ${message.data}');
     // TODO: Implement deep linking based on notification type
-    // Navigate to appropriate screen based on message.data['type']
   }
 
   static final Set<String> _processedNotificationIds = {};
   static bool _isFirstSnapshot = true;
 
-  /// Start listening for new notifications in Firestore
-  static void _startFirestoreListener() {
+  /// Start listening for new notifications in Firestore (Public for manual restart)
+  static void startFirestoreListener() {
     print('🔔 Firestore Listener: Initializing...');
 
     _notificationSubscription?.cancel();
