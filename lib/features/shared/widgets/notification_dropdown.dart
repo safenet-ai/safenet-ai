@@ -1,7 +1,9 @@
 import 'dart:ui';
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class NotificationDropdown extends StatefulWidget {
   final String role; // "user", "worker", "security", or "authority"
@@ -15,6 +17,8 @@ class NotificationDropdown extends StatefulWidget {
 class _NotificationDropdownState extends State<NotificationDropdown> {
   OverlayEntry? _overlay;
   int _unreadCount = 0;
+  StreamSubscription? _unreadSub1;
+  StreamSubscription? _unreadSub2;
 
   @override
   void initState() {
@@ -24,7 +28,8 @@ class _NotificationDropdownState extends State<NotificationDropdown> {
 
   @override
   void dispose() {
-    // Clean up overlay when widget is disposed
+    _unreadSub1?.cancel();
+    _unreadSub2?.cancel();
     if (_overlay != null) {
       _overlay!.remove();
       _overlay = null;
@@ -32,66 +37,94 @@ class _NotificationDropdownState extends State<NotificationDropdown> {
     super.dispose();
   }
 
-  void _listenToUnreadCount() {
-    final uid = FirebaseAuth.instance.currentUser?.uid;
-    if (uid == null) return;
+  /// Returns true if this role should see role-based notifications
+  bool get _needsRoleQuery {
+    return widget.role == "authority" || widget.role == "security";
+  }
 
-    Query query = FirebaseFirestore.instance
-        .collection("notifications")
-        .where("isRead", isEqualTo: false);
-
-    if (widget.role == "user" ||
-        widget.role == "worker" ||
-        widget.role == "security" ||
-        widget.role == "resident") {
-      query = query.where("toUid", isEqualTo: uid);
-    } else if (widget.role == "authority") {
-      query = query.where("toRole", isEqualTo: "authority");
+  void _listenToUnreadCount() async {
+    String? uid = FirebaseAuth.instance.currentUser?.uid;
+    // For authority, UID may come from SharedPreferences
+    if (uid == null && widget.role == "authority") {
+      final prefs = await SharedPreferences.getInstance();
+      uid = prefs.getString('authority_uid');
     }
 
-    query.snapshots().listen((snapshot) {
+    int uidCount = 0;
+    int roleCount = 0;
+
+    void updateCount(int fromUid, int fromRole) {
       if (mounted) {
         setState(() {
-          _unreadCount = snapshot.docs.length;
+          _unreadCount = fromUid + fromRole;
         });
       }
-    });
+    }
+
+    // Query 1: UID-based notifications (for all roles except pure authority)
+    if (uid != null && widget.role != "authority") {
+      final uidQuery = FirebaseFirestore.instance
+          .collection("notifications")
+          .where("isRead", isEqualTo: false)
+          .where("toUid", isEqualTo: uid);
+
+      _unreadSub1 = uidQuery.snapshots().listen((snapshot) {
+        uidCount = snapshot.docs.length;
+        updateCount(uidCount, roleCount);
+      });
+    }
+
+    // Query 2: Role-based notifications (security sees toRole=='security', authority sees toRole=='authority')
+    if (_needsRoleQuery) {
+      final roleQuery = FirebaseFirestore.instance
+          .collection("notifications")
+          .where("isRead", isEqualTo: false)
+          .where("toRole", isEqualTo: widget.role);
+
+      _unreadSub2 = roleQuery.snapshots().listen((snapshot) {
+        roleCount = snapshot.docs.length;
+        updateCount(uidCount, roleCount);
+      });
+    }
   }
 
   Future<void> _markAllAsRead() async {
-    final uid = FirebaseAuth.instance.currentUser?.uid;
+    String? uid = FirebaseAuth.instance.currentUser?.uid;
+    if (uid == null && widget.role == "authority") {
+      final prefs = await SharedPreferences.getInstance();
+      uid = prefs.getString('authority_uid');
+    }
     if (uid == null && widget.role != "authority") return;
 
     try {
-      QuerySnapshot notifications;
+      final batch = FirebaseFirestore.instance.batch();
 
-      if (widget.role == "user" ||
-          widget.role == "worker" ||
-          widget.role == "security" ||
-          widget.role == "resident") {
-        notifications = await FirebaseFirestore.instance
+      // UID-based notifications
+      if (uid != null && widget.role != "authority") {
+        final uidNotifs = await FirebaseFirestore.instance
             .collection("notifications")
             .where("toUid", isEqualTo: uid)
             .where("isRead", isEqualTo: false)
             .get();
-      } else if (widget.role == "authority") {
-        notifications = await FirebaseFirestore.instance
-            .collection("notifications")
-            .where("toRole", isEqualTo: "authority")
-            .where("isRead", isEqualTo: false)
-            .get();
-      } else {
-        return;
+        for (var doc in uidNotifs.docs) {
+          batch.update(doc.reference, {"isRead": true});
+        }
       }
 
-      // Mark all as read in batch
-      final batch = FirebaseFirestore.instance.batch();
-      for (var doc in notifications.docs) {
-        batch.update(doc.reference, {"isRead": true});
+      // Role-based notifications
+      if (_needsRoleQuery) {
+        final roleNotifs = await FirebaseFirestore.instance
+            .collection("notifications")
+            .where("toRole", isEqualTo: widget.role)
+            .where("isRead", isEqualTo: false)
+            .get();
+        for (var doc in roleNotifs.docs) {
+          batch.update(doc.reference, {"isRead": true});
+        }
       }
+
       await batch.commit();
     } catch (e) {
-      // Silently handle error
       debugPrint("Error marking notifications as read: $e");
     }
   }
@@ -109,37 +142,40 @@ class _NotificationDropdownState extends State<NotificationDropdown> {
   }
 
   Future<void> _clearAllNotifications() async {
-    final uid = FirebaseAuth.instance.currentUser?.uid;
+    String? uid = FirebaseAuth.instance.currentUser?.uid;
+    if (uid == null && widget.role == "authority") {
+      final prefs = await SharedPreferences.getInstance();
+      uid = prefs.getString('authority_uid');
+    }
     if (uid == null && widget.role != "authority") return;
 
     try {
-      QuerySnapshot notifications;
+      final batch = FirebaseFirestore.instance.batch();
 
-      if (widget.role == "user" ||
-          widget.role == "worker" ||
-          widget.role == "security" ||
-          widget.role == "resident") {
-        notifications = await FirebaseFirestore.instance
+      // UID-based notifications
+      if (uid != null && widget.role != "authority") {
+        final uidNotifs = await FirebaseFirestore.instance
             .collection("notifications")
             .where("toUid", isEqualTo: uid)
             .get();
-      } else if (widget.role == "authority") {
-        notifications = await FirebaseFirestore.instance
-            .collection("notifications")
-            .where("toRole", isEqualTo: "authority")
-            .get();
-      } else {
-        return;
+        for (var doc in uidNotifs.docs) {
+          batch.delete(doc.reference);
+        }
       }
 
-      // Delete all notifications in batch
-      final batch = FirebaseFirestore.instance.batch();
-      for (var doc in notifications.docs) {
-        batch.delete(doc.reference);
+      // Role-based notifications
+      if (_needsRoleQuery) {
+        final roleNotifs = await FirebaseFirestore.instance
+            .collection("notifications")
+            .where("toRole", isEqualTo: widget.role)
+            .get();
+        for (var doc in roleNotifs.docs) {
+          batch.delete(doc.reference);
+        }
       }
+
       await batch.commit();
 
-      // Close overlay after clearing
       if (_overlay != null) {
         _overlay!.remove();
         _overlay = null;
@@ -169,24 +205,29 @@ class _NotificationDropdownState extends State<NotificationDropdown> {
   OverlayEntry _createOverlay() {
     final uid = FirebaseAuth.instance.currentUser?.uid;
 
-    // Build query based on role
-    Query query = FirebaseFirestore.instance.collection("notifications");
+    // Build queries based on role — security/authority need both UID + role queries
+    final List<Query> queries = [];
 
-    if (widget.role == "user" ||
-        widget.role == "worker" ||
-        widget.role == "security" ||
-        widget.role == "resident") {
-      if (uid != null) {
-        query = query
+    // UID-based query
+    if (uid != null && widget.role != "authority") {
+      queries.add(
+        FirebaseFirestore.instance
+            .collection("notifications")
             .where("toUid", isEqualTo: uid)
             .orderBy("timestamp", descending: true)
-            .limit(20);
-      }
-    } else if (widget.role == "authority") {
-      query = query
-          .where("toRole", isEqualTo: "authority")
-          .orderBy("timestamp", descending: true)
-          .limit(20);
+            .limit(20),
+      );
+    }
+
+    // Role-based query
+    if (_needsRoleQuery) {
+      queries.add(
+        FirebaseFirestore.instance
+            .collection("notifications")
+            .where("toRole", isEqualTo: widget.role)
+            .orderBy("timestamp", descending: true)
+            .limit(20),
+      );
     }
 
     return OverlayEntry(
@@ -296,157 +337,7 @@ class _NotificationDropdownState extends State<NotificationDropdown> {
 
                         const SizedBox(height: 12),
 
-                        const SizedBox(height: 12),
-
-                        const SizedBox(height: 12),
-
-                        Flexible(
-                          child: StreamBuilder<QuerySnapshot>(
-                            stream: query.snapshots(),
-                            builder: (_, snap) {
-                              if (snap.connectionState ==
-                                  ConnectionState.waiting) {
-                                return const Padding(
-                                  padding: EdgeInsets.all(20),
-                                  child: Center(
-                                    child: CircularProgressIndicator(),
-                                  ),
-                                );
-                              }
-
-                              if (!snap.hasData || snap.data!.docs.isEmpty) {
-                                return const Padding(
-                                  padding: EdgeInsets.all(20),
-                                  child: Center(
-                                    child: Text(
-                                      "No notifications",
-                                      style: TextStyle(
-                                        fontSize: 14,
-                                        color: Colors.black54,
-                                        decoration: TextDecoration.none,
-                                      ),
-                                    ),
-                                  ),
-                                );
-                              }
-
-                              final docs = snap.data!.docs;
-
-                              return ListView.builder(
-                                shrinkWrap: true,
-                                itemCount: docs.length,
-                                itemBuilder: (context, index) {
-                                  final data =
-                                      docs[index].data()
-                                          as Map<String, dynamic>;
-                                  final isRead = data["isRead"] ?? false;
-
-                                  return Opacity(
-                                    opacity: isRead ? 0.5 : 1.0,
-                                    child: Container(
-                                      margin: const EdgeInsets.only(bottom: 12),
-                                      padding: const EdgeInsets.all(14),
-                                      decoration: BoxDecoration(
-                                        gradient: LinearGradient(
-                                          colors: [
-                                            Colors.white.withOpacity(0.85),
-                                            const Color(
-                                              0xFFE3F8FF,
-                                            ).withOpacity(0.75),
-                                          ],
-                                          begin: Alignment.topLeft,
-                                          end: Alignment.bottomRight,
-                                        ),
-                                        borderRadius: BorderRadius.circular(18),
-                                        boxShadow: [
-                                          BoxShadow(
-                                            color: Colors.blueAccent
-                                                .withOpacity(0.12),
-                                            blurRadius: 12,
-                                            offset: const Offset(0, 6),
-                                          ),
-                                        ],
-                                      ),
-
-                                      child: Row(
-                                        crossAxisAlignment:
-                                            CrossAxisAlignment.start,
-                                        children: [
-                                          Container(
-                                            width: 36,
-                                            height: 36,
-                                            decoration: BoxDecoration(
-                                              color: Colors.blueGrey
-                                                  .withOpacity(0.1),
-                                              shape: BoxShape.circle,
-                                            ),
-                                            child: Icon(
-                                              isRead
-                                                  ? Icons.notifications_outlined
-                                                  : Icons.notifications_active,
-                                              size: 18,
-                                              color: isRead
-                                                  ? Colors.grey
-                                                  : Colors.blueGrey,
-                                            ),
-                                          ),
-
-                                          const SizedBox(width: 12),
-
-                                          Expanded(
-                                            child: Column(
-                                              crossAxisAlignment:
-                                                  CrossAxisAlignment.start,
-                                              children: [
-                                                Row(
-                                                  children: [
-                                                    if (!isRead) ...[
-                                                      Container(
-                                                        width: 8,
-                                                        height: 8,
-                                                        decoration:
-                                                            const BoxDecoration(
-                                                              color: Colors.red,
-                                                              shape: BoxShape
-                                                                  .circle,
-                                                            ),
-                                                      ),
-                                                      const SizedBox(width: 8),
-                                                    ],
-                                                    Expanded(
-                                                      child: Text(
-                                                        data["title"] ??
-                                                            "Notification",
-                                                        style: const TextStyle(
-                                                          fontSize: 14,
-                                                          fontWeight:
-                                                              FontWeight.w700,
-                                                          color: Colors.black87,
-                                                        ),
-                                                      ),
-                                                    ),
-                                                  ],
-                                                ),
-                                                const SizedBox(height: 4),
-                                                Text(
-                                                  data["message"] ?? "",
-                                                  style: const TextStyle(
-                                                    fontSize: 13,
-                                                    color: Colors.black54,
-                                                  ),
-                                                ),
-                                              ],
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                  );
-                                },
-                              );
-                            },
-                          ),
-                        ),
+                        Flexible(child: _buildMergedNotificationList(queries)),
                       ],
                     ),
                   ),
@@ -455,6 +346,232 @@ class _NotificationDropdownState extends State<NotificationDropdown> {
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  /// Merges results from multiple Firestore queries into a single sorted list
+  Widget _buildMergedNotificationList(List<Query> queries) {
+    if (queries.isEmpty) {
+      return const Padding(
+        padding: EdgeInsets.all(20),
+        child: Center(
+          child: Text(
+            "No notifications",
+            style: TextStyle(
+              fontSize: 14,
+              color: Colors.black54,
+              decoration: TextDecoration.none,
+            ),
+          ),
+        ),
+      );
+    }
+
+    // For a single query, use simple StreamBuilder
+    if (queries.length == 1) {
+      return StreamBuilder<QuerySnapshot>(
+        stream: queries[0].snapshots(),
+        builder: (_, snap) => _buildNotifList(snap),
+      );
+    }
+
+    // For two queries (UID + role), merge both streams
+    return StreamBuilder<List<QuerySnapshot>>(
+      stream: _mergeStreams(queries),
+      builder: (_, snap) {
+        if (snap.connectionState == ConnectionState.waiting) {
+          return const Padding(
+            padding: EdgeInsets.all(20),
+            child: Center(child: CircularProgressIndicator()),
+          );
+        }
+
+        if (!snap.hasData) {
+          return const Padding(
+            padding: EdgeInsets.all(20),
+            child: Center(
+              child: Text(
+                "No notifications",
+                style: TextStyle(
+                  fontSize: 14,
+                  color: Colors.black54,
+                  decoration: TextDecoration.none,
+                ),
+              ),
+            ),
+          );
+        }
+
+        // Merge and deduplicate docs from all queries
+        final Map<String, QueryDocumentSnapshot> mergedDocs = {};
+        for (var querySnap in snap.data!) {
+          for (var doc in querySnap.docs) {
+            mergedDocs[doc.id] = doc;
+          }
+        }
+
+        final docs = mergedDocs.values.toList();
+        // Sort by timestamp descending
+        docs.sort((a, b) {
+          final aTime = (a.data() as Map<String, dynamic>)['timestamp'];
+          final bTime = (b.data() as Map<String, dynamic>)['timestamp'];
+          if (aTime == null && bTime == null) return 0;
+          if (aTime == null) return 1;
+          if (bTime == null) return -1;
+          return (bTime as Timestamp).compareTo(aTime as Timestamp);
+        });
+
+        if (docs.isEmpty) {
+          return const Padding(
+            padding: EdgeInsets.all(20),
+            child: Center(
+              child: Text(
+                "No notifications",
+                style: TextStyle(
+                  fontSize: 14,
+                  color: Colors.black54,
+                  decoration: TextDecoration.none,
+                ),
+              ),
+            ),
+          );
+        }
+
+        return ListView.builder(
+          shrinkWrap: true,
+          itemCount: docs.length,
+          itemBuilder: (context, index) =>
+              _buildNotifTile(docs[index].data() as Map<String, dynamic>),
+        );
+      },
+    );
+  }
+
+  Stream<List<QuerySnapshot>> _mergeStreams(List<Query> queries) {
+    final streams = queries.map((q) => q.snapshots()).toList();
+    // Use combineLatest pattern with StreamGroup
+    return streams[0].asyncExpand((first) {
+      return streams[1].map((second) => [first, second]);
+    });
+  }
+
+  Widget _buildNotifList(AsyncSnapshot<QuerySnapshot> snap) {
+    if (snap.connectionState == ConnectionState.waiting) {
+      return const Padding(
+        padding: EdgeInsets.all(20),
+        child: Center(child: CircularProgressIndicator()),
+      );
+    }
+
+    if (!snap.hasData || snap.data!.docs.isEmpty) {
+      return const Padding(
+        padding: EdgeInsets.all(20),
+        child: Center(
+          child: Text(
+            "No notifications",
+            style: TextStyle(
+              fontSize: 14,
+              color: Colors.black54,
+              decoration: TextDecoration.none,
+            ),
+          ),
+        ),
+      );
+    }
+
+    final docs = snap.data!.docs;
+    return ListView.builder(
+      shrinkWrap: true,
+      itemCount: docs.length,
+      itemBuilder: (context, index) =>
+          _buildNotifTile(docs[index].data() as Map<String, dynamic>),
+    );
+  }
+
+  Widget _buildNotifTile(Map<String, dynamic> data) {
+    final isRead = data["isRead"] ?? false;
+    return Opacity(
+      opacity: isRead ? 0.5 : 1.0,
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 12),
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            colors: [
+              Colors.white.withOpacity(0.85),
+              const Color(0xFFE3F8FF).withOpacity(0.75),
+            ],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+          borderRadius: BorderRadius.circular(18),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.blueAccent.withOpacity(0.12),
+              blurRadius: 12,
+              offset: const Offset(0, 6),
+            ),
+          ],
+        ),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Container(
+              width: 36,
+              height: 36,
+              decoration: BoxDecoration(
+                color: Colors.blueGrey.withOpacity(0.1),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(
+                isRead
+                    ? Icons.notifications_outlined
+                    : Icons.notifications_active,
+                size: 18,
+                color: isRead ? Colors.grey : Colors.blueGrey,
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      if (!isRead) ...[
+                        Container(
+                          width: 8,
+                          height: 8,
+                          decoration: const BoxDecoration(
+                            color: Colors.red,
+                            shape: BoxShape.circle,
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                      ],
+                      Expanded(
+                        child: Text(
+                          data["title"] ?? "Notification",
+                          style: const TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w700,
+                            color: Colors.black87,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    data["message"] ?? "",
+                    style: const TextStyle(fontSize: 13, color: Colors.black54),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

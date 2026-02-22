@@ -42,8 +42,7 @@ exports.onAnnouncementCreated = onDocumentCreated("announcements/{announcementId
 
     // 2. Prepare the notification payload
     const isUrgent = priority === "urgent";
-    const androidSound = isUrgent ? "urgent_alarm" : "default";
-    const iOSSound = isUrgent ? "urgent_alarm.aiff" : "default";
+    const isMedium = priority === "medium";
 
     const payload = {
         notification: {
@@ -58,8 +57,9 @@ exports.onAnnouncementCreated = onDocumentCreated("announcements/{announcementId
         },
         android: {
             priority: "high",
+            ttl: 0, // Forces immediate delivery, bypassing battery doze
             notification: {
-                channelId: isUrgent ? "urgent_security_channel_v5" : "normal_security_channel_v5",
+                channelId: isUrgent ? "urgent_security_channel_v6" : (isMedium ? "medium_security_channel_v6" : "normal_security_channel_v6"),
                 visibility: "public",
             }
         },
@@ -67,7 +67,7 @@ exports.onAnnouncementCreated = onDocumentCreated("announcements/{announcementId
             payload: {
                 aps: {
                     contentAvailable: true,
-                    sound: iOSSound,
+                    sound: isUrgent ? "urgent_alarm.aiff" : "default",
                     badge: 1,
                     alert: {
                         title: `[${category}] ${title}`,
@@ -120,8 +120,7 @@ exports.onNotificationCreated = onDocumentCreated("notifications/{notificationId
 
     // Preparation (Same logic as Announcements)
     const isUrgent = priority === "urgent";
-    const androidSound = isUrgent ? "urgent_alarm" : "default";
-    const iOSSound = isUrgent ? "urgent_alarm.aiff" : "default";
+    const isMedium = priority === "medium";
 
     const payload = {
         notification: {
@@ -129,16 +128,17 @@ exports.onNotificationCreated = onDocumentCreated("notifications/{notificationId
             body: body,
         },
         data: {
-            type: type,
-            priority: priority,
+            type: String(type),
+            priority: String(priority),
+            toRole: String(toRole || ''),
+            toUid: String(toUid || ''),
             click_action: "FLUTTER_NOTIFICATION_CLICK",
-            // Include original data
-            ...data
         },
         android: {
             priority: "high",
+            ttl: 0, // Forces immediate delivery, bypassing battery doze
             notification: {
-                channelId: isUrgent ? "urgent_security_channel_v5" : "normal_security_channel_v5",
+                channelId: isUrgent ? "urgent_security_channel_v6" : (isMedium ? "medium_security_channel_v6" : "normal_security_channel_v6"),
                 visibility: "public",
             }
         },
@@ -146,7 +146,7 @@ exports.onNotificationCreated = onDocumentCreated("notifications/{notificationId
             payload: {
                 aps: {
                     contentAvailable: true,
-                    sound: iOSSound,
+                    sound: isUrgent ? "urgent_alarm.aiff" : "default",
                     badge: 1,
                     alert: {
                         title: title,
@@ -214,78 +214,41 @@ exports.onNotificationCreated = onDocumentCreated("notifications/{notificationId
  * NEW: Cloud Function to handle Security Requests (including Panic Alerts)
  * Listens to 'security_requests' collection.
  */
-exports.onSecurityRequestCreated = onDocumentCreated("security_requests/{requestId}", async (event) => {
-    const data = event.data.data();
-    if (!data) return;
+exports.onSecurityRequestCreated = onDocumentCreated(
+    { document: "security_requests/{requestId}", minInstances: 1 },
+    async (event) => {
+        const data = event.data.data();
+        if (!data) return;
 
-    const requestType = data.requestType || "general";
-    const isPanic = requestType === "panic_alert";
-    const isUrgent = isPanic || data.priority === "urgent" || data.priority === "high";
+        const requestType = data.requestType || "general";
+        const isPanic = requestType === "panic_alert";
+        const isUrgent = isPanic || data.priority === "urgent" || data.priority === "high";
 
-    console.log(`Processing Security Request: ${event.params.requestId}, Type: ${requestType}`);
+        let title = "New Security Request";
+        let body = `A new ${requestType.replace('_', ' ')} request was created for Flat ${data.flatNumber || 'Unknown'}.`;
 
-    const androidSound = isUrgent ? "urgent_alarm" : "default";
-    const iOSSound = isUrgent ? "urgent_alarm.aiff" : "default";
+        if (isPanic) {
+            title = `🚨 PANIC ALERT TRIGGERED 🚨`;
+            const name = data.residentName || 'Unknown Resident';
+            const phone = data.phone || 'No Phone';
+            const flat = data.flatNumber || data.flatNo || 'Unknown Flat';
+            const building = data.buildingNumber && data.buildingNumber !== "Unknown" ? `(Bldg ${data.buildingNumber})` : '';
+            const block = data.block && data.block !== "Unknown" ? `(Blk ${data.block})` : '';
+            body = `Emergency! ${name} at Flat ${flat} ${building} ${block} activated the panic button. Contact: ${phone}. Please check immediately.`;
+        }
 
-    let title = "New Security Request";
-    let body = `A new ${requestType.replace('_', ' ')} request was created for Flat ${data.flatNumber || 'Unknown'}.`;
-
-    if (isPanic) {
-        title = `🚨 PANIC ALERT TRIGGERED 🚨`;
-        const name = data.residentName || 'Unknown Resident';
-        const phone = data.phone || 'No Phone';
-        const flat = data.flatNumber || data.flatNo || 'Unknown Flat';
-        const building = data.buildingNumber && data.buildingNumber !== "Unknown" ? `(Bldg ${data.buildingNumber})` : '';
-        const block = data.block && data.block !== "Unknown" ? `(Blk ${data.block})` : '';
-        body = `Emergency! ${name} at Flat ${flat} ${building} ${block} activated the panic button. Contact: ${phone}. Please check immediately.`;
-    }
-
-    // ======================================================
-    // CRITICAL: For panic alerts, we send a DATA-ONLY message.
-    // Android behavior: when FCM has BOTH notification+data blocks
-    // and the app is in background/killed, Android auto-shows the
-    // notification but does NOT call onMessageReceived(). This means
-    // MyFirebaseMessagingService never intercepts, and siren never starts.
-    // By sending data-only, onMessageReceived() is ALWAYS called.
-    // ======================================================
-
-    let payload;
-
-    if (isPanic) {
-        // DATA-ONLY message → onMessageReceived() always fires → siren starts
-        payload = {
-            data: {
-                type: String(requestType),
-                priority: String(data.priority || 'urgent'),
-                requestId: String(event.params.requestId),
-                residentId: String(data.residentId || ''),
-                residentName: String(data.residentName || ''),
-                flatNumber: String(data.flatNumber || data.flatNo || ''),
-                buildingNumber: String(data.buildingNumber || ''),
-                block: String(data.block || ''),
-                phone: String(data.phone || ''),
-                title: title,
-                body: body,
-                channelId: "urgent_security_channel_v5",
-                sound: "urgent_alarm",
-                click_action: "FLUTTER_NOTIFICATION_CLICK"
-            },
-            android: {
-                priority: "high",
-            },
-            // Broadcast to Authorities and Security Guards simultaneously
-            condition: "'authority' in topics || 'security' in topics"
-        };
-    } else {
-        // Non-panic: use notification+data (standard FCM behavior)
-        payload = {
+        // ONE unified payload for ALL security requests.
+        // - notification+data ensures onMessageReceived() fires AND Android shows tray notification
+        // - NO sound field — channel controls sound (urgent channel is SILENT, SirenForegroundService plays audio)
+        // - MyFirebaseMessagingService checks priority=='urgent' to start SirenForegroundService
+        const payload = {
             notification: {
                 title: title,
                 body: body,
             },
             data: {
                 type: String(requestType),
-                priority: String(data.priority || 'normal'),
+                priority: isUrgent ? 'urgent' : String(data.priority || 'normal'),
                 requestId: String(event.params.requestId),
                 residentId: String(data.residentId || ''),
                 flatNumber: String(data.flatNumber || ''),
@@ -295,9 +258,9 @@ exports.onSecurityRequestCreated = onDocumentCreated("security_requests/{request
             },
             android: {
                 priority: "high",
+                ttl: 0, // Forces immediate delivery, bypassing battery doze
                 notification: {
-                    channelId: isUrgent ? "urgent_security_channel_v5" : "normal_security_channel_v5",
-                    sound: isUrgent ? "urgent_alarm" : "default",
+                    channelId: isUrgent ? "urgent_security_channel_v6" : "normal_security_channel_v6",
                     visibility: "public",
                 }
             },
@@ -307,54 +270,43 @@ exports.onSecurityRequestCreated = onDocumentCreated("security_requests/{request
                         contentAvailable: true,
                         sound: isUrgent ? "urgent_alarm.aiff" : "default",
                         badge: 1,
-                        alert: {
-                            title: title,
-                            body: body,
-                        }
+                        alert: { title: title, body: body }
                     },
                 },
             },
             condition: "'authority' in topics || 'security' in topics"
         };
-    }
 
-    try {
-        const response = await admin.messaging().send(payload);
-        console.log(`Successfully sent Security Request Topic Broadcast. Response:`, response);
+        try {
+            // CONCURRENT: Send FCM topic broadcast + create in-app docs at the same time
+            // This eliminates sequential latency (was 2-5s, now near-instant)
+            const batch = admin.firestore().batch();
+            const notifData = {
+                title: title,
+                message: body,
+                type: requestType,
+                priority: isUrgent ? 'urgent' : (data.priority || 'normal'),
+                isRead: false,
+                timestamp: admin.firestore.FieldValue.serverTimestamp(),
+                route: '/security_requests',
+                silentData: true // Blocks onNotificationCreated from sending a 2nd FCM push
+            };
 
-        // CREATE IN-APP NOTIFICATIONS FOR DROPDOWN
-        const batch = admin.firestore().batch();
-        const notifData = {
-            title: title,
-            message: body,
-            type: requestType,
-            priority: data.priority || (isUrgent ? 'urgent' : 'normal'),
-            isRead: false,
-            timestamp: admin.firestore.FieldValue.serverTimestamp(),
-            route: '/security_requests',
-            silentData: true // Instructs onNotificationCreated NOT to send another FCM push
-        };
+            // Authority gets a role-based doc
+            const authRef = admin.firestore().collection('notifications').doc();
+            batch.set(authRef, { ...notifData, toRole: 'authority' });
 
-        // 1. Send to Authority using their existing role-based check
-        const authRef = admin.firestore().collection('notifications').doc();
-        batch.set(authRef, { ...notifData, toRole: 'authority' });
+            // Security gets a single role-based doc
+            const secRef = admin.firestore().collection('notifications').doc();
+            batch.set(secRef, { ...notifData, toRole: 'security' });
 
-        // 2. Fetch all workers and send individually (Flutter 'security' role checks toUid)
-        const workersSnapshot = await admin.firestore().collection('workers').get();
-        workersSnapshot.forEach(doc => {
-            const workerData = doc.data();
-            const workerRole = (workerData.role || "").toLowerCase();
-            // Match any "security" or "guard" role
-            if (workerRole.includes('security') || workerRole.includes('guard')) {
-                const secRef = admin.firestore().collection('notifications').doc();
-                batch.set(secRef, { ...notifData, toUid: doc.id, toRole: 'security' });
-            }
-        });
+            const [response] = await Promise.all([
+                admin.messaging().send(payload),
+                batch.commit(),
+            ]);
+            console.log(`FCM + batch commit completed concurrently. Response:`, response);
 
-        await batch.commit();
-        console.log("Created silent in-app notification documents for authority and all security guards.");
-
-    } catch (error) {
-        console.error("Error sending Security Request FCM Broadcast:", error);
-    }
-});
+        } catch (error) {
+            console.error('Error sending Security Request FCM Broadcast:', error);
+        }
+    });

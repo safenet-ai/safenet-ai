@@ -28,7 +28,7 @@
     <application
         android:label="safenetai"
         android:name="${applicationName}"
-        android:icon="@mipmap/ic_launcher"
+        android:icon="@mipmap/launcher_icon"
         android:requestLegacyExternalStorage="true">    <!-- VERY IMPORTANT -->
         
         <activity
@@ -68,7 +68,7 @@
         <!-- Default notification channel for FCM -->
         <meta-data
             android:name="com.google.firebase.messaging.default_notification_channel_id"
-            android:value="normal_security_channel_v5" />
+            android:value="normal_security_channel_v6" />
 
         <!-- Panic Alert Accessibility Service -->
         <service

@@ -7,7 +7,6 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../../shared/widgets/profile_sidebar.dart';
 import '../../shared/widgets/notification_dropdown.dart';
-import '../../../services/notification_service.dart';
 
 class ResidentSecurityRequestFormPage extends StatefulWidget {
   const ResidentSecurityRequestFormPage({super.key});
@@ -187,30 +186,10 @@ class _ResidentSecurityRequestFormPageState
         "resolutionNotes": null,
       });
 
-      // Send notifications to Authority and Security
-      await NotificationService.sendNotification(
-        toRole: "authority",
-        userRole: "resident",
-        title: "New Security Request",
-        body: "A new ${requestTypeLabels[selectedRequestType]} has been reported by $residentName at ${locationController.text}.",
-        type: "security_request",
-        additionalData: {
-          "requestType": selectedRequestType,
-          "priority": selectedPriority,
-        },
-      );
-
-      await NotificationService.sendNotification(
-        toRole: "security",
-        userRole: "resident",
-        title: "Security Alert: $selectedPriority",
-        body: "New ${requestTypeLabels[selectedRequestType]} at ${locationController.text}.",
-        type: "security_request",
-        additionalData: {
-          "requestType": selectedRequestType,
-          "priority": selectedPriority,
-        },
-      );
+      // Firebase Cloud Function 'onSecurityRequestCreated' will automatically
+      // broadcast the FCM notification to Authority and Security topics
+      // and create the necessary in-app notification documents.
+      // Removed local redundant sendNotification calls here.
 
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(

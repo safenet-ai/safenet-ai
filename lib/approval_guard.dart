@@ -14,7 +14,28 @@ class ApprovalGate extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final uid = FirebaseAuth.instance.currentUser!.uid;
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) {
+      // User lost auth state while navigating here or token expired
+      return Scaffold(
+        body: Center(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(Icons.error_outline, size: 48, color: Colors.red),
+              const SizedBox(height: 16),
+              const Text('Authentication Session Expired'),
+              TextButton(
+                onPressed: () =>
+                    Navigator.of(context).pushReplacementNamed('/'),
+                child: const Text('Return to Login'),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+    final uid = user.uid;
 
     return StreamBuilder<DocumentSnapshot>(
       stream: FirebaseFirestore.instance
@@ -45,13 +66,9 @@ class ApprovalGate extends StatelessWidget {
             children: [
               child, // blurred behind
 
-              Container(
-                color: Colors.black.withOpacity(0.55),
-              ),
+              Container(color: Colors.black.withOpacity(0.55)),
 
-              Center(
-                child: _approvalCard(status),
-              ),
+              Center(child: _approvalCard(status)),
             ],
           ),
         );
@@ -82,18 +99,17 @@ class ApprovalGate extends StatelessWidget {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(22),
-        boxShadow: const [
-          BoxShadow(color: Colors.black26, blurRadius: 12)
-        ],
+        boxShadow: const [BoxShadow(color: Colors.black26, blurRadius: 12)],
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
           Icon(Icons.lock_outline, size: 46, color: color),
           const SizedBox(height: 12),
-          Text(title,
-              style: const TextStyle(
-                  fontSize: 22, fontWeight: FontWeight.bold)),
+          Text(
+            title,
+            style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+          ),
           const SizedBox(height: 10),
           Text(
             message,

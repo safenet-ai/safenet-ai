@@ -12,64 +12,70 @@ import 'dart:typed_data';
 /// Top-level background message handler for FCM
 @pragma('vm:entry-point')
 Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
-  // 1. Initialize Firebase
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
-
   print('Handling background message: ${message.messageId}');
 
-  // 2. Check if we need to show a local notification manually
-  // (This handles "Data-Only" messages or waking up logic)
-  if (message.notification == null) {
-    final data = message.data;
-    final title = data['title'] ?? data['category'] ?? 'New Notification';
-    final body = data['body'] ?? '';
-    final priority = data['priority']?.toString().toLowerCase() ?? 'normal';
+  // Show a local notification for ALL background messages.
+  // Android auto-shows system tray for notification+data, but a local notification
+  // ensures correct channel and priority are used.
+  final notification = message.notification;
+  final data = message.data;
 
-    if (title.isNotEmpty && body.isNotEmpty) {
-      // Initialize Local Notifications just for this isolate
-      final FlutterLocalNotificationsPlugin localNotifications =
-          FlutterLocalNotificationsPlugin();
-
-      const AndroidInitializationSettings initializationSettingsAndroid =
-          AndroidInitializationSettings('@mipmap/ic_launcher');
-      final InitializationSettings initializationSettings =
-          InitializationSettings(android: initializationSettingsAndroid);
-
-      await localNotifications.initialize(initializationSettings);
-
-      // Select Channel (always use v5 channels)
-      String channelId = 'normal_security_channel_v5';
-      if (priority == 'urgent')
-        channelId = 'urgent_security_channel_v5';
-      else if (priority == 'medium')
-        channelId = 'medium_security_channel_v5';
-
-      await localNotifications.show(
-        message.hashCode,
-        title,
-        body,
-        NotificationDetails(
-          android: AndroidNotificationDetails(
-            channelId,
-            priority == 'urgent'
-                ? 'Urgent Security Alerts'
-                : (priority == 'medium'
-                      ? 'Medium Security Updates'
-                      : 'Normal Updates'),
-            importance: priority == 'urgent'
-                ? Importance.max
-                : Importance.defaultImportance,
-            priority: Priority.max,
-            icon: '@mipmap/ic_launcher',
-            playSound: true,
-            sound: priority == 'urgent'
-                ? const RawResourceAndroidNotificationSound('urgent_alarm')
-                : null,
-          ),
-        ),
-      );
-    }
+  // If FCM already displayed a system notification, don't duplicate it locally.
+  if (notification != null) {
+    print(
+      'FCM payload contains notification block. System handles display. Skipping manual local notification.',
+    );
+    return;
   }
+
+  // BUG-1 FIX: notification is guaranteed null here — read from data only
+  final String title = data['title'] ?? data['category'] ?? 'SafeNet AI';
+  final String body = data['body'] ?? '';
+  final String priority =
+      data['priority']?.toString().toLowerCase() ?? 'normal';
+
+  if (title.isEmpty && body.isEmpty) return;
+
+  final FlutterLocalNotificationsPlugin localNotifications =
+      FlutterLocalNotificationsPlugin();
+  const AndroidInitializationSettings initSettingsAndroid =
+      AndroidInitializationSettings('@mipmap/ic_launcher');
+  await localNotifications.initialize(
+    const InitializationSettings(android: initSettingsAndroid),
+  );
+
+  // Select v6 channel
+  String channelId = 'normal_security_channel_v6';
+  String channelName = 'Normal Updates';
+  Importance importance = Importance.defaultImportance;
+  if (priority == 'urgent') {
+    channelId = 'urgent_security_channel_v6';
+    channelName = 'Urgent Security Alerts';
+    importance = Importance.max;
+  } else if (priority == 'medium') {
+    channelId = 'medium_security_channel_v6';
+    channelName = 'Medium Security Updates';
+    importance = Importance.high;
+  }
+
+  await localNotifications.show(
+    message.hashCode,
+    title,
+    body,
+    NotificationDetails(
+      android: AndroidNotificationDetails(
+        channelId,
+        channelName,
+        importance: importance,
+        priority: Priority.max,
+        icon: '@mipmap/ic_launcher',
+        playSound:
+            priority !=
+            'urgent', // urgent channel is silent, siren handles audio
+      ),
+    ),
+  );
 }
 
 /// Centralized notification service for handling both in-app and push notifications
@@ -81,13 +87,12 @@ class NotificationService {
   static StreamSubscription<RemoteMessage>? _onMessageSubscription;
   static StreamSubscription<RemoteMessage>? _onMessageOpenedAppSubscription;
 
-  // IMPORTANT: Urgent channel is SILENT on purpose.
-  // The looping SirenForegroundService IS the alarm sound.
-  // If the channel also played urgent_alarm, it would double-fire.
-  // Importance.max ensures the heads-up popup still appears.
+  // URGENT: Silent channel (v6) — no sound here.
+  // SirenForegroundService plays the looping alarm via MediaPlayer.
+  // Importance.max → heads-up popup still shows.
   static const AndroidNotificationChannel _urgentChannel =
       AndroidNotificationChannel(
-        'urgent_security_channel_v5',
+        'urgent_security_channel_v6',
         'Urgent Security Alerts',
         description: 'Critical updates and security alerts.',
         importance: Importance.max,
@@ -97,7 +102,7 @@ class NotificationService {
 
   static const AndroidNotificationChannel _mediumChannel =
       AndroidNotificationChannel(
-        'medium_security_channel_v5',
+        'medium_security_channel_v6',
         'Medium Security Updates',
         description: 'Important status updates.',
         importance: Importance.high,
@@ -106,7 +111,7 @@ class NotificationService {
 
   static const AndroidNotificationChannel _normalChannel =
       AndroidNotificationChannel(
-        'normal_security_channel_v5',
+        'normal_security_channel_v6',
         'Normal Updates',
         description: 'General app notifications.',
         importance: Importance.defaultImportance,
@@ -160,26 +165,46 @@ class NotificationService {
               AndroidFlutterLocalNotificationsPlugin
             >();
 
-        // Delete legacy channel
+        // Delete ALL legacy channels to bust cached settings
         await androidPlugin?.deleteNotificationChannel(
           'high_importance_channel',
         );
+        await androidPlugin?.deleteNotificationChannel(
+          'urgent_security_channel_v4',
+        );
+        await androidPlugin?.deleteNotificationChannel(
+          'medium_security_channel_v4',
+        );
+        await androidPlugin?.deleteNotificationChannel(
+          'normal_security_channel_v4',
+        );
+        await androidPlugin?.deleteNotificationChannel(
+          'urgent_security_channel_v5',
+        );
+        await androidPlugin?.deleteNotificationChannel(
+          'medium_security_channel_v5',
+        );
+        await androidPlugin?.deleteNotificationChannel(
+          'normal_security_channel_v5',
+        );
 
+        // Create fresh v6 channels with correct settings
         await androidPlugin?.createNotificationChannel(_urgentChannel);
         await androidPlugin?.createNotificationChannel(_mediumChannel);
         await androidPlugin?.createNotificationChannel(_normalChannel);
-        print('🔔 Notification channels initialized successfully.');
+        print('🔔 Notification channels v6 initialized successfully.');
       } catch (e) {
         print('🚨 Error creating notification channels: $e');
       }
     }
 
-    // If notifications are disabled, stop here (except for the listener which already checks)
+    // If notifications are disabled, stop here (FCM background handler is still registered).
+    // startFirestoreListener() must NOT be called here — user is not logged in yet.
+    // It is called from each dashboard's initState after authentication.
     if (!isEnabled) {
       print(
-        '🔔 NotificationService: Initialization stopped (disabled by user).',
+        '🔔 NotificationService: Notification UI disabled by user preference.',
       );
-      startFirestoreListener(); // Still listen to handle unread counts if needed, but it checks preference
       return;
     }
 
@@ -227,10 +252,16 @@ class NotificationService {
     await _requestPermissions();
 
     // Save FCM token to user document
+    // NOTE: This may fail here if user is not logged in yet.
+    // saveFCMToken() is also called from each dashboard's initState.
     await saveFCMToken();
 
-    // 4. Start real-time Firestore listener for system tray alerts
-    startFirestoreListener();
+    // NOTE: startFirestoreListener() is NOT called here.
+    // It must be called AFTER login from each dashboard's initState,
+    // when currentUser and userRole are available.
+    print(
+      '🔔 NotificationService.initialize() complete. Waiting for dashboard to start Firestore listener.',
+    );
   }
 
   static Future<void> _requestPermissions() async {
@@ -448,6 +479,8 @@ class NotificationService {
 
   static final Set<String> _processedNotificationIds = {};
   static bool _isFirstSnapshot = true;
+  static const int _maxProcessedIds =
+      500; // BUG-6 FIX: Cap to prevent unbounded growth
 
   /// Start listening for new notifications in Firestore (Public for manual restart)
   static void startFirestoreListener() {
@@ -483,6 +516,14 @@ class NotificationService {
               '🔔 Firestore Signal: UID=$currentUid, Role=$userRole. IsFirst=$_isFirstSnapshot, Docs: ${snapshot.docs.length}',
             );
 
+            // 🛡️ Null guard: If auth state isn't ready, skip this snapshot
+            if (currentUid == null || userRole == null) {
+              print(
+                '🔔 Firestore Listener: UID or Role is NULL — skipping this snapshot. Auth may not be ready yet.',
+              );
+              return;
+            }
+
             // If it's the first snapshot, we just mark everything as processed
             // to avoid alerting for old unread notifications on every restart.
             if (_isFirstSnapshot) {
@@ -503,14 +544,19 @@ class NotificationService {
                 // Deduplication: Only process each document ID once per session
                 if (_processedNotificationIds.contains(docId)) continue;
                 _processedNotificationIds.add(docId);
+                // BUG-6 FIX: Prevent unbounded Set growth
+                if (_processedNotificationIds.length > _maxProcessedIds) {
+                  final toRemove = _processedNotificationIds
+                      .take(_processedNotificationIds.length - _maxProcessedIds)
+                      .toList();
+                  _processedNotificationIds.removeAll(toRemove);
+                }
 
                 final data = change.doc.data() as Map<String, dynamic>;
                 final fromUid = data['fromUid'];
 
                 // Skip if I am the one who sent it
-                if (fromUid != null &&
-                    currentUid != null &&
-                    fromUid == currentUid) {
+                if (fromUid != null && fromUid == currentUid) {
                   print('🔔 Skipping self-notification.');
                   continue;
                 }
@@ -519,11 +565,9 @@ class NotificationService {
                 final toRole = data['toRole'];
 
                 bool isForMe = false;
-                if (toUid != null &&
-                    currentUid != null &&
-                    toUid == currentUid) {
+                if (toUid != null && toUid == currentUid) {
                   isForMe = true;
-                } else if (toRole != null && userRole != null) {
+                } else if (toRole != null) {
                   if (toRole == userRole ||
                       (toRole == 'user' && userRole == 'resident')) {
                     isForMe = true;
@@ -531,24 +575,11 @@ class NotificationService {
                 }
 
                 if (isForMe) {
-                  final notifPriority =
-                      data['priority']?.toString().toLowerCase() ?? 'normal';
                   print(
-                    '🔔 TRIGGERING SYSTEM TRAY ALERT: ${data['title']} (Priority: $notifPriority)',
+                    '🔔 SILENT FIRESTORE LISTENER UPDATE: ${data['title']}',
                   );
-                  // ALWAYS use 'normal' priority here — Firestore listener is a
-                  // fallback for in-app only. FCM push + SirenForegroundService
-                  // handle the actual urgent sound. Showing urgent_alarm here
-                  // causes the phantom/double siren bug.
-                  _showLocalNotification(
-                    id: docId.hashCode,
-                    title: data['title'] ?? 'SafeNet AI',
-                    body: data['message'] ?? '',
-                    payload: data['type'],
-                    priority: notifPriority == 'urgent'
-                        ? 'medium'
-                        : notifPriority,
-                  );
+                  // App-based local notifications removed.
+                  // Only relying on Firebase push notifications.
                 }
               }
             }
@@ -597,25 +628,26 @@ class NotificationService {
       // (Local Preview logic removed: Handled by _startFirestoreListener)
 
       // 2. Get user's FCM token (only if userId is provided)
+      // BUG-2 FIX: Search ALL collections for the recipient, not just the sender's role collection
       if (userId != null) {
-        String collection = _getCollectionForRole(userRole);
-        final userDoc = await FirebaseFirestore.instance
-            .collection(collection)
-            .doc(userId)
-            .get();
-
-        if (!userDoc.exists) {
-          print(
-            'User document not found for notification: $userId in $collection',
-          );
-          return;
+        String? fcmToken;
+        for (final coll in ['users', 'workers', 'authorities']) {
+          final userDoc = await FirebaseFirestore.instance
+              .collection(coll)
+              .doc(userId)
+              .get();
+          if (userDoc.exists) {
+            fcmToken = userDoc.data()?['fcmToken'] as String?;
+            print('Found user $userId in $coll collection.');
+            break;
+          }
         }
 
-        final fcmToken = userDoc.data()?['fcmToken'] as String?;
         if (fcmToken != null) {
-          // 3. Send push notification via FCM
           print('Would send push notification to token: $fcmToken');
           print('Title: $title, Body: $body');
+        } else {
+          print('No FCM token found for UID: $userId in any collection.');
         }
       } else if (toRole != null) {
         // Handle role-based push notifications (usually via FCM topics)
@@ -654,12 +686,14 @@ class NotificationService {
   }
 
   /// Send notification to multiple users
+  /// BUG-3 FIX: Now accepts and passes `priority` parameter
   static Future<void> sendBulkNotification({
     required List<String> userIds,
     required String userRole,
     required String title,
     required String body,
     required String type,
+    String priority = 'normal',
     Map<String, dynamic>? additionalData,
   }) async {
     for (final userId in userIds) {
@@ -669,6 +703,7 @@ class NotificationService {
         title: title,
         body: body,
         type: type,
+        priority: priority,
         additionalData: additionalData,
       );
     }

@@ -26,7 +26,7 @@ class PanicAccessibilityService : AccessibilityService() {
 
     override fun onServiceConnected() {
         super.onServiceConnected()
-        Log.d("PanicAccessibility", "Service Connected. Starting keep-alive Foreground Service.")
+        
         try {
             val intent = Intent(this, PanicForegroundService::class.java)
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
@@ -35,7 +35,7 @@ class PanicAccessibilityService : AccessibilityService() {
                 startService(intent)
             }
         } catch (e: Exception) {
-            Log.e("PanicAccessibility", "Failed to start Foreground Service: ${e.message}")
+            
         }
     }
 
@@ -55,7 +55,7 @@ class PanicAccessibilityService : AccessibilityService() {
 
         if (event.keyCode == KeyEvent.KEYCODE_VOLUME_UP) {
             if (event.action == KeyEvent.ACTION_DOWN) {
-                Log.d("PanicAccessibility", "VOLUME UP PRESSED!")
+                
                 handleVolumeUpPress()
             }
             return true 
@@ -73,7 +73,7 @@ class PanicAccessibilityService : AccessibilityService() {
         }
         lastVolumeUpPressTime = currentTime
 
-        Log.d("PanicAccessibility", "Volume Up Count: $volumeUpPressCount / $REQUIRED_PRESSES")
+        
 
         if (volumeUpPressCount >= REQUIRED_PRESSES) {
             triggerPanicAlert()
@@ -85,7 +85,7 @@ class PanicAccessibilityService : AccessibilityService() {
         isPanicTriggered = true
         volumeUpPressCount = 0 // Reset
 
-        Log.d("PanicAccessibility", "THRESHOLD REACHED! Starting countdown notification.")
+        
         
         showToast("🚨 Panic Alert in 10s — Check your notification to cancel")
         vibrateDevice()
@@ -104,13 +104,13 @@ class PanicAccessibilityService : AccessibilityService() {
                 startService(countdownIntent)
             }
         } catch (e: Exception) {
-            Log.e("PanicAccessibility", "Failed to start PanicCountdownService: ${e.message}")
+            
         }
 
         // 3. Start 15-second cooldown timer
         Handler(Looper.getMainLooper()).postDelayed({
             isPanicTriggered = false
-            Log.d("PanicAccessibility", "Panic Cooldown ended. Ready for new triggers.")
+            
         }, COOLDOWN_PERIOD_MS)
     }
 

@@ -18,12 +18,12 @@ void main() async {
   // 🔥 Initialize Firebase
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
 
-  // 🛡️ Initialize App Check (Debug Mode only for now)
-  if (kDebugMode) {
-    await FirebaseAppCheck.instance.activate(
-      androidProvider: AndroidProvider.debug,
-    );
-  }
+  // 🛡️ Initialize App Check (Debug for dev, PlayIntegrity for prod)
+  await FirebaseAppCheck.instance.activate(
+    androidProvider: kDebugMode
+        ? AndroidProvider.debug
+        : AndroidProvider.playIntegrity,
+  );
 
   // 🔔 Initialize Notification Service
   await NotificationService.initialize();

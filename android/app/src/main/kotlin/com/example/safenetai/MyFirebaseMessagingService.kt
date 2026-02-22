@@ -12,18 +12,18 @@ class MyFirebaseMessagingService : FlutterFirebaseMessagingService() {
         // ALWAYS let Flutter handle it as well
         super.onMessageReceived(remoteMessage)
 
-        Log.d("MyFCMService", "Intercepted FCM Message Natively! ID: ${remoteMessage.messageId}")
+        
         
         // Ensure data exists
         val data = remoteMessage.data
         if (data.isNotEmpty()) {
             val type = data["type"]
             val priority = data["priority"]
-            Log.d("MyFCMService", "Message Type: $type, Priority: $priority")
+            
             
             // Trigger siren for panic alerts OR any urgent request
             if (type == "panic_alert" || priority == "urgent") {
-                Log.d("MyFCMService", "🚨 URGENT ALERT RECEIVED NATIVELY! WAKING UP SIREN! 🚨")
+                
                 startSirenService()
             }
         }
@@ -38,7 +38,7 @@ class MyFirebaseMessagingService : FlutterFirebaseMessagingService() {
                 startService(intent)
             }
         } catch (e: Exception) {
-            Log.e("MyFCMService", "Failed to start SirenForegroundService: ${e.message}")
+            
         }
     }
 }

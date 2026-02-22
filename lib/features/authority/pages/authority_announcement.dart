@@ -4,7 +4,6 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:io';
-import '../../../services/notification_service.dart';
 
 class AuthorityAnnouncementPage extends StatefulWidget {
   const AuthorityAnnouncementPage({super.key});
@@ -128,8 +127,9 @@ class _AuthorityAnnouncementPageState extends State<AuthorityAnnouncementPage> {
         "isActive": true,
       });
 
-      // Send notifications to target audience
-      await _sendAnnouncementNotifications(targetCollection);
+      // Note: Firebase Cloud Function 'onAnnouncementCreated' automatically
+      // handles sending the FCM topic broadcasts to the target audience.
+      // Removed local redundant _sendAnnouncementNotifications call.
 
       _showMsg("Announcement published successfully!");
 
@@ -151,84 +151,6 @@ class _AuthorityAnnouncementPageState extends State<AuthorityAnnouncementPage> {
       _showMsg("Error publishing announcement: $e");
     } finally {
       setState(() => _isLoading = false);
-    }
-  }
-
-  Future<void> _sendAnnouncementNotifications(String targetCollection) async {
-    try {
-      final title = _titleCtrl.text.trim();
-      final category = selectedCategory;
-      int totalSent = 0;
-
-      if (targetCollection == "everyone") {
-        // Send to all users, workers, and security
-        totalSent += await _sendToCollection("users", title, category);
-        totalSent += await _sendToCollection("workers", title, category);
-        totalSent += await _sendToCollection("security", title, category);
-      } else {
-        // Send to specific collection
-        totalSent += await _sendToCollection(targetCollection, title, category);
-      }
-
-      print("Total notifications sent: $totalSent");
-    } catch (e) {
-      print("Error sending notifications: $e");
-    }
-  }
-
-  Future<int> _sendToCollection(
-    String collection,
-    String title,
-    String category,
-  ) async {
-    try {
-      // Get all active/approved users from the target collection
-      Query query = FirebaseFirestore.instance.collection(collection);
-
-      // For workers, only send to approved/active ones
-      if (collection == "workers") {
-        query = query.where("isActive", isEqualTo: true);
-      } else if (collection == "security") {
-        // Security users are in 'workers' collection with profession 'Security'
-        query = FirebaseFirestore.instance
-            .collection("workers")
-            .where("profession", isEqualTo: "Security")
-            .where("isActive", isEqualTo: true);
-      }
-
-      final usersSnapshot = await query.get();
-
-      print(
-        "Sending notifications to ${usersSnapshot.docs.length} users in $collection",
-      );
-
-      // Create notification for each user
-      int sent = 0;
-      for (var userDoc in usersSnapshot.docs) {
-        final docId = userDoc.id;
-
-        // Use NotificationService for consistency and FCM support
-        await NotificationService.sendNotification(
-          userId: docId,
-          userRole: collection == 'users'
-              ? 'user'
-              : (collection == 'workers' ? 'worker' : 'security'),
-          title: 'New Announcement: $category',
-          body: title,
-          type: 'announcement',
-          priority: selectedPriority,
-          additionalData: {'category': category},
-        );
-
-        print("Notification sent to $collection user: $docId");
-        sent++;
-      }
-
-      print("Successfully sent $sent notifications to $collection");
-      return sent;
-    } catch (e) {
-      print("Error sending to $collection: $e");
-      return 0;
     }
   }
 

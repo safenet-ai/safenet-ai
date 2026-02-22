@@ -29,12 +29,12 @@ class PanicCountdownService : Service() {
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         if (intent?.action == ACTION_CANCEL) {
-            Log.d("PanicCountdown", "User cancelled panic alert!")
+            
             cancelCountdown()
             return START_NOT_STICKY
         }
 
-        Log.d("PanicCountdown", "Starting 10-second panic countdown")
+        
         secondsLeft = 10
         showCountdownNotification(secondsLeft)
         startCountdown()
@@ -46,11 +46,11 @@ class PanicCountdownService : Service() {
             override fun onTick(millisUntilFinished: Long) {
                 secondsLeft = (millisUntilFinished / 1000).toInt() + 1
                 showCountdownNotification(secondsLeft)
-                Log.d("PanicCountdown", "Panic in ${secondsLeft}s...")
+                
             }
 
             override fun onFinish() {
-                Log.d("PanicCountdown", "Countdown finished — sending panic alert!")
+                
                 dismissNotification()
                 sendPanicToFirestore()
                 broadcastPanicToFlutter()
@@ -62,7 +62,7 @@ class PanicCountdownService : Service() {
     private fun cancelCountdown() {
         countDownTimer?.cancel()
         dismissNotification()
-        Log.d("PanicCountdown", "Panic cancelled by user.")
+        
         stopSelf()
     }
 
@@ -133,13 +133,13 @@ class PanicCountdownService : Service() {
             db.collection("security_requests")
                 .add(panicData)
                 .addOnSuccessListener { ref ->
-                    Log.d("PanicCountdown", "Panic written to Firestore: ${ref.id}")
+                    
                 }
                 .addOnFailureListener { e ->
-                    Log.e("PanicCountdown", "Firestore write failed: ${e.message}")
+                    
                 }
         } catch (e: Exception) {
-            Log.e("PanicCountdown", "Error writing to Firestore: ${e.message}")
+            
         }
     }
 
@@ -148,9 +148,9 @@ class PanicCountdownService : Service() {
             val broadcastIntent = Intent("com.example.safenetai.PANIC_TRIGGERED")
             broadcastIntent.setPackage(packageName)
             sendBroadcast(broadcastIntent)
-            Log.d("PanicCountdown", "Broadcast sent to Flutter")
+            
         } catch (e: Exception) {
-            Log.e("PanicCountdown", "Broadcast failed: ${e.message}")
+            
         }
     }
 

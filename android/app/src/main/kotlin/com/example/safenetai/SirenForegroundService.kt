@@ -24,18 +24,18 @@ class SirenForegroundService : Service() {
 
     override fun onCreate() {
         super.onCreate()
-        Log.d("SirenService", "Siren Service Created")
+        
         createNotificationChannel()
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         if (intent?.action == "ACTION_STOP_SIREN") {
-            Log.d("SirenService", "Stop action received.")
+            
             stopSelf()
             return START_NOT_STICKY
         }
 
-        Log.d("SirenService", "Starting Siren Service...")
+        
         val notification = createNotification()
         startForeground(999, notification)
 
@@ -57,12 +57,12 @@ class SirenForegroundService : Service() {
                     .build()
                 mediaPlayer?.setAudioAttributes(audioAttributes)
                 mediaPlayer?.start()
-                Log.d("SirenService", "MediaPlayer started playing urgent_alarm")
+                
             } else {
-                Log.e("SirenService", "urgent_alarm.mp3 not found in res/raw")
+                
             }
         } catch (e: Exception) {
-            Log.e("SirenService", "Error starting siren: ${e.message}")
+            
         }
 
         try {
@@ -75,10 +75,10 @@ class SirenForegroundService : Service() {
                     @Suppress("DEPRECATION")
                     vibrator?.vibrate(pattern, 0)
                 }
-                Log.d("SirenService", "Vibrator started")
+                
             }
         } catch (e: Exception) {
-             Log.e("SirenService", "Error starting vibration: ${e.message}")
+             
         }
     }
 
@@ -87,7 +87,7 @@ class SirenForegroundService : Service() {
     }
 
     override fun onDestroy() {
-        Log.d("SirenService", "Destroying Siren Service...")
+        
         try {
             mediaPlayer?.apply {
                 if (isPlaying) stop()
@@ -95,14 +95,14 @@ class SirenForegroundService : Service() {
             }
             mediaPlayer = null
         } catch (e: Exception) {
-             Log.e("SirenService", "Error stopping MediaPlayer: ${e.message}")
+             
         }
 
         try {
             vibrator?.cancel()
             vibrator = null
         } catch (e: Exception) {
-             Log.e("SirenService", "Error stopping Vibrator: ${e.message}")
+             
         }
 
         super.onDestroy()

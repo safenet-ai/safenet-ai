@@ -40,8 +40,8 @@ android {
             signingConfig = signingConfigs.getByName("debug")
             
             // Allow minification if needed, but ensure rules are kept
-            // isMinifyEnabled = true 
-            // isShrinkResources = true
+            isMinifyEnabled = true 
+            isShrinkResources = true
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"

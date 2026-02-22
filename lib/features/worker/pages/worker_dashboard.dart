@@ -8,6 +8,7 @@ import './worker_myjob.dart';
 import './worker_work_history.dart';
 import './worker_chat.dart';
 import '../../../notice_board.dart';
+import '../../../services/notification_service.dart';
 
 class WorkerDashboardPage extends StatefulWidget {
   const WorkerDashboardPage({super.key});
@@ -25,6 +26,12 @@ class _WorkerDashboardPageState extends State<WorkerDashboardPage> {
   void initState() {
     super.initState();
     _fetchWorkerStatus();
+    _refreshNotifications();
+  }
+
+  Future<void> _refreshNotifications() async {
+    await NotificationService.saveFCMToken();
+    NotificationService.startFirestoreListener();
   }
 
   Future<String> _fetchWorkerName() async {
@@ -47,7 +54,10 @@ class _WorkerDashboardPageState extends State<WorkerDashboardPage> {
     final uid = FirebaseAuth.instance.currentUser?.uid;
     if (uid == null) return;
 
-    final doc = await FirebaseFirestore.instance.collection("workers").doc(uid).get();
+    final doc = await FirebaseFirestore.instance
+        .collection("workers")
+        .doc(uid)
+        .get();
     if (doc.exists && mounted) {
       setState(() {
         _isAvailable = doc.data()?['isAvailable'] ?? false;
@@ -67,9 +77,11 @@ class _WorkerDashboardPageState extends State<WorkerDashboardPage> {
         'isAvailable': value,
       });
       if (mounted) {
-         ScaffoldMessenger.of(context).showSnackBar(
+        ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(value ? "You are now On Duty" : "You are now Off Duty"),
+            content: Text(
+              value ? "You are now On Duty" : "You are now Off Duty",
+            ),
             backgroundColor: value ? Colors.teal : Colors.grey,
             duration: const Duration(seconds: 2),
           ),
@@ -78,9 +90,9 @@ class _WorkerDashboardPageState extends State<WorkerDashboardPage> {
     } catch (e) {
       if (mounted) {
         setState(() => _isAvailable = !value); // Revert on error
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text("Failed to update status: $e")),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text("Failed to update status: $e")));
       }
     }
   }
@@ -208,7 +220,10 @@ class _WorkerDashboardPageState extends State<WorkerDashboardPage> {
                       // ------------------ STATUS TOGGLE ------------------
                       if (!_isLoadingStatus)
                         Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 20,
+                            vertical: 12,
+                          ),
                           decoration: BoxDecoration(
                             color: Colors.white.withOpacity(0.6),
                             borderRadius: BorderRadius.circular(20),
@@ -244,7 +259,9 @@ class _WorkerDashboardPageState extends State<WorkerDashboardPage> {
                                     style: TextStyle(
                                       fontSize: 18,
                                       fontWeight: FontWeight.bold,
-                                      color: _isAvailable ? Colors.teal : Colors.grey.shade700,
+                                      color: _isAvailable
+                                          ? Colors.teal
+                                          : Colors.grey.shade700,
                                     ),
                                   ),
                                 ],

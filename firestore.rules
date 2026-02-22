@@ -1,0 +1,99 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // Core function to check if the user is authenticated
+    function isAuthenticated() {
+      return request.auth != null && request.auth.uid != null;
+    }
+
+    // Function to check if trying to access their own document
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    // -------------------------------------------------------------
+    // USERS (Residents) Collection
+    // -------------------------------------------------------------
+    match /users/{userId} {
+      // Anyone authenticated can read user profiles (for displaying names, etc.)
+      allow read: if isAuthenticated();
+      // Only the user themselves can update their profile
+      // System (Cloud Functions) handles creation during auth triggers
+      allow write: if isOwner(userId);
+    }
+
+    // -------------------------------------------------------------
+    // WORKERS Collection
+    // -------------------------------------------------------------
+    match /workers/{workerId} {
+      allow read: if isAuthenticated();
+      allow write: if isOwner(workerId);
+    }
+
+    // -------------------------------------------------------------
+    // SECURITY GUARDS Collection
+    // -------------------------------------------------------------
+    match /security_guards/{guardId} {
+      allow read: if isAuthenticated();
+      allow write: if isOwner(guardId);
+    }
+
+    // -------------------------------------------------------------
+    // AUTHORITY Collection
+    // -------------------------------------------------------------
+    match /authority/{authId} {
+      // Authorities are admin-level, usually managed out-of-band or by Cloud Functions
+      // Auth users shouldn't be writing directly from the client without strict checks
+      allow read: if isAuthenticated();
+      allow update: if isOwner(authId);
+      allow create, delete: if false; // System managed
+    }
+
+    // -------------------------------------------------------------
+    // PANIC ALERTS Collection
+    // -------------------------------------------------------------
+    match /panic_alerts/{alertId} {
+      // Any authenticated user can create an alert (crucial for emergencies)
+      allow create: if isAuthenticated() && request.resource.data.residentId == request.auth.uid;
+      
+      // All authenticated users can read alerts (Security needs to see them, Authorities too)
+      allow read: if isAuthenticated();
+      
+      // Security/Authorities can update statuses to "Resolved"
+      allow update: if isAuthenticated();
+      
+      // Never delete panic alerts from client
+      allow delete: if false; 
+    }
+
+    // -------------------------------------------------------------
+    // NOTIFICATIONS Collection
+    // -------------------------------------------------------------
+    match /notifications/{notificationId} {
+      // Users can only read notifications intended for them (by UID) or their role
+      allow read: if isAuthenticated() && (
+        resource.data.toUid == request.auth.uid || 
+        resource.data.toUid == null // Allows role-based reads (secured by UI filters)
+      );
+      
+      // Users can create notifications (e.g. sending a direct message or complaint)
+      allow create: if isAuthenticated() && request.resource.data.fromUid == request.auth.uid;
+      
+      // Users can mark their own notifications as read
+      allow update: if isAuthenticated() && resource.data.toUid == request.auth.uid;
+      
+      allow delete: if false;
+    }
+
+    // -------------------------------------------------------------
+    // OTHER COLLECTIONS (Complaints, Service Requests, etc.)
+    // -------------------------------------------------------------
+    match /{collection}/{docId} {
+      // Generic fallback: Deny all by default unless matched above
+      // If you have specific collections like 'complaints', add them explicitly above.
+      allow read, write: if false;
+    }
+  }
+}
