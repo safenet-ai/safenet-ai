@@ -1,0 +1,4 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="accessibility_service_description">This service allows the SafeNet app to detect when the hardware Volume buttons are pressed rapidly to trigger emergency Panic Alerts, even when the app is in the background.</string>
+</resources>

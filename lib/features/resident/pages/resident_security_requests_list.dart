@@ -280,11 +280,269 @@ class _ResidentSecurityRequestsListPageState
   }
 
   Widget _requestCard(String requestId, Map<String, dynamic> data) {
+    if (data["requestType"]?.toString().toLowerCase() == "panic_alert") {
+      return PanicAlertListItem(requestId: requestId, data: data);
+    } else {
+      return SecurityRequestListItem(requestId: requestId, data: data);
+    }
+  }
+
+  Widget _circleButton(IconData icon, {VoidCallback? onTap}) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        height: 40,
+        width: 40,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          color: Colors.white.withOpacity(0.3),
+        ),
+        child: Icon(icon, size: 20),
+      ),
+    );
+  }
+}
+
+class PanicAlertListItem extends StatelessWidget {
+  final String requestId;
+  final Map<String, dynamic> data;
+
+  const PanicAlertListItem({
+    super.key,
+    required this.requestId,
+    required this.data,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final status = data["status"] ?? "pending";
+    final flatNo = data["flatNo"] ?? "Unknown";
+    final buildingNo = data["buildingNumber"]?.toString() ?? "Unknown";
+    final timestamp = data["timestamp"] as Timestamp?;
+
+    Color statusColor;
+    String statusDisplay;
+
+    switch (status.toLowerCase()) {
+      case "assigned":
+        statusColor = Colors.blue;
+        statusDisplay = "ASSIGNED";
+        break;
+      case "in_progress":
+        statusColor = Colors.orange;
+        statusDisplay = "IN PROGRESS";
+        break;
+      case "resolved":
+        statusColor = Colors.green;
+        statusDisplay = "RESOLVED";
+        break;
+      default:
+        statusColor = Colors.red;
+        statusDisplay = "PENDING";
+    }
+
+    String timeAgo = "";
+    if (timestamp != null) {
+      final duration = DateTime.now().difference(timestamp.toDate());
+      if (duration.inMinutes < 60) {
+        timeAgo = "${duration.inMinutes}m ago";
+      } else if (duration.inHours < 24) {
+        timeAgo = "${duration.inHours}h ago";
+      } else {
+        timeAgo = "${duration.inDays}d ago";
+      }
+    }
+
+    return GestureDetector(
+      onTap: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => ResidentSecurityRequestDetailPage(
+              requestId: requestId,
+              requestData: data,
+            ),
+          ),
+        );
+      },
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 12),
+        decoration: BoxDecoration(
+          color: Colors.red[900],
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.red.withOpacity(0.3),
+              blurRadius: 10,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  const Icon(Icons.emergency, color: Colors.white, size: 28),
+                  const SizedBox(width: 12),
+                  const Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          "🚨 PANIC ALERT",
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.w800,
+                            color: Colors.white,
+                          ),
+                        ),
+                        Text(
+                          "Immediate Response Required",
+                          style: TextStyle(fontSize: 12, color: Colors.white70),
+                        ),
+                      ],
+                    ),
+                  ),
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 6,
+                    ),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withOpacity(0.2),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: const Text(
+                      "URGENT",
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w800,
+                        color: Colors.white,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Row(
+                      children: [
+                        const Icon(Icons.home, size: 16, color: Colors.white),
+                        const SizedBox(width: 6),
+                        Text(
+                          "Flat $flatNo",
+                          style: const TextStyle(
+                            fontSize: 14,
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ],
+                    ),
+                    Row(
+                      children: [
+                        const Icon(
+                          Icons.business,
+                          size: 16,
+                          color: Colors.white,
+                        ),
+                        const SizedBox(width: 6),
+                        Text(
+                          "Bldg $buildingNo",
+                          style: const TextStyle(
+                            fontSize: 14,
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ],
+                    ),
+                    Row(
+                      children: [
+                        const Icon(
+                          Icons.access_time,
+                          size: 16,
+                          color: Colors.white,
+                        ),
+                        const SizedBox(width: 6),
+                        Text(
+                          timeAgo,
+                          style: const TextStyle(
+                            fontSize: 12,
+                            color: Colors.white70,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                  Icon(
+                    Icons.circle,
+                    size: 12,
+                    color: statusColor == Colors.red
+                        ? Colors.white
+                        : statusColor,
+                  ),
+                  const SizedBox(width: 6),
+                  Text(
+                    statusDisplay,
+                    style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w700,
+                      color: statusColor == Colors.red
+                          ? Colors.white
+                          : statusColor,
+                    ),
+                  ),
+                  const Spacer(),
+                  Icon(
+                    Icons.arrow_forward_ios,
+                    size: 14,
+                    color: Colors.white.withOpacity(0.5),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class SecurityRequestListItem extends StatelessWidget {
+  final String requestId;
+  final Map<String, dynamic> data;
+
+  const SecurityRequestListItem({
+    super.key,
+    required this.requestId,
+    required this.data,
+  });
+
+  @override
+  Widget build(BuildContext context) {
     final status = data["status"] ?? "pending";
     final requestType = data["requestType"] ?? "Unknown";
     final description = data["description"] ?? "No description";
-    final flatNo = data["flatNo"] ?? "N/A";
-    final location = data["location"] ?? "N/A";
+    final flatNo = data["flatNo"] ?? "Unknown";
+    final buildingNo = data["buildingNumber"]?.toString() ?? "Unknown";
+    final block = data["block"]?.toString() ?? "Unknown";
     final priority = data["priority"] ?? "normal";
     final timestamp = data["timestamp"] as Timestamp?;
 
@@ -306,9 +564,6 @@ class _ResidentSecurityRequestsListPageState
     switch (requestType.toLowerCase()) {
       case "suspicious_activity":
         requestIcon = Icons.warning_amber_rounded;
-        break;
-      case "emergency":
-        requestIcon = Icons.emergency;
         break;
       case "parking_issue":
         requestIcon = Icons.local_parking;
@@ -452,11 +707,11 @@ class _ResidentSecurityRequestsListPageState
               const SizedBox(height: 8),
               Row(
                 children: [
-                  Icon(Icons.location_on, size: 16, color: Colors.grey[600]),
+                  Icon(Icons.business, size: 16, color: Colors.grey[600]),
                   const SizedBox(width: 6),
                   Expanded(
                     child: Text(
-                      location,
+                      "Bldg $buildingNo (Blk $block)",
                       style: TextStyle(fontSize: 13, color: Colors.grey[700]),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,

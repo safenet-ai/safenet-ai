@@ -7,6 +7,7 @@ import '../pages/profile_page.dart';
 import '../pages/settings_page.dart';
 import '../../resident/pages/authority_contact_list.dart';
 import 'package:safenetai/home.dart';
+import '../../../core/channels/panic_channel.dart';
 
 class ProfileSidebar extends StatelessWidget {
   final VoidCallback onClose;
@@ -89,6 +90,60 @@ class ProfileSidebar extends StatelessWidget {
 
     // If user cancelled, return
     if (confirm != true) return;
+
+    // 🛡️ ACCESSIBILITY CHECK
+    if (userCollection == "users" || userCollection == "resident") {
+      try {
+        final isEnabled = await PanicChannel.isPanicServiceEnabled();
+        if (isEnabled && context.mounted) {
+          final overrideLogout = await showDialog<bool>(
+            context: context,
+            builder: (ctx) => AlertDialog(
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+              ),
+              title: const Text(
+                'Action Required',
+                style: TextStyle(
+                  fontWeight: FontWeight.w700,
+                  color: Colors.orange,
+                ),
+              ),
+              content: const Text(
+                'Please disable the Panic Accessibility Service in your device settings before logging out. '
+                'Logging out while the service is active may cause background ghost alerts.',
+                style: TextStyle(fontSize: 15),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.of(ctx).pop(false),
+                  child: Text(
+                    'Cancel Logout',
+                    style: TextStyle(color: Colors.grey.shade700),
+                  ),
+                ),
+                ElevatedButton(
+                  onPressed: () {
+                    PanicChannel.openAccessibilitySettings();
+                    Navigator.of(ctx).pop(false);
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.blueAccent,
+                  ),
+                  child: const Text(
+                    'Open Settings',
+                    style: TextStyle(color: Colors.white),
+                  ),
+                ),
+              ],
+            ),
+          );
+          if (overrideLogout != true) return;
+        }
+      } catch (e) {
+        print("Error checking panic service: $e");
+      }
+    }
 
     try {
       // Sign out from Firebase Auth

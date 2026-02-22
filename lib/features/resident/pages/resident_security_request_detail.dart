@@ -140,6 +140,221 @@ class _ResidentSecurityRequestDetailPageState
 
   Widget _buildContent(Map<String, dynamic> data) {
     final requestType = data["requestType"] ?? "Unknown";
+
+    if (requestType.toString().toLowerCase() == "panic_alert") {
+      return PanicAlertCard(data: data);
+    } else {
+      return SecurityRequestCard(
+        data: data,
+        securityOfficerName: securityOfficerName,
+        isLoadingOfficer: isLoadingOfficer,
+      );
+    }
+  }
+
+  Widget _circleButton(IconData icon, {VoidCallback? onTap}) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        height: 40,
+        width: 40,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          color: Colors.white.withOpacity(0.3),
+        ),
+        child: Icon(icon, size: 20),
+      ),
+    );
+  }
+}
+
+class PanicAlertCard extends StatelessWidget {
+  final Map<String, dynamic> data;
+
+  const PanicAlertCard({super.key, required this.data});
+
+  @override
+  Widget build(BuildContext context) {
+    final residentName = data["residentName"] ?? "Unknown Resident";
+    final flatNo = data["flatNo"] ?? "N/A";
+    final buildingNo = data["buildingNumber"]?.toString() ?? "N/A";
+    final timestamp = (data["timestamp"] as Timestamp?)?.toDate();
+    final status = data["status"] ?? "pending";
+
+    String statusDisplay;
+
+    switch (status.toLowerCase()) {
+      case "assigned":
+        statusDisplay = "ASSIGNED";
+        break;
+      case "in_progress":
+        statusDisplay = "IN PROGRESS";
+        break;
+      case "resolved":
+        statusDisplay = "RESOLVED";
+        break;
+      default:
+        statusDisplay = "PENDING";
+    }
+
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Panic Alert Title & Status
+          Container(
+            padding: const EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              color: Colors.red[900],
+              borderRadius: BorderRadius.circular(16),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.red.withOpacity(0.3),
+                  blurRadius: 15,
+                  spreadRadius: 2,
+                ),
+              ],
+            ),
+            child: Row(
+              children: [
+                const Icon(Icons.emergency, color: Colors.white, size: 40),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        "🚨 PANIC ALERT",
+                        style: TextStyle(
+                          fontSize: 22,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        "Status: $statusDisplay",
+                        style: const TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.white70,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+
+          const SizedBox(height: 20),
+
+          // Resident Details
+          Container(
+            padding: const EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              color: Colors.white.withOpacity(0.95),
+              borderRadius: BorderRadius.circular(16),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _infoRow(Icons.person, "Resident Name", residentName),
+                const Divider(height: 24),
+                _infoRow(Icons.home, "Flat Number", flatNo),
+                const Divider(height: 24),
+                _infoRow(Icons.business, "Building Name", buildingNo),
+                const Divider(height: 24),
+                _infoRow(
+                  Icons.warning,
+                  "Priority",
+                  "URGENT",
+                  valueColor: Colors.red[800],
+                  isBold: true,
+                ),
+                if (timestamp != null) ...[
+                  const Divider(height: 24),
+                  _infoRow(
+                    Icons.access_time,
+                    "Timestamp",
+                    _formatDateTime(timestamp),
+                  ),
+                ],
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _infoRow(
+    IconData icon,
+    String label,
+    String value, {
+    Color? valueColor,
+    bool isBold = false,
+  }) {
+    return Row(
+      children: [
+        Icon(icon, color: Colors.grey[700], size: 24),
+        const SizedBox(width: 12),
+        Text(
+          "$label:",
+          style: TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.w600,
+            color: Colors.grey[800],
+          ),
+        ),
+        const SizedBox(width: 8),
+        Expanded(
+          child: Text(
+            value,
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: isBold ? FontWeight.bold : FontWeight.w500,
+              color: valueColor ?? Colors.black87,
+            ),
+            textAlign: TextAlign.right,
+          ),
+        ),
+      ],
+    );
+  }
+
+  String _formatDateTime(DateTime dateTime) {
+    final now = DateTime.now();
+    final difference = now.difference(dateTime);
+
+    if (difference.inMinutes < 60) {
+      return "${difference.inMinutes} minutes ago";
+    } else if (difference.inHours < 24) {
+      return "${difference.inHours} hours ago";
+    } else if (difference.inDays < 7) {
+      return "${difference.inDays} days ago";
+    } else {
+      return "${dateTime.day}/${dateTime.month}/${dateTime.year} ${dateTime.hour}:${dateTime.minute.toString().padLeft(2, '0')}";
+    }
+  }
+}
+
+class SecurityRequestCard extends StatelessWidget {
+  final Map<String, dynamic> data;
+  final String? securityOfficerName;
+  final bool isLoadingOfficer;
+
+  const SecurityRequestCard({
+    super.key,
+    required this.data,
+    this.securityOfficerName,
+    required this.isLoadingOfficer,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final requestType = data["requestType"] ?? "Unknown";
     final priority = data["priority"] ?? "normal";
     final location = data["location"] ?? "Unknown";
     final flatNo = data["flatNo"] ?? "N/A";
@@ -520,21 +735,6 @@ class _ResidentSecurityRequestDetailPageState
             const SizedBox(height: 20),
           ],
         ],
-      ),
-    );
-  }
-
-  Widget _circleButton(IconData icon, {VoidCallback? onTap}) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        height: 40,
-        width: 40,
-        decoration: BoxDecoration(
-          shape: BoxShape.circle,
-          color: Colors.white.withOpacity(0.3),
-        ),
-        child: Icon(icon, size: 20),
       ),
     );
   }

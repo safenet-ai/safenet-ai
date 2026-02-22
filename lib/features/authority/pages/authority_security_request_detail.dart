@@ -64,7 +64,8 @@ class _AuthoritySecurityRequestDetailPageState
           userId: residentId,
           userRole: 'user',
           title: 'Security Request Updated',
-          body: 'Your security request (${widget.requestData["requestType"]}) status is now $statusText',
+          body:
+              'Your security request (${widget.requestData["requestType"]}) status is now $statusText',
           type: 'security_request_update',
           additionalData: {'requestId': widget.requestId},
         );
@@ -76,7 +77,8 @@ class _AuthoritySecurityRequestDetailPageState
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
-                "Request updated to ${newStatus.replaceAll('_', ' ').toUpperCase()}"),
+              "Request updated to ${newStatus.replaceAll('_', ' ').toUpperCase()}",
+            ),
             backgroundColor: Colors.green,
           ),
         );
@@ -100,7 +102,8 @@ class _AuthoritySecurityRequestDetailPageState
     if (!await launchUrl(url)) {
       if (mounted) {
         ScaffoldMessenger.of(
-            context).showSnackBar(const SnackBar(content: Text("Could not open file")));
+          context,
+        ).showSnackBar(const SnackBar(content: Text("Could not open file")));
       }
     }
   }
@@ -110,9 +113,11 @@ class _AuthoritySecurityRequestDetailPageState
     final data = widget.requestData;
     final requestType = data["requestType"] ?? "Unknown";
     final description = data["description"] ?? "No description";
-    final location = data["location"] ?? "Unknown";
-    final flatNo = data["flatNo"] ?? "Unknown";
+    final flatNo = data["flatNo"] ?? data["flatNumber"] ?? "Unknown";
+    final buildingNo = data["buildingNumber"]?.toString() ?? "Unknown";
+    final block = data["block"]?.toString() ?? "Unknown";
     final residentName = data["residentName"] ?? "Resident";
+    final phone = data["phone"] ?? "Unknown";
     final priority = data["priority"] ?? "normal";
     final fileUrls = List<String>.from(data["fileUrls"] ?? []);
     final timestamp = data["timestamp"] as Timestamp?;
@@ -230,7 +235,8 @@ class _AuthoritySecurityRequestDetailPageState
                             children: [
                               // Type & Priority
                               Row(
-                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                mainAxisAlignment:
+                                    MainAxisAlignment.spaceBetween,
                                 children: [
                                   Expanded(
                                     child: Column(
@@ -267,7 +273,9 @@ class _AuthoritySecurityRequestDetailPageState
                                       color: priorityColor.withOpacity(0.1),
                                       borderRadius: BorderRadius.circular(20),
                                       border: Border.all(
-                                          color: priorityColor, width: 1),
+                                        color: priorityColor,
+                                        width: 1,
+                                      ),
                                     ),
                                     child: Text(
                                       priority.toUpperCase(),
@@ -287,17 +295,22 @@ class _AuthoritySecurityRequestDetailPageState
                               _detailRow(
                                 Icons.person,
                                 "Resident",
-                                "$residentName (Flat $flatNo)",
+                                "$residentName",
                               ),
 
                               const SizedBox(height: 16),
 
-                              // Location
+                              // Address Info Grouped
                               _detailRow(
-                                Icons.location_on,
-                                "Location",
-                                location,
+                                Icons.apartment,
+                                "Building & Block",
+                                "Building $buildingNo (Block $block)",
                               ),
+                              const SizedBox(height: 16),
+                              _detailRow(Icons.home, "Flat No", flatNo),
+                              const SizedBox(height: 16),
+                              if (phone != "Unknown" && phone != "N/A")
+                                _detailRow(Icons.phone, "Phone", phone),
 
                               const SizedBox(height: 16),
 
@@ -499,9 +512,7 @@ class _AuthoritySecurityRequestDetailPageState
         backgroundColor: color,
         foregroundColor: Colors.white,
         padding: const EdgeInsets.symmetric(vertical: 12),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12),
-        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
         elevation: 0,
       ),
       child: _isUpdating
@@ -513,10 +524,7 @@ class _AuthoritySecurityRequestDetailPageState
                 valueColor: AlwaysStoppedAnimation(Colors.white),
               ),
             )
-          : Text(
-              label,
-              style: const TextStyle(fontWeight: FontWeight.w700),
-            ),
+          : Text(label, style: const TextStyle(fontWeight: FontWeight.w700)),
     );
   }
 

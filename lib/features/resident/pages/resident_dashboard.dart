@@ -14,7 +14,10 @@ import '../../shared/widgets/profile_sidebar.dart';
 import '../../../approval_guard.dart';
 import '../../shared/widgets/notification_dropdown.dart';
 
+import 'package:flutter/services.dart'; // Added For HapticFeedback
 import '../../../services/notification_service.dart'; // Added Import
+import '../../../core/channels/panic_channel.dart';
+import '../../../utils/oem_autostart_utils.dart'; // OEM Background Fix
 
 class ResidentDashboardPage extends StatefulWidget {
   const ResidentDashboardPage({super.key});
@@ -25,6 +28,7 @@ class ResidentDashboardPage extends StatefulWidget {
 
 class _ResidentDashboardPageState extends State<ResidentDashboardPage> {
   bool _isProfileOpen = false;
+  bool _isPanicLoading = false;
 
   @override
   void initState() {
@@ -34,8 +38,342 @@ class _ResidentDashboardPageState extends State<ResidentDashboardPage> {
   }
 
   Future<void> _refreshNotifications() async {
+    // Check and prompt for OEM Background Execution permissions
+    if (mounted) {
+      await OemAutostartUtils.showAutostartDialogIfNeeded(context);
+    }
+
     await NotificationService.saveFCMToken();
     NotificationService.startFirestoreListener();
+
+    // 1. Attach the Dart listener so it catches the Native broadcast
+    PanicChannel.init(_triggerPanic);
+
+    // 2. Start/prompt the native Android background panic service
+    try {
+      await PanicChannel.startPanicService();
+      print("Panic Alert Service Started Successfully");
+    } catch (e) {
+      print("Failed to start Panic Alert Service: $e");
+    }
+
+    // --- NEW: Sync Context to Native Android ---
+    await _syncContextToNative();
+  }
+
+  Future<void> _syncContextToNative() async {
+    try {
+      final uid = FirebaseAuth.instance.currentUser?.uid;
+      if (uid != null) {
+        String flatNum = "Unknown";
+        String buildingNum = "Unknown";
+        String blockName = "Unknown"; // ADDED BLOCK NAME
+        String residentName = "Unknown";
+        String phone = "Unknown";
+        final doc = await FirebaseFirestore.instance
+            .collection("users")
+            .doc(uid)
+            .get();
+        if (doc.exists && doc.data() != null) {
+          final data = doc.data()!;
+
+          if (data.containsKey("flatNumber")) {
+            flatNum = data["flatNumber"]?.toString() ?? "Unknown";
+          } else if (data.containsKey("flatNo")) {
+            flatNum = data["flatNo"]?.toString() ?? "Unknown";
+          }
+          if (data.containsKey("buildingNumber")) {
+            buildingNum = data["buildingNumber"]?.toString() ?? "Unknown";
+          } else if (data.containsKey("buildingNo")) {
+            buildingNum = data["buildingNo"]?.toString() ?? "Unknown";
+          }
+
+          if (data.containsKey("block")) {
+            blockName = data["block"]?.toString() ?? "Unknown";
+          }
+          if (data.containsKey("username"))
+            residentName = data["username"]?.toString() ?? "Unknown";
+          if (data.containsKey("phone"))
+            phone = data["phone"]?.toString() ?? "Unknown";
+        }
+        await PanicChannel.setPanicContext(
+          uid,
+          flatNum,
+          buildingNum,
+          blockName, // ADDED BLOCK NAME
+          residentName,
+          phone,
+        );
+        print(
+          "Synced UID, Flat, Building, Block, Name, Phone to Native Android.",
+        );
+      }
+    } catch (e) {
+      print("Error syncing context to native: $e");
+    }
+  }
+
+  void _triggerManualPanic() {
+    _showPanicCountdown();
+  }
+
+  void _triggerPanic() {
+    print("🚨 FLUTTER RECEIVED PANIC INTENT FROM NATIVE 🚨");
+    _showPanicCountdown();
+  }
+
+  void _showPanicCountdown() {
+    if (!mounted || _isPanicLoading) return;
+
+    // Set flag so we don't open multiple countdowns
+    setState(() => _isPanicLoading = true);
+    HapticFeedback.vibrate();
+
+    int secondsLeft = 10;
+    Timer? countdownTimer;
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext dialogContext) {
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            // Initialize timer only once
+            countdownTimer ??= Timer.periodic(const Duration(seconds: 1), (
+              timer,
+            ) {
+              if (secondsLeft > 1) {
+                setDialogState(() => secondsLeft--);
+              } else {
+                // Time's up! Send the alert.
+                timer.cancel();
+                Navigator.of(dialogContext).pop(true);
+              }
+            });
+
+            return WillPopScope(
+              onWillPop: () async => false, // Prevent back button
+              child: AlertDialog(
+                backgroundColor: Colors.white,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                title: Column(
+                  children: const [
+                    Icon(Icons.warning_rounded, color: Colors.red, size: 64),
+                    SizedBox(height: 16),
+                    Text(
+                      "EMERGENCY",
+                      style: TextStyle(
+                        color: Colors.red,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 24,
+                      ),
+                    ),
+                  ],
+                ),
+                content: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Text(
+                      "Panic Alert will be sent in:",
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    const SizedBox(height: 20),
+                    Text(
+                      "$secondsLeft",
+                      style: const TextStyle(
+                        fontSize: 48,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.redAccent,
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    const Text(
+                      "seconds",
+                      style: TextStyle(fontSize: 16, color: Colors.black54),
+                    ),
+                  ],
+                ),
+                actions: [
+                  Center(
+                    child: ElevatedButton(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.grey.shade300,
+                        foregroundColor: Colors.black87,
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 40,
+                          vertical: 15,
+                        ),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(30),
+                        ),
+                      ),
+                      onPressed: () {
+                        countdownTimer?.cancel();
+                        Navigator.of(dialogContext).pop(false);
+                      },
+                      child: const Text(
+                        "Cancel Alert",
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                ],
+              ),
+            );
+          },
+        );
+      },
+    ).then((executeAlert) async {
+      countdownTimer?.cancel();
+      if (executeAlert == true) {
+        await _executePanicAlert();
+      } else {
+        if (mounted) setState(() => _isPanicLoading = false);
+      }
+    });
+  }
+
+  Future<void> _executePanicAlert() async {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => AlertDialog(
+        backgroundColor: Colors.white,
+        title: const Text(
+          "🚨 Requesting Help...",
+          style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold),
+        ),
+        content: Row(
+          children: const [
+            CircularProgressIndicator(color: Colors.red),
+            SizedBox(width: 20),
+            Expanded(child: Text("Contacting security team.")),
+          ],
+        ),
+      ),
+    );
+
+    try {
+      final uid = FirebaseAuth.instance.currentUser?.uid;
+      String flatNum = "Unknown";
+      String buildingNum = "Unknown";
+      String blockName = "Unknown";
+      String residentName = "Unknown";
+      String phone = "Unknown";
+      if (uid != null) {
+        final doc = await FirebaseFirestore.instance
+            .collection("users")
+            .doc(uid)
+            .get();
+        if (doc.exists && doc.data() != null) {
+          final data = doc.data()!;
+          if (data.containsKey("flatNumber")) {
+            flatNum = data["flatNumber"]?.toString() ?? "Unknown";
+          } else if (data.containsKey("flatNo")) {
+            flatNum = data["flatNo"]?.toString() ?? "Unknown";
+          }
+          if (data.containsKey("buildingNumber")) {
+            buildingNum = data["buildingNumber"]?.toString() ?? "Unknown";
+          } else if (data.containsKey("buildingNo")) {
+            buildingNum = data["buildingNo"]?.toString() ?? "Unknown";
+          }
+          if (data.containsKey("block")) {
+            blockName = data["block"]?.toString() ?? "Unknown";
+          }
+          if (data.containsKey("username")) {
+            residentName = data["username"]?.toString() ?? "Unknown";
+          }
+          if (data.containsKey("phone")) {
+            phone = data["phone"]?.toString() ?? "Unknown";
+          }
+        }
+      }
+
+      await FirebaseFirestore.instance.collection("security_requests").add({
+        "requestType": "panic_alert",
+        "residentId": uid,
+        "flatNumber": flatNum,
+        "flatNo": flatNum,
+        "buildingNumber": buildingNum,
+        "block": blockName,
+        "residentName": residentName,
+        "phone": phone,
+        "status": "pending",
+        "priority": "urgent",
+        "timestamp": FieldValue.serverTimestamp(),
+      });
+
+      if (mounted) {
+        Navigator.pop(context); // Close loading dialog
+        HapticFeedback.heavyImpact(); // Double vibration for success
+        HapticFeedback.heavyImpact();
+        showDialog(
+          context: context,
+          barrierDismissible: false,
+          builder: (context) => AlertDialog(
+            backgroundColor: Colors.red.shade50,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(20),
+            ),
+            title: const Column(
+              children: [
+                Icon(Icons.check_circle, color: Colors.red, size: 60),
+                SizedBox(height: 10),
+                Text(
+                  "Alert Sent!",
+                  style: TextStyle(
+                    color: Colors.red,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ],
+            ),
+            content: const Text(
+              "Security has been notified. Please stay safe, help is on the way.",
+              textAlign: TextAlign.center,
+            ),
+            actions: [
+              Center(
+                child: ElevatedButton(
+                  style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text(
+                    "OK",
+                    style: TextStyle(color: Colors.white),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        Navigator.pop(context); // Close loading dialog
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              "❌ Failed. Try Again: $e",
+              style: const TextStyle(fontSize: 16),
+            ),
+            backgroundColor: Colors.red,
+            duration: const Duration(seconds: 4),
+          ),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isPanicLoading = false);
+    }
   }
 
   Future<String> _fetchResidentName() async {
@@ -66,7 +404,44 @@ class _ResidentDashboardPageState extends State<ResidentDashboardPage> {
       child: Scaffold(
         backgroundColor: Colors.transparent,
         extendBodyBehindAppBar: true,
-
+        floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
+        floatingActionButton: Padding(
+          padding: const EdgeInsets.only(bottom: 20.0, right: 10.0),
+          child: SizedBox(
+            height: 75,
+            width: 75,
+            child: FloatingActionButton(
+              onPressed: _isPanicLoading ? null : _triggerManualPanic,
+              backgroundColor: Colors.redAccent,
+              elevation: 10,
+              shape: const CircleBorder(),
+              child: _isPanicLoading
+                  ? const CircularProgressIndicator(
+                      color: Colors.white,
+                      strokeWidth: 3,
+                    )
+                  : const Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          Icons.warning_amber_rounded,
+                          color: Colors.white,
+                          size: 32,
+                        ),
+                        SizedBox(height: 2),
+                        Text(
+                          "SOS",
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 14,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ],
+                    ),
+            ),
+          ),
+        ),
         body: Stack(
           children: [
             Positioned.fill(
@@ -119,7 +494,15 @@ class _ResidentDashboardPageState extends State<ResidentDashboardPage> {
                                 onTap: () {
                                   setState(() => _isProfileOpen = true);
                                 },
-                                child: _circleIcon(Icons.person),
+                                child: Container(
+                                  height: 40,
+                                  width: 40,
+                                  decoration: BoxDecoration(
+                                    shape: BoxShape.circle,
+                                    color: Colors.white.withOpacity(0.3),
+                                  ),
+                                  child: const Icon(Icons.person, size: 20),
+                                ),
                               ),
                             ],
                           ),
@@ -486,22 +869,4 @@ class _ResidentDashboardPageState extends State<ResidentDashboardPage> {
       ),
     );
   }
-}
-
-Widget _circleIcon(IconData icon) {
-  return Container(
-    padding: const EdgeInsets.all(8),
-    decoration: BoxDecoration(
-      color: Colors.white70, // ✅ PURE WHITE BACKGROUND
-      shape: BoxShape.circle,
-      boxShadow: [
-        BoxShadow(
-          color: Colors.black12, // ✅ soft shadow
-          blurRadius: 8,
-          offset: const Offset(2, 2),
-        ),
-      ],
-    ),
-    child: Icon(icon, color: Colors.black87, size: 22),
-  );
 }

@@ -62,6 +62,10 @@ dependencies {
     // Add Firebase services you need:
     implementation("com.google.firebase:firebase-auth")
     implementation("com.google.firebase:firebase-firestore")
+    implementation("com.google.firebase:firebase-messaging")
     implementation("com.google.firebase:firebase-database")
     implementation("com.google.firebase:firebase-storage")
+    
+    // Play Services for Native Location
+    implementation("com.google.android.gms:play-services-location:21.0.1")
 }

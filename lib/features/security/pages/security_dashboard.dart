@@ -6,6 +6,7 @@ import '../../../notice_board.dart';
 import '../../shared/widgets/profile_sidebar.dart';
 import '../../shared/widgets/notification_dropdown.dart';
 import '../../../services/notification_service.dart'; // Added Import
+import '../../../utils/oem_autostart_utils.dart'; // OEM Background Fix
 import 'visitor_management.dart';
 import 'security_requests.dart';
 import 'ai_alerts.dart';
@@ -30,6 +31,11 @@ class _SecurityDashboardPageState extends State<SecurityDashboardPage> {
   }
 
   Future<void> _refreshNotifications() async {
+    // Check and prompt for OEM Background Execution permissions
+    if (mounted) {
+      await OemAutostartUtils.showAutostartDialogIfNeeded(context);
+    }
+
     // Save token to 'workers' collection since this is Security Dashboard
     // The service handles collection selection based on SharedPreferences
     await NotificationService.saveFCMToken();
@@ -251,9 +257,20 @@ class _SecurityDashboardPageState extends State<SecurityDashboardPage> {
                                           doc.data() as Map<String, dynamic>;
                                       final type =
                                           data["requestType"] ?? "Request";
-                                      final location = data["location"] ?? "";
+                                      final flatNo =
+                                          data["flatNo"] ??
+                                          data["flatNumber"] ??
+                                          "";
+                                      final bldgNo =
+                                          data["buildingNumber"] != null
+                                          ? "Bldg ${data["buildingNumber"]}"
+                                          : "";
+                                      final locDisplay =
+                                          flatNo.toString().isNotEmpty
+                                          ? "Flat $flatNo $bldgNo".trim()
+                                          : "";
                                       previewLines.add(
-                                        "${type.replaceAll('_', ' ')}\n$location",
+                                        "${type.replaceAll('_', ' ').toUpperCase()}\n$locDisplay",
                                       );
                                     }
                                   }
@@ -279,7 +296,8 @@ class _SecurityDashboardPageState extends State<SecurityDashboardPage> {
                                           Color(0xFFE3F1FF),
                                         ],
                                       ),
-                                      title: 'Resident\nRequests\nto Security',
+                                      title:
+                                          'Panic Alerts\n& Resident\nRequests',
                                       mainValue: pendingCount > 0
                                           ? pendingCount.toString().padLeft(
                                               2,

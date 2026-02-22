@@ -18,66 +18,34 @@ exports.onAnnouncementCreated = onDocumentCreated("announcements/{announcementId
     const title = data.title || "New Announcement";
     const body = data.description || "You have a new notice from authority.";
     const category = data.category || "General";
-    const targetAudience = data.targetAudience || "everyone";
-    // Normalize priority to lowercase to ensure strict comparison works
+
+    // Default to 'resident' topic if targetAudience is not provided
+    const targetAudience = data.targetAudience || "resident";
     const priority = (data.priority || "normal").toLowerCase();
 
     console.log(`Processing Announcement: ${title}, Priority: ${priority}, Target: ${targetAudience}`);
 
-    const tokens = [];
-
-    // Helper to fetch tokens explicitly
-    // Removing 'fcmToken != null' query checks to avoid needing composite indexes.
-    const fetchTokens = async (collectionName, filterField = null, filterValue = null) => {
-        let query = admin.firestore().collection(collectionName);
-
-        if (filterField && filterValue) {
-            query = query.where(filterField, "==", filterValue);
-        }
-
-        const snapshot = await query.get();
-        // Filter in memory to be safe against missing indexes
-        return snapshot.docs
-            .map(doc => doc.data().fcmToken)
-            .filter(token => token && token.length > 0);
-    };
-
-    // Logic to gather tokens based on audience
+    // Map the audience to the correct FCM topic
+    let topicToTarget = "";
     if (targetAudience === "everyone") {
-        // everyone = users + authorities + ALL workers (including security)
-        const t1 = await fetchTokens("users");
-        const t2 = await fetchTokens("workers");
-        const t3 = await fetchTokens("authorities");
-        tokens.push(...t1, ...t2, ...t3);
+        topicToTarget = "all"; // A global topic if needed, but usually we use a condition
     } else if (targetAudience === "security") {
-        // Security are stored in 'workers' collection with profession='Security'
-        const t = await fetchTokens("workers", "profession", "Security");
-        tokens.push(...t);
+        topicToTarget = "'security' in topics";
+    } else if (targetAudience === "authorities" || targetAudience === "authority") {
+        topicToTarget = "'authority' in topics";
+    } else if (targetAudience === "workers" || targetAudience === "worker") {
+        topicToTarget = "'worker' in topics";
     } else {
-        // Specific collection: 'users', 'workers', 'authorities'
-        const t = await fetchTokens(targetAudience);
-        tokens.push(...t);
+        // default residents/users
+        topicToTarget = "'resident' in topics || 'user' in topics";
     }
-
-    if (tokens.length === 0) {
-        console.log("No FCM tokens found for target: " + targetAudience);
-        return;
-    }
-
-    // Remove duplicates
-    const uniqueTokens = [...new Set(tokens)];
 
     // 2. Prepare the notification payload
-    // 'urgent' priority uses the aggressive siren sound
     const isUrgent = priority === "urgent";
     const androidSound = isUrgent ? "urgent_alarm" : "default";
     const iOSSound = isUrgent ? "urgent_alarm.aiff" : "default";
 
     const payload = {
-        // REVERT: We are going back to standard "Notification" payloads.
-        // Data-only messages are failing to wake up the app on some devices (OEM restrictions).
-        // By sending a proper 'notification' block with the correct 'channelId',
-        // we let the Android System handle the sound/display, which works even if the app is dead.
         notification: {
             title: `[${category}] ${title}`,
             body: body,
@@ -91,12 +59,7 @@ exports.onAnnouncementCreated = onDocumentCreated("announcements/{announcementId
         android: {
             priority: "high",
             notification: {
-                // EXPLICITLY target the v4 channels we created in Flutter.
-                // The channel already has the sound configured.
-                channelId: isUrgent ? "urgent_security_channel_v4" : "normal_security_channel_v4",
-                sound: androidSound,
-                defaultSound: !isUrgent, // Only use default for non-urgent
-                defaultVibrate_timings: !isUrgent,
+                channelId: isUrgent ? "urgent_security_channel_v5" : "normal_security_channel_v5",
                 visibility: "public",
             }
         },
@@ -112,24 +75,23 @@ exports.onAnnouncementCreated = onDocumentCreated("announcements/{announcementId
                     }
                 },
             },
-        },
-        tokens: uniqueTokens,
+        }
     };
 
-    // 3. Send via FCM (Multicast)
+    // 3. Send via FCM Topic Condition
     try {
-        const response = await admin.messaging().sendEachForMulticast(payload);
-        console.log(`Successfully sent ${response.successCount} notifications for alert: ${title}`);
-        if (response.failureCount > 0) {
-            console.log(`Failed to send to ${response.failureCount} tokens.`);
-            response.responses.forEach((resp, idx) => {
-                if (!resp.success) {
-                    console.log(`Token: ${uniqueTokens[idx]} Error: ${resp.error}`);
-                }
-            });
+        let response;
+        if (targetAudience === "everyone") {
+            // Broad broadcast to any of the 3 main roles
+            payload.condition = "'resident' in topics || 'worker' in topics || 'authority' in topics";
+            response = await admin.messaging().send(payload);
+        } else {
+            payload.condition = topicToTarget;
+            response = await admin.messaging().send(payload);
         }
+        console.log(`Successfully sent topic broadcast for alert: ${title}. Response:`, response);
     } catch (error) {
-        console.error("Error sending multicasts:", error);
+        console.error("Error sending topic broadcast:", error);
     }
 });
 
@@ -146,87 +108,19 @@ exports.onNotificationCreated = onDocumentCreated("notifications/{notificationId
     const type = data.type || "general";
     const priority = (data.priority || "normal").toLowerCase();
 
+    // Check if this is a silent in-app notification that shouldn't trigger push
+    if (data.silentData === true) {
+        console.log(`Skipping push notification for silent in-app notification: ${event.params.notificationId}`);
+        return;
+    }
+
     // Target logic
     const toUid = data.toUid;
     const toRole = data.toRole;
 
-    const tokens = [];
-
-    // Helper: Fetch ALL docs and filter in memory to avoid index issues
-    const fetchTokens = async (collectionName, filterField = null, filterValue = null) => {
-        const snapshot = await admin.firestore().collection(collectionName).get();
-        return snapshot.docs
-            .map(doc => {
-                const d = doc.data();
-                if (!d.fcmToken) return null;
-
-                // Optional: In-memory filter
-                if (filterField && filterValue) {
-                    const val = d[filterField];
-                    // Case-insensitive comparison for string fields
-                    if (typeof val === 'string' && typeof filterValue === 'string') {
-                        if (val.toLowerCase() !== filterValue.toLowerCase()) return null;
-                    } else {
-                        if (val !== filterValue) return null;
-                    }
-                }
-                return d.fcmToken;
-            })
-            .filter(t => t && t.length > 0);
-    };
-
-    if (toUid) {
-        // 1. Direct Message to specific user
-        // We need to find which collection the user is in. 
-        // We can try 'users' then 'workers' then 'authorities' or just parallel query.
-        // Or better, NotificationService could save 'collection' but it doesn't.
-        // Let's try to find their token in all 3 collections by ID.
-
-        const checkCollection = async (coll) => {
-            const doc = await admin.firestore().collection(coll).doc(toUid).get();
-            if (doc.exists && doc.data().fcmToken) return doc.data().fcmToken;
-            return null;
-        };
-
-        const t1 = await checkCollection("users");
-        if (t1) tokens.push(t1);
-        else {
-            const t2 = await checkCollection("workers");
-            if (t2) tokens.push(t2);
-            else {
-                const t3 = await checkCollection("authorities");
-                if (t3) tokens.push(t3);
-            }
-        }
-
-    } else if (toRole) {
-        // 2. Role-based broadcast
-        if (toRole === "security") {
-            // Filter workers where profession is 'Security' (case-insensitive)
-            const t = await fetchTokens("workers", "profession", "Security");
-            tokens.push(...t);
-        } else if (toRole === "authority") {
-            const t = await fetchTokens("authorities");
-            tokens.push(...t);
-        } else if (toRole === "worker") {
-            const t = await fetchTokens("workers");
-            tokens.push(...t);
-        } else if (toRole === "resident" || toRole === "user") {
-            const t = await fetchTokens("users");
-            tokens.push(...t);
-        }
-    }
-
-    if (tokens.length === 0) {
-        console.log(`No tokens found for notification: ${title} to UID:${toUid} / Role:${toRole}`);
-        return;
-    }
-
-    const uniqueTokens = [...new Set(tokens)];
-
     // Preparation (Same logic as Announcements)
     const isUrgent = priority === "urgent";
-    const androidSound = isUrgent ? "urgent_alarm" : "default"; // Re-verify resource name
+    const androidSound = isUrgent ? "urgent_alarm" : "default";
     const iOSSound = isUrgent ? "urgent_alarm.aiff" : "default";
 
     const payload = {
@@ -244,10 +138,7 @@ exports.onNotificationCreated = onDocumentCreated("notifications/{notificationId
         android: {
             priority: "high",
             notification: {
-                channelId: isUrgent ? "urgent_security_channel_v4" : "normal_security_channel_v4",
-                sound: androidSound,
-                defaultSound: !isUrgent,
-                defaultVibrate_timings: !isUrgent,
+                channelId: isUrgent ? "urgent_security_channel_v5" : "normal_security_channel_v5",
                 visibility: "public",
             }
         },
@@ -263,14 +154,207 @@ exports.onNotificationCreated = onDocumentCreated("notifications/{notificationId
                     }
                 },
             },
-        },
-        tokens: uniqueTokens,
+        }
     };
 
     try {
-        const response = await admin.messaging().sendEachForMulticast(payload);
-        console.log(`Sent generic notification to ${response.successCount} devices.`);
+        if (toRole) {
+            // 1. Role-based broadcast using FCM Topics (Efficient)
+            let topicCondition = "";
+            if (toRole === "security") topicCondition = "'security' in topics";
+            else if (toRole === "authority") topicCondition = "'authority' in topics";
+            else if (toRole === "worker") topicCondition = "'worker' in topics";
+            else if (toRole === "resident" || toRole === "user") topicCondition = "'resident' in topics || 'user' in topics";
+
+            if (topicCondition) {
+                payload.condition = topicCondition;
+                const response = await admin.messaging().send(payload);
+                console.log(`Sent role broadcast to topic condition [${topicCondition}]. Response:`, response);
+                return; // Done
+            }
+        }
+
+        if (toUid) {
+            // 2. Direct Message to specific user (Fall back to tokens)
+            // We search collections for the user's token
+            const tokens = [];
+
+            const checkCollection = async (coll) => {
+                const doc = await admin.firestore().collection(coll).doc(toUid).get();
+                if (doc.exists && doc.data().fcmToken) return doc.data().fcmToken;
+                return null;
+            };
+
+            const t1 = await checkCollection("users");
+            if (t1) tokens.push(t1);
+            else {
+                const t2 = await checkCollection("workers");
+                if (t2) tokens.push(t2);
+                else {
+                    const t3 = await checkCollection("authorities");
+                    if (t3) tokens.push(t3);
+                }
+            }
+
+            if (tokens.length === 0) {
+                console.log(`No token found for direct notification to UID: ${toUid}`);
+                return;
+            }
+
+            payload.tokens = [...new Set(tokens)];
+            const response = await admin.messaging().sendEachForMulticast(payload);
+            console.log(`Sent direct notification to ${response.successCount} devices for UID: ${toUid}.`);
+        }
     } catch (e) {
-        console.error("Error sending generic notification:", e);
+        console.error("Error sending notification:", e);
+    }
+});
+
+/**
+ * NEW: Cloud Function to handle Security Requests (including Panic Alerts)
+ * Listens to 'security_requests' collection.
+ */
+exports.onSecurityRequestCreated = onDocumentCreated("security_requests/{requestId}", async (event) => {
+    const data = event.data.data();
+    if (!data) return;
+
+    const requestType = data.requestType || "general";
+    const isPanic = requestType === "panic_alert";
+    const isUrgent = isPanic || data.priority === "urgent" || data.priority === "high";
+
+    console.log(`Processing Security Request: ${event.params.requestId}, Type: ${requestType}`);
+
+    const androidSound = isUrgent ? "urgent_alarm" : "default";
+    const iOSSound = isUrgent ? "urgent_alarm.aiff" : "default";
+
+    let title = "New Security Request";
+    let body = `A new ${requestType.replace('_', ' ')} request was created for Flat ${data.flatNumber || 'Unknown'}.`;
+
+    if (isPanic) {
+        title = `🚨 PANIC ALERT TRIGGERED 🚨`;
+        const name = data.residentName || 'Unknown Resident';
+        const phone = data.phone || 'No Phone';
+        const flat = data.flatNumber || data.flatNo || 'Unknown Flat';
+        const building = data.buildingNumber && data.buildingNumber !== "Unknown" ? `(Bldg ${data.buildingNumber})` : '';
+        const block = data.block && data.block !== "Unknown" ? `(Blk ${data.block})` : '';
+        body = `Emergency! ${name} at Flat ${flat} ${building} ${block} activated the panic button. Contact: ${phone}. Please check immediately.`;
+    }
+
+    // ======================================================
+    // CRITICAL: For panic alerts, we send a DATA-ONLY message.
+    // Android behavior: when FCM has BOTH notification+data blocks
+    // and the app is in background/killed, Android auto-shows the
+    // notification but does NOT call onMessageReceived(). This means
+    // MyFirebaseMessagingService never intercepts, and siren never starts.
+    // By sending data-only, onMessageReceived() is ALWAYS called.
+    // ======================================================
+
+    let payload;
+
+    if (isPanic) {
+        // DATA-ONLY message → onMessageReceived() always fires → siren starts
+        payload = {
+            data: {
+                type: String(requestType),
+                priority: String(data.priority || 'urgent'),
+                requestId: String(event.params.requestId),
+                residentId: String(data.residentId || ''),
+                residentName: String(data.residentName || ''),
+                flatNumber: String(data.flatNumber || data.flatNo || ''),
+                buildingNumber: String(data.buildingNumber || ''),
+                block: String(data.block || ''),
+                phone: String(data.phone || ''),
+                title: title,
+                body: body,
+                channelId: "urgent_security_channel_v5",
+                sound: "urgent_alarm",
+                click_action: "FLUTTER_NOTIFICATION_CLICK"
+            },
+            android: {
+                priority: "high",
+            },
+            // Broadcast to Authorities and Security Guards simultaneously
+            condition: "'authority' in topics || 'security' in topics"
+        };
+    } else {
+        // Non-panic: use notification+data (standard FCM behavior)
+        payload = {
+            notification: {
+                title: title,
+                body: body,
+            },
+            data: {
+                type: String(requestType),
+                priority: String(data.priority || 'normal'),
+                requestId: String(event.params.requestId),
+                residentId: String(data.residentId || ''),
+                flatNumber: String(data.flatNumber || ''),
+                buildingNumber: String(data.buildingNumber || ''),
+                block: String(data.block || ''),
+                click_action: "FLUTTER_NOTIFICATION_CLICK"
+            },
+            android: {
+                priority: "high",
+                notification: {
+                    channelId: isUrgent ? "urgent_security_channel_v5" : "normal_security_channel_v5",
+                    sound: isUrgent ? "urgent_alarm" : "default",
+                    visibility: "public",
+                }
+            },
+            apns: {
+                payload: {
+                    aps: {
+                        contentAvailable: true,
+                        sound: isUrgent ? "urgent_alarm.aiff" : "default",
+                        badge: 1,
+                        alert: {
+                            title: title,
+                            body: body,
+                        }
+                    },
+                },
+            },
+            condition: "'authority' in topics || 'security' in topics"
+        };
+    }
+
+    try {
+        const response = await admin.messaging().send(payload);
+        console.log(`Successfully sent Security Request Topic Broadcast. Response:`, response);
+
+        // CREATE IN-APP NOTIFICATIONS FOR DROPDOWN
+        const batch = admin.firestore().batch();
+        const notifData = {
+            title: title,
+            message: body,
+            type: requestType,
+            priority: data.priority || (isUrgent ? 'urgent' : 'normal'),
+            isRead: false,
+            timestamp: admin.firestore.FieldValue.serverTimestamp(),
+            route: '/security_requests',
+            silentData: true // Instructs onNotificationCreated NOT to send another FCM push
+        };
+
+        // 1. Send to Authority using their existing role-based check
+        const authRef = admin.firestore().collection('notifications').doc();
+        batch.set(authRef, { ...notifData, toRole: 'authority' });
+
+        // 2. Fetch all workers and send individually (Flutter 'security' role checks toUid)
+        const workersSnapshot = await admin.firestore().collection('workers').get();
+        workersSnapshot.forEach(doc => {
+            const workerData = doc.data();
+            const workerRole = (workerData.role || "").toLowerCase();
+            // Match any "security" or "guard" role
+            if (workerRole.includes('security') || workerRole.includes('guard')) {
+                const secRef = admin.firestore().collection('notifications').doc();
+                batch.set(secRef, { ...notifData, toUid: doc.id, toRole: 'security' });
+            }
+        });
+
+        await batch.commit();
+        console.log("Created silent in-app notification documents for authority and all security guards.");
+
+    } catch (error) {
+        console.error("Error sending Security Request FCM Broadcast:", error);
     }
 });

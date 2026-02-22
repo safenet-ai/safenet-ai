@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import '../../shared/widgets/image_viewer.dart';
+import '../../../services/notification_service.dart';
+import '../../../core/channels/panic_channel.dart';
 
 class SecurityRequestDetailPage extends StatefulWidget {
   final String requestId;
@@ -139,12 +142,14 @@ class _SecurityRequestDetailPageState extends State<SecurityRequestDetailPage> {
   Widget _buildContent(Map<String, dynamic> data) {
     final requestType = data["requestType"] ?? "Unknown";
     final priority = data["priority"] ?? "normal";
-    final location = data["location"] ?? "Unknown";
-    final flatNo = data["flatNo"] ?? "N/A";
+    final flatNo = data["flatNo"] ?? data["flatNumber"] ?? "Unknown";
+    final buildingNo = data["buildingNumber"]?.toString() ?? "Unknown";
+    final block = data["block"]?.toString() ?? "Unknown";
     final description = data["description"] ?? "No description";
     final status = data["status"] ?? "pending";
     final fileUrls = data["fileUrls"] as List<dynamic>? ?? [];
     final timestamp = (data["timestamp"] as Timestamp?)?.toDate();
+    final phone = data["phone"] ?? "N/A";
 
     Color priorityColor;
     IconData requestIcon;
@@ -233,12 +238,21 @@ class _SecurityRequestDetailPageState extends State<SecurityRequestDetailPage> {
                         ),
                       ),
                       Text(
-                        "From: ${residentName ?? 'Loading...'}",
+                        "Resident: ${residentName ?? 'Loading...'}",
                         style: TextStyle(
                           fontSize: 14,
-                          color: statusColor.withOpacity(0.8),
+                          fontWeight: FontWeight.w600,
+                          color: statusColor.withOpacity(0.9),
                         ),
                       ),
+                      if (phone != "N/A" && phone != "Unknown")
+                        Text(
+                          "Tap to Call: $phone",
+                          style: TextStyle(
+                            fontSize: 13,
+                            color: statusColor.withOpacity(0.8),
+                          ),
+                        ),
                     ],
                   ),
                 ),
@@ -293,12 +307,29 @@ class _SecurityRequestDetailPageState extends State<SecurityRequestDetailPage> {
                     ),
                   ],
                 ),
-                const SizedBox(height: 16),
-                _infoRow(Icons.location_on, "Location", location),
-                const SizedBox(height: 8),
-                _infoRow(Icons.home, "Flat Number", flatNo),
+                Row(
+                  children: [
+                    Expanded(
+                      flex: 2,
+                      child: _infoRow(
+                        Icons.business,
+                        "Building & Block",
+                        "Bldg $buildingNo (Blk $block)",
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      flex: 1,
+                      child: _infoRow(Icons.home, "Flat", flatNo),
+                    ),
+                  ],
+                ),
+                if (phone != "N/A" && phone != "Unknown") ...[
+                  const SizedBox(height: 12),
+                  _infoRow(Icons.phone, "Phone", phone),
+                ],
                 if (timestamp != null) ...[
-                  const SizedBox(height: 8),
+                  const SizedBox(height: 12),
                   _infoRow(
                     Icons.access_time,
                     "Submitted",
@@ -312,25 +343,26 @@ class _SecurityRequestDetailPageState extends State<SecurityRequestDetailPage> {
           const SizedBox(height: 16),
 
           // Description
-          _sectionTitle("Description"),
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.9),
-              borderRadius: BorderRadius.circular(16),
-            ),
-            child: Text(
-              description,
-              style: TextStyle(
-                fontSize: 15,
-                color: Colors.grey[800],
-                height: 1.5,
+          if (requestType.toLowerCase() != "panic_alert") ...[
+            _sectionTitle("Description"),
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.9),
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: Text(
+                description,
+                style: TextStyle(
+                  fontSize: 15,
+                  color: Colors.grey[800],
+                  height: 1.5,
+                ),
               ),
             ),
-          ),
-
-          const SizedBox(height: 16),
+            const SizedBox(height: 16),
+          ],
 
           // Attachments
           if (fileUrls.isNotEmpty) ...[
@@ -352,9 +384,294 @@ class _SecurityRequestDetailPageState extends State<SecurityRequestDetailPage> {
             ),
             const SizedBox(height: 20),
           ],
+
+          // ========================================
+          // ACTION BUTTONS
+          // ========================================
+          if (status.toLowerCase() == "pending") ...[
+            const SizedBox(height: 16),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton.icon(
+                onPressed: () => _assignToSelf(widget.requestId, data),
+                icon: const Icon(Icons.person_add, size: 20),
+                label: const Text(
+                  "Accept & Assign to Me",
+                  style: TextStyle(fontSize: 16),
+                ),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.blue,
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                ),
+              ),
+            ),
+          ] else if (status.toLowerCase() == "assigned") ...[
+            const SizedBox(height: 16),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton.icon(
+                onPressed: () => _markInProgress(widget.requestId, data),
+                icon: const Icon(Icons.play_arrow, size: 20),
+                label: const Text(
+                  "Start Working",
+                  style: TextStyle(fontSize: 16),
+                ),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.orange,
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                ),
+              ),
+            ),
+          ] else if (status.toLowerCase() == "in_progress") ...[
+            const SizedBox(height: 16),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton.icon(
+                onPressed: () => _showResolveDialog(widget.requestId, data),
+                icon: const Icon(Icons.check_circle, size: 20),
+                label: const Text(
+                  "Mark as Resolved",
+                  style: TextStyle(fontSize: 16),
+                ),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.green,
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                ),
+              ),
+            ),
+          ],
+          const SizedBox(height: 30),
         ],
       ),
     );
+  }
+
+  // ========================================
+  // STATUS UPDATE METHODS
+  // ========================================
+
+  Future<void> _assignToSelf(
+    String requestId,
+    Map<String, dynamic> data,
+  ) async {
+    try {
+      final currentUser = FirebaseAuth.instance.currentUser;
+      if (currentUser == null) return;
+
+      final requestType = data["requestType"] ?? "security request";
+
+      if (requestType == "panic_alert") {
+        await PanicChannel.stopSiren();
+      }
+
+      // Get security officer name
+      final securityDoc = await FirebaseFirestore.instance
+          .collection("workers")
+          .doc(currentUser.uid)
+          .get();
+      final securityName =
+          securityDoc.data()?["username"] ?? "Security Officer";
+
+      await FirebaseFirestore.instance
+          .collection("security_requests")
+          .doc(requestId)
+          .update({
+            "status": "assigned",
+            "assignedTo": currentUser.uid,
+            "assignedAt": FieldValue.serverTimestamp(),
+          });
+
+      // Notify resident
+      final residentId = data["residentId"];
+      if (residentId != null) {
+        await NotificationService.sendNotification(
+          userId: residentId,
+          userRole: 'user',
+          title: "Request Accepted",
+          body:
+              "$securityName has accepted your ${requestType.replaceAll('_', ' ')} request.",
+          type: "security_request_update",
+          additionalData: {"requestId": requestId},
+        );
+      }
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text("Request assigned to you"),
+            backgroundColor: Colors.blue,
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text("Error: $e")));
+      }
+    }
+  }
+
+  Future<void> _markInProgress(
+    String requestId,
+    Map<String, dynamic> data,
+  ) async {
+    try {
+      final requestType = data["requestType"] ?? "security request";
+
+      if (requestType == "panic_alert") {
+        await PanicChannel.stopSiren();
+      }
+
+      await FirebaseFirestore.instance
+          .collection("security_requests")
+          .doc(requestId)
+          .update({
+            "status": "in_progress",
+            "startedAt": FieldValue.serverTimestamp(),
+          });
+
+      final residentId = data["residentId"];
+      if (residentId != null) {
+        await NotificationService.sendNotification(
+          userId: residentId,
+          userRole: 'user',
+          title: "Work Started",
+          body:
+              "Security has started working on your ${requestType.replaceAll('_', ' ')} request.",
+          type: "security_request_update",
+          additionalData: {"requestId": requestId},
+        );
+      }
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text("Status updated to In Progress"),
+            backgroundColor: Colors.orange,
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text("Error: $e")));
+      }
+    }
+  }
+
+  Future<void> _showResolveDialog(
+    String requestId,
+    Map<String, dynamic> data,
+  ) async {
+    final notesController = TextEditingController();
+
+    await showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text("Resolve Request"),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text("Add resolution notes:"),
+            const SizedBox(height: 8),
+            TextField(
+              controller: notesController,
+              maxLines: 3,
+              decoration: InputDecoration(
+                hintText: "What actions were taken?",
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text("Cancel"),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              Navigator.pop(context);
+              await _resolveRequest(requestId, notesController.text, data);
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.green,
+              foregroundColor: Colors.white,
+            ),
+            child: const Text("Resolve"),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _resolveRequest(
+    String requestId,
+    String notes,
+    Map<String, dynamic> data,
+  ) async {
+    try {
+      final requestType = data["requestType"] ?? "security request";
+
+      if (requestType == "panic_alert") {
+        await PanicChannel.stopSiren();
+      }
+
+      await FirebaseFirestore.instance
+          .collection("security_requests")
+          .doc(requestId)
+          .update({
+            "status": "resolved",
+            "resolvedAt": FieldValue.serverTimestamp(),
+            "resolvedBy": FirebaseAuth.instance.currentUser?.uid,
+            "resolutionNotes": notes,
+          });
+
+      final residentId = data["residentId"];
+      if (residentId != null) {
+        await NotificationService.sendNotification(
+          userId: residentId,
+          userRole: 'user',
+          title: "Request Resolved",
+          body:
+              "Your ${requestType.replaceAll('_', ' ')} request has been resolved. ${notes.isNotEmpty ? 'Notes: $notes' : ''}",
+          type: "security_request_update",
+          additionalData: {"requestId": requestId},
+        );
+      }
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text("Request marked as resolved"),
+            backgroundColor: Colors.green,
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text("Error: $e")));
+      }
+    }
   }
 
   Widget _circleButton(IconData icon, {VoidCallback? onTap}) {

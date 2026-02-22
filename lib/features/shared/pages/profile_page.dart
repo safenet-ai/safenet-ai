@@ -69,8 +69,13 @@ class _ProfilePageState extends State<ProfilePage> {
     _nameCtrl.text = _userData['username'] ?? '';
     _emailCtrl.text = _userData['email'] ?? '';
     _phoneCtrl.text = _userData['phone'] ?? '';
-    _roomCtrl.text = _userData['roomNo'] ?? '';
-    _buildingCtrl.text = _userData['buildingNo'] ?? '';
+    _roomCtrl.text =
+        _userData['flatNumber'] ??
+        _userData['flatNo'] ??
+        _userData['roomNo'] ??
+        '';
+    _buildingCtrl.text =
+        _userData['buildingNumber'] ?? _userData['buildingNo'] ?? '';
 
     // Populate family members
     _familyControllers.clear();
@@ -95,8 +100,9 @@ class _ProfilePageState extends State<ProfilePage> {
 
       // Resident specific fields
       if (widget.userCollection == 'users') {
-        updates['roomNo'] = _roomCtrl.text.trim();
-        updates['buildingNo'] = _buildingCtrl.text.trim();
+        updates['flatNumber'] = _roomCtrl.text.trim();
+        updates['flatNo'] = _roomCtrl.text.trim();
+        updates['buildingNumber'] = _buildingCtrl.text.trim();
         updates['familyMembers'] = _familyControllers
             .map((c) => c.text.trim())
             .where((s) => s.isNotEmpty)
@@ -280,7 +286,7 @@ class _ProfilePageState extends State<ProfilePage> {
                               children: [
                                 Expanded(
                                   child: _glassTextField(
-                                    "Room No",
+                                    "Flat No",
                                     _roomCtrl,
                                     enabled: _isEditing,
                                   ),
@@ -288,7 +294,7 @@ class _ProfilePageState extends State<ProfilePage> {
                                 const SizedBox(width: 12),
                                 Expanded(
                                   child: _glassTextField(
-                                    "Building No",
+                                    "Building & Block",
                                     _buildingCtrl,
                                     enabled: _isEditing,
                                   ),

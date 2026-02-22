@@ -37,12 +37,12 @@ Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
 
       await localNotifications.initialize(initializationSettings);
 
-      // Select Channel
-      String channelId = 'normal_security_channel_v4';
+      // Select Channel (always use v5 channels)
+      String channelId = 'normal_security_channel_v5';
       if (priority == 'urgent')
-        channelId = 'urgent_security_channel_v4';
+        channelId = 'urgent_security_channel_v5';
       else if (priority == 'medium')
-        channelId = 'medium_security_channel_v4';
+        channelId = 'medium_security_channel_v5';
 
       await localNotifications.show(
         message.hashCode,
@@ -81,23 +81,23 @@ class NotificationService {
   static StreamSubscription<RemoteMessage>? _onMessageSubscription;
   static StreamSubscription<RemoteMessage>? _onMessageOpenedAppSubscription;
 
-  static const AndroidNotificationChannel
-  _urgentChannel = AndroidNotificationChannel(
-    'urgent_security_channel_v4', // Versioned ID to force sound/importance update
-    'Urgent Security Alerts',
-    description: 'Critical updates and security alerts.',
-    importance: Importance.max,
-    playSound: true,
-    enableVibration: true,
-    sound: RawResourceAndroidNotificationSound(
-      'urgent_alarm',
-    ), // Refers to res/raw/urgent_alarm.mp3
-    audioAttributesUsage: AudioAttributesUsage.alarm,
-  );
+  // IMPORTANT: Urgent channel is SILENT on purpose.
+  // The looping SirenForegroundService IS the alarm sound.
+  // If the channel also played urgent_alarm, it would double-fire.
+  // Importance.max ensures the heads-up popup still appears.
+  static const AndroidNotificationChannel _urgentChannel =
+      AndroidNotificationChannel(
+        'urgent_security_channel_v5',
+        'Urgent Security Alerts',
+        description: 'Critical updates and security alerts.',
+        importance: Importance.max,
+        playSound: false,
+        enableVibration: true,
+      );
 
   static const AndroidNotificationChannel _mediumChannel =
       AndroidNotificationChannel(
-        'medium_security_channel_v4',
+        'medium_security_channel_v5',
         'Medium Security Updates',
         description: 'Important status updates.',
         importance: Importance.high,
@@ -106,7 +106,7 @@ class NotificationService {
 
   static const AndroidNotificationChannel _normalChannel =
       AndroidNotificationChannel(
-        'normal_security_channel_v4',
+        'normal_security_channel_v5',
         'Normal Updates',
         description: 'General app notifications.',
         importance: Importance.defaultImportance,
@@ -209,9 +209,19 @@ class NotificationService {
       _handleForegroundMessage,
     );
 
-    // Handle background message taps
+    // Handle background message taps (App is in background, but not killed)
     _onMessageOpenedAppSubscription = FirebaseMessaging.onMessageOpenedApp
         .listen(_handleNotificationTap);
+
+    // Handle cold-start message taps (App is completely killed)
+    FirebaseMessaging.instance.getInitialMessage().then((
+      RemoteMessage? message,
+    ) {
+      if (message != null) {
+        print('Cold start from notification: ${message.data}');
+        _handleNotificationTap(message);
+      }
+    });
 
     // Request permissions for Android 13+
     await _requestPermissions();
@@ -254,7 +264,7 @@ class NotificationService {
       final userRole = prefs.getString('user_role') ?? 'resident';
       String collection = _getCollectionForRole(userRole);
 
-      // Save token to user document
+      // Save token to user document (Still useful for 1-to-1 DMs/Chats)
       await FirebaseFirestore.instance
           .collection(collection)
           .doc(user.uid)
@@ -262,6 +272,26 @@ class NotificationService {
             'fcmToken': token,
             'fcmTokenUpdatedAt': FieldValue.serverTimestamp(),
           });
+
+      // ==========================================
+      // NEW TOPIC SUBSCRIPTION LOGIC
+      // ==========================================
+      // First, unsubscribe from all possible roles to prevent leakage
+      await _fcm.unsubscribeFromTopic('resident');
+      await _fcm.unsubscribeFromTopic('security');
+      await _fcm.unsubscribeFromTopic('authority');
+      await _fcm.unsubscribeFromTopic('worker');
+      await _fcm.unsubscribeFromTopic('user'); // Alias
+
+      // Then subscribe to the current actual role
+      if (userRole.isNotEmpty) {
+        await _fcm.subscribeToTopic(userRole);
+        // Standardize topics for backend ease
+        if (userRole == 'security') await _fcm.subscribeToTopic('worker');
+        if (userRole == 'resident') await _fcm.subscribeToTopic('user');
+
+        print('🔔 Subscribed UID ${user.uid} to FCM topic: $userRole');
+      }
 
       print('FCM token saved to $collection for UID: ${user.uid}');
     } catch (e) {
@@ -288,7 +318,17 @@ class NotificationService {
             'fcmToken': FieldValue.delete(),
             'fcmTokenLastRemoved': FieldValue.serverTimestamp(),
           });
-      print('FCM token removed from Firestore for UID: ${user.uid}');
+
+      // ==========================================
+      // NEW TOPIC UNSUBSCRIPTION LOGIC
+      // ==========================================
+      await _fcm.unsubscribeFromTopic('resident');
+      await _fcm.unsubscribeFromTopic('security');
+      await _fcm.unsubscribeFromTopic('authority');
+      await _fcm.unsubscribeFromTopic('worker');
+      await _fcm.unsubscribeFromTopic('user');
+
+      print('FCM token removed and topics unsubscribed for UID: ${user.uid}');
     } catch (e) {
       print('Error removing FCM token from Firestore: $e');
     }
@@ -307,13 +347,30 @@ class NotificationService {
       String priority =
           message.data['priority']?.toString().toLowerCase() ?? 'normal';
 
+      // Use unique timestamp ID to prevent different notifications collapsing
       _showLocalNotification(
-        id: notification.hashCode,
+        id: DateTime.now().millisecondsSinceEpoch % 100000,
         title: notification.title ?? 'SafeNet AI',
         body: notification.body ?? '',
         payload: message.data.toString(),
         priority: priority,
       );
+    } else if (message.data.isNotEmpty) {
+      // Data-only message (e.g., panic alerts use data-only for native siren)
+      final data = message.data;
+      final title = data['title'] ?? 'SafeNet AI';
+      final body = data['body'] ?? '';
+      final priority = data['priority']?.toString().toLowerCase() ?? 'normal';
+
+      if (title.isNotEmpty && body.isNotEmpty) {
+        _showLocalNotification(
+          id: message.hashCode,
+          title: title,
+          body: body,
+          payload: data.toString(),
+          priority: priority,
+        );
+      }
     }
   }
 
@@ -356,27 +413,16 @@ class NotificationService {
             targetChannel.name,
             channelDescription: targetChannel.description,
             importance: targetChannel.importance,
-            priority: Priority.max, // Set to MAX for Urgent alerts
+            priority: Priority.max,
             icon: '@mipmap/ic_launcher',
             ticker: 'SafeNet AI Notification',
-            playSound: true,
+            playSound: targetChannel.playSound,
             enableVibration: true,
             vibrationPattern: priority.toLowerCase() == 'urgent'
-                ? Int64List.fromList([
-                    0,
-                    500,
-                    200,
-                    500,
-                    200,
-                    1000,
-                  ]) // Aggressive pattern for Urgent
+                ? Int64List.fromList([0, 500, 200, 500, 200, 1000])
                 : null,
-            sound: priority.toLowerCase() == 'urgent'
-                ? const RawResourceAndroidNotificationSound('urgent_alarm')
-                : null,
-            audioAttributesUsage: priority.toLowerCase() == 'urgent'
-                ? AudioAttributesUsage.alarm
-                : AudioAttributesUsage.notification,
+            // No sound override — the channel's sound setting takes effect
+            // Urgent channel is SILENT; SirenForegroundService plays the loop
           ),
           iOS: const DarwinNotificationDetails(
             presentAlert: true,
@@ -485,15 +531,23 @@ class NotificationService {
                 }
 
                 if (isForMe) {
+                  final notifPriority =
+                      data['priority']?.toString().toLowerCase() ?? 'normal';
                   print(
-                    '🔔 TRIGGERING SYSTEM TRAY ALERT: ${data['title']} (Priority: ${data['priority']})',
+                    '🔔 TRIGGERING SYSTEM TRAY ALERT: ${data['title']} (Priority: $notifPriority)',
                   );
+                  // ALWAYS use 'normal' priority here — Firestore listener is a
+                  // fallback for in-app only. FCM push + SirenForegroundService
+                  // handle the actual urgent sound. Showing urgent_alarm here
+                  // causes the phantom/double siren bug.
                   _showLocalNotification(
                     id: docId.hashCode,
                     title: data['title'] ?? 'SafeNet AI',
                     body: data['message'] ?? '',
                     payload: data['type'],
-                    priority: data['priority'] ?? 'normal',
+                    priority: notifPriority == 'urgent'
+                        ? 'medium'
+                        : notifPriority,
                   );
                 }
               }
