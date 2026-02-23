@@ -8,6 +8,38 @@ import '../firebase_options.dart';
 import 'dart:io';
 import 'dart:async';
 import 'dart:typed_data';
+import 'dart:ui';
+import 'package:flutter_background_service/flutter_background_service.dart';
+import 'package:flutter_background_service_android/flutter_background_service_android.dart';
+
+@pragma('vm:entry-point')
+Future<bool> onIosBackground(ServiceInstance service) async {
+  return true;
+}
+
+@pragma('vm:entry-point')
+void onStart(ServiceInstance service) async {
+  DartPluginRegistrant.ensureInitialized();
+  await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+
+  if (service is AndroidServiceInstance) {
+    service.on('setAsForeground').listen((event) {
+      service.setAsForegroundService();
+    });
+    service.on('setAsBackground').listen((event) {
+      service.setAsBackgroundService();
+    });
+    service.on('stopService').listen((event) {
+      service.stopSelf();
+    });
+  }
+
+  // Fallback listener in background isolate
+  FirebaseMessaging.onMessage.listen((RemoteMessage message) {
+    print('Background Isolate FCM onMessage: ${message.messageId}');
+    _firebaseMessagingBackgroundHandler(message);
+  });
+}
 
 /// Top-level background message handler for FCM
 @pragma('vm:entry-point')
@@ -50,10 +82,15 @@ Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
   String channelName = 'Normal Updates';
   Importance importance = Importance.defaultImportance;
   if (priority == 'urgent') {
-    channelId = 'urgent_security_channel_v6';
-    channelName = 'Urgent Security Alerts';
-    importance = Importance.max;
-  } else if (priority == 'medium') {
+    // URGENT notifications are handled natively by MyFirebaseMessagingService -> SirenForegroundService
+    // which displays its own full-screen intent and persistent notification.
+    print(
+      'Skipping local notification for urgent priority. Native Siren handles it.',
+    );
+    return;
+  }
+
+  if (priority == 'medium') {
     channelId = 'medium_security_channel_v6';
     channelName = 'Medium Security Updates';
     importance = Importance.high;
@@ -70,9 +107,7 @@ Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
         importance: importance,
         priority: Priority.max,
         icon: '@mipmap/ic_launcher',
-        playSound:
-            priority !=
-            'urgent', // urgent channel is silent, siren handles audio
+        playSound: true,
       ),
     ),
   );
@@ -256,12 +291,50 @@ class NotificationService {
     // saveFCMToken() is also called from each dashboard's initState.
     await saveFCMToken();
 
-    // NOTE: startFirestoreListener() is NOT called here.
-    // It must be called AFTER login from each dashboard's initState,
-    // when currentUser and userRole are available.
+    // Wait until background service is correctly initialized
+    await _initializeBackgroundService();
+
     print(
       '🔔 NotificationService.initialize() complete. Waiting for dashboard to start Firestore listener.',
     );
+  }
+
+  static Future<void> _initializeBackgroundService() async {
+    final service = FlutterBackgroundService();
+
+    const AndroidNotificationChannel channel = AndroidNotificationChannel(
+      'safenet_background_service', // id
+      'SafeNet AI Core Service', // name
+      description:
+          'Ensures instantaneous delivery of critical security alerts.', // description
+      importance: Importance.low, // importance must be at low or higher level
+    );
+
+    await _localNotifications
+        .resolvePlatformSpecificImplementation<
+          AndroidFlutterLocalNotificationsPlugin
+        >()
+        ?.createNotificationChannel(channel);
+
+    await service.configure(
+      androidConfiguration: AndroidConfiguration(
+        // this will be executed when app is in foreground or background in separated isolate
+        onStart: onStart,
+        autoStart: true,
+        isForegroundMode: true,
+        notificationChannelId: 'safenet_background_service',
+        initialNotificationTitle: 'SafeNet AI is running',
+        initialNotificationContent: 'Monitoring for emergency alerts...',
+        foregroundServiceNotificationId: 888,
+      ),
+      iosConfiguration: IosConfiguration(
+        autoStart: true,
+        onForeground: onStart,
+        onBackground: onIosBackground,
+      ),
+    );
+
+    // service.startService() will be called automatically if autoStart is true
   }
 
   static Future<void> _requestPermissions() async {
@@ -374,11 +447,16 @@ class NotificationService {
     // If `onMessage` is triggered, FCM will NOT automatically show a notification bar alert
     // when the app is in the foreground. We must show it manually using local notifications.
     if (notification != null) {
-      // Extract priority from data if available
       String priority =
           message.data['priority']?.toString().toLowerCase() ?? 'normal';
 
-      // Use unique timestamp ID to prevent different notifications collapsing
+      if (priority == 'urgent') {
+        print(
+          'Skipping foreground local notification for urgent priority. Native Siren handles it.',
+        );
+        return;
+      }
+
       _showLocalNotification(
         id: DateTime.now().millisecondsSinceEpoch % 100000,
         title: notification.title ?? 'SafeNet AI',
@@ -387,13 +465,19 @@ class NotificationService {
         priority: priority,
       );
     } else if (message.data.isNotEmpty) {
-      // Data-only message (e.g., panic alerts use data-only for native siren)
       final data = message.data;
       final title = data['title'] ?? 'SafeNet AI';
       final body = data['body'] ?? '';
       final priority = data['priority']?.toString().toLowerCase() ?? 'normal';
 
       if (title.isNotEmpty && body.isNotEmpty) {
+        if (priority == 'urgent') {
+          print(
+            'Skipping foreground data notification for urgent priority. Native Siren handles it.',
+          );
+          return;
+        }
+
         _showLocalNotification(
           id: message.hashCode,
           title: title,

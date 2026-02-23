@@ -35,8 +35,10 @@ class SirenForegroundService : Service() {
             return START_NOT_STICKY
         }
 
-        
-        val notification = createNotification()
+        val title = intent?.getStringExtra("title") ?: "🚨 EMERGENCY PANIC ALERT 🚨"
+        val body = intent?.getStringExtra("body") ?: "A panic alert has been triggered. Tap here or stop the alarm."
+
+        val notification = createNotification(title, body)
         startForeground(999, notification)
 
         startSirenAndVibration()
@@ -129,7 +131,7 @@ class SirenForegroundService : Service() {
         }
     }
 
-    private fun createNotification(): Notification {
+    private fun createNotification(title: String, body: String): Notification {
         val stopIntent = Intent(this, SirenForegroundService::class.java).apply {
             action = "ACTION_STOP_SIREN"
         }
@@ -145,8 +147,8 @@ class SirenForegroundService : Service() {
         )
 
         return NotificationCompat.Builder(this, CHANNEL_ID)
-            .setContentTitle("🚨 EMERGENCY PANIC ALERT 🚨")
-            .setContentText("A panic alert has been triggered. Tap here or stop the alarm.")
+            .setContentTitle(title)
+            .setContentText(body)
             .setSmallIcon(android.R.drawable.ic_dialog_alert)
             .setPriority(NotificationCompat.PRIORITY_MAX)
             .setCategory(NotificationCompat.CATEGORY_ALARM)

@@ -45,11 +45,9 @@ exports.onAnnouncementCreated = onDocumentCreated("announcements/{announcementId
     const isMedium = priority === "medium";
 
     const payload = {
-        notification: {
+        data: {
             title: `[${category}] ${title}`,
             body: body,
-        },
-        data: {
             type: "announcement",
             priority: priority,
             category: category,
@@ -58,10 +56,6 @@ exports.onAnnouncementCreated = onDocumentCreated("announcements/{announcementId
         android: {
             priority: "high",
             ttl: 0, // Forces immediate delivery, bypassing battery doze
-            notification: {
-                channelId: isUrgent ? "urgent_security_channel_v6" : (isMedium ? "medium_security_channel_v6" : "normal_security_channel_v6"),
-                visibility: "public",
-            }
         },
         apns: {
             payload: {
@@ -78,8 +72,10 @@ exports.onAnnouncementCreated = onDocumentCreated("announcements/{announcementId
         }
     };
 
-    // 3. Send via FCM Topic Condition
     try {
+        // ALWAYS send as data-only to wake up the app directly in background
+        // and avoid Android OS system tray interfering
+
         let response;
         if (targetAudience === "everyone") {
             // Broad broadcast to any of the 3 main roles
@@ -123,11 +119,9 @@ exports.onNotificationCreated = onDocumentCreated("notifications/{notificationId
     const isMedium = priority === "medium";
 
     const payload = {
-        notification: {
+        data: {
             title: title,
             body: body,
-        },
-        data: {
             type: String(type),
             priority: String(priority),
             toRole: String(toRole || ''),
@@ -137,10 +131,6 @@ exports.onNotificationCreated = onDocumentCreated("notifications/{notificationId
         android: {
             priority: "high",
             ttl: 0, // Forces immediate delivery, bypassing battery doze
-            notification: {
-                channelId: isUrgent ? "urgent_security_channel_v6" : (isMedium ? "medium_security_channel_v6" : "normal_security_channel_v6"),
-                visibility: "public",
-            }
         },
         apns: {
             payload: {
@@ -238,15 +228,14 @@ exports.onSecurityRequestCreated = onDocumentCreated(
         }
 
         // ONE unified payload for ALL security requests.
-        // - notification+data ensures onMessageReceived() fires AND Android shows tray notification
-        // - NO sound field — channel controls sound (urgent channel is SILENT, SirenForegroundService plays audio)
-        // - MyFirebaseMessagingService checks priority=='urgent' to start SirenForegroundService
+        // - NO top-level "notification" object initially.
+        // - If urgent, it STAYS data-only. Android handles it in MyFirebaseMessagingService 
+        //   (which calls SirenForegroundService which then builds the actual UI notification).
+        // - If NOT urgent, we append the notification block so standard Android Tray handles it.
         const payload = {
-            notification: {
+            data: {
                 title: title,
                 body: body,
-            },
-            data: {
                 type: String(requestType),
                 priority: isUrgent ? 'urgent' : String(data.priority || 'normal'),
                 requestId: String(event.params.requestId),
@@ -259,10 +248,6 @@ exports.onSecurityRequestCreated = onDocumentCreated(
             android: {
                 priority: "high",
                 ttl: 0, // Forces immediate delivery, bypassing battery doze
-                notification: {
-                    channelId: isUrgent ? "urgent_security_channel_v6" : "normal_security_channel_v6",
-                    visibility: "public",
-                }
             },
             apns: {
                 payload: {
