@@ -203,13 +203,27 @@ class _AuthoritySecurityRequestsPageState
   Widget _requestCard(String requestId, Map<String, dynamic> data) {
     final status = data["status"] ?? "pending";
     final requestType = data["requestType"] ?? "Unknown";
-    final description = data["description"] ?? "No description";
     final flatNo = data["flatNo"] ?? data["flatNumber"] ?? "Unknown";
     final buildingNo = data["buildingNumber"]?.toString() ?? "Unknown";
     final block = data["block"]?.toString() ?? "Unknown";
     final priority = data["priority"] ?? "normal";
     final timestamp = data["timestamp"] as Timestamp?;
     final residentName = data["residentName"] ?? "Resident";
+
+    // Build description based on request type
+    String description;
+    if (requestType.toLowerCase() == "smoke_alert") {
+      final device = data["deviceId"] ?? "Unknown Room";
+      final smokeType = data["smokeType"] ?? "Smoke/Gas";
+      final ppm = data["smokePpm"] != null ? " (${data['smokePpm']}ppm)" : "";
+      description =
+          "🔥 $smokeType detected$ppm in ${device.toString().toUpperCase()}";
+    } else if (requestType.toLowerCase() == "panic_alert") {
+      description =
+          "🚨 Panic alert triggered by $residentName at Flat $flatNo.";
+    } else {
+      description = data["description"] ?? "No description";
+    }
 
     Color priorityColor;
     IconData requestIcon;
@@ -237,6 +251,12 @@ class _AuthoritySecurityRequestsPageState
         break;
       case "noise_complaint":
         requestIcon = Icons.volume_up;
+        break;
+      case "smoke_alert":
+        requestIcon = Icons.local_fire_department;
+        break;
+      case "panic_alert":
+        requestIcon = Icons.crisis_alert;
         break;
       default:
         requestIcon = Icons.help_outline;

@@ -30,7 +30,19 @@ class SirenForegroundService : Service() {
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         if (intent?.action == "ACTION_STOP_SIREN") {
-            
+            Log.d("SirenService", "Received stop action. Shutting down siren.")
+            try {
+                mediaPlayer?.apply {
+                    if (isPlaying) stop()
+                    release()
+                }
+                mediaPlayer = null
+                vibrator?.cancel()
+                vibrator = null
+            } catch (e: Exception) {
+                Log.e("SirenService", "Error stopping during intent: ${e.message}")
+            }
+            stopForeground(true)
             stopSelf()
             return START_NOT_STICKY
         }

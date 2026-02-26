@@ -11,6 +11,7 @@ import 'dart:typed_data';
 import 'dart:ui';
 import 'package:flutter_background_service/flutter_background_service.dart';
 import 'package:flutter_background_service_android/flutter_background_service_android.dart';
+import 'package:firebase_database/firebase_database.dart';
 
 @pragma('vm:entry-point')
 Future<bool> onIosBackground(ServiceInstance service) async {
@@ -42,75 +43,16 @@ void onStart(ServiceInstance service) async {
 }
 
 /// Top-level background message handler for FCM
+/// NOTE: On Android, MyFirebaseMessagingService.kt handles showing local
+/// notifications natively (in Kotlin) for killed/background state.
+/// This handler still runs for any additional logic but must NOT show
+/// a second notification — that would cause duplicates.
 @pragma('vm:entry-point')
 Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
-  print('Handling background message: ${message.messageId}');
-
-  // Show a local notification for ALL background messages.
-  // Android auto-shows system tray for notification+data, but a local notification
-  // ensures correct channel and priority are used.
-  final notification = message.notification;
-  final data = message.data;
-
-  // If FCM already displayed a system notification, don't duplicate it locally.
-  if (notification != null) {
-    print(
-      'FCM payload contains notification block. System handles display. Skipping manual local notification.',
-    );
-    return;
-  }
-
-  // BUG-1 FIX: notification is guaranteed null here — read from data only
-  final String title = data['title'] ?? data['category'] ?? 'SafeNet AI';
-  final String body = data['body'] ?? '';
-  final String priority =
-      data['priority']?.toString().toLowerCase() ?? 'normal';
-
-  if (title.isEmpty && body.isEmpty) return;
-
-  final FlutterLocalNotificationsPlugin localNotifications =
-      FlutterLocalNotificationsPlugin();
-  const AndroidInitializationSettings initSettingsAndroid =
-      AndroidInitializationSettings('@mipmap/ic_launcher');
-  await localNotifications.initialize(
-    const InitializationSettings(android: initSettingsAndroid),
-  );
-
-  // Select v6 channel
-  String channelId = 'normal_security_channel_v6';
-  String channelName = 'Normal Updates';
-  Importance importance = Importance.defaultImportance;
-  if (priority == 'urgent') {
-    // URGENT notifications are handled natively by MyFirebaseMessagingService -> SirenForegroundService
-    // which displays its own full-screen intent and persistent notification.
-    print(
-      'Skipping local notification for urgent priority. Native Siren handles it.',
-    );
-    return;
-  }
-
-  if (priority == 'medium') {
-    channelId = 'medium_security_channel_v6';
-    channelName = 'Medium Security Updates';
-    importance = Importance.high;
-  }
-
-  await localNotifications.show(
-    message.hashCode,
-    title,
-    body,
-    NotificationDetails(
-      android: AndroidNotificationDetails(
-        channelId,
-        channelName,
-        importance: importance,
-        priority: Priority.max,
-        icon: '@mipmap/ic_launcher',
-        playSound: true,
-      ),
-    ),
-  );
+  print('Background handler called for message: ${message.messageId}');
+  // Notification display is handled natively by MyFirebaseMessagingService.kt
+  // to avoid duplicates on Android. No local notification shown here.
 }
 
 /// Centralized notification service for handling both in-app and push notifications
@@ -118,6 +60,7 @@ class NotificationService {
   static final FirebaseMessaging _fcm = FirebaseMessaging.instance;
   static final FlutterLocalNotificationsPlugin _localNotifications =
       FlutterLocalNotificationsPlugin();
+  static final FirebaseDatabase _rtdb = FirebaseDatabase.instance;
   static StreamSubscription<QuerySnapshot>? _notificationSubscription;
   static StreamSubscription<RemoteMessage>? _onMessageSubscription;
   static StreamSubscription<RemoteMessage>? _onMessageOpenedAppSubscription;
@@ -691,7 +634,7 @@ class NotificationService {
       final prefs = await SharedPreferences.getInstance();
       final senderUid = currentUser?.uid ?? prefs.getString('authority_uid');
 
-      // 1. Create in-app notification in Firestore
+      // 1. Create in-app notification in Firestore (for history)
       final notificationData = {
         'fromUid': senderUid,
         'toUid': userId,
@@ -702,12 +645,35 @@ class NotificationService {
         'priority': priority,
         'timestamp': FieldValue.serverTimestamp(),
         'isRead': false,
+        'silentData':
+            true, // Prevent duplicate push notification from Firestore trigger
         ...?additionalData,
       };
 
       await FirebaseFirestore.instance
           .collection('notifications')
           .add(notificationData);
+
+      // 2. DISPATCH FAST NOTIFICATION via RTDB (for sub-second delivery)
+      try {
+        await _rtdb.ref('notification_requests').push().set({
+          'toUid': userId,
+          'toRole': toRole,
+          'title': title,
+          'body': body,
+          'type': type,
+          'priority': priority,
+          'timestamp': DateTime.now().millisecondsSinceEpoch,
+        });
+        print('⚡ Fast notification request sent to RTDB');
+      } catch (rtdbError) {
+        print(
+          '⚠️ RTDB request failed, falling back to slow Firestore trigger: $rtdbError',
+        );
+      }
+
+      // (Standard token-based fallback logic follows if needed,
+      // but Cloud Function will handle the RTDB signal now)
 
       // (Local Preview logic removed: Handled by _startFirestoreListener)
 

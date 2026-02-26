@@ -26,7 +26,7 @@ class MyFirebaseMessagingService : FlutterFirebaseMessagingService() {
         val body = data["body"] ?: ""
 
         when {
-            type == "panic_alert" || priority == "urgent" -> {
+            type == "panic_alert" || type == "smoke_alert" || priority == "urgent" -> {
                 // Native Siren handles urgent — show full screen alarm
                 startSirenService(title, body)
             }

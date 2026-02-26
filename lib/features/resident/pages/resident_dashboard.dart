@@ -13,6 +13,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import '../../shared/widgets/profile_sidebar.dart';
 import '../../../approval_guard.dart';
 import '../../shared/widgets/notification_dropdown.dart';
+import '../../shared/widgets/smoke_detector_card.dart';
 
 import 'package:flutter/services.dart'; // Added For HapticFeedback
 import '../../../services/notification_service.dart'; // Added Import
@@ -558,6 +559,27 @@ class _ResidentDashboardPageState extends State<ResidentDashboardPage> {
                       ),
 
                       const SizedBox(height: 32),
+
+                      StreamBuilder<DocumentSnapshot>(
+                        stream: FirebaseFirestore.instance
+                            .collection("users")
+                            .doc(FirebaseAuth.instance.currentUser?.uid)
+                            .snapshots(),
+                        builder: (context, userSnap) {
+                          String? deviceId;
+                          if (userSnap.hasData && userSnap.data!.exists) {
+                            final userData =
+                                userSnap.data!.data() as Map<String, dynamic>;
+                            final flatNum =
+                                userData["flatNumber"]?.toString() ??
+                                userData["flatNo"]?.toString();
+                            if (flatNum != null) {
+                              deviceId = "room$flatNum";
+                            }
+                          }
+                          return SmokeDetectorCard(deviceId: deviceId);
+                        },
+                      ),
 
                       // ---------------- GRID 3×2 ----------------
                       Wrap(

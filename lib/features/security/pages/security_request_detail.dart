@@ -472,7 +472,7 @@ class _SecurityRequestDetailPageState extends State<SecurityRequestDetailPage> {
 
       final requestType = data["requestType"] ?? "security request";
 
-      if (requestType == "panic_alert") {
+      if (requestType == "panic_alert" || requestType == "smoke_alert") {
         await PanicChannel.stopSiren();
       }
 
@@ -531,7 +531,7 @@ class _SecurityRequestDetailPageState extends State<SecurityRequestDetailPage> {
     try {
       final requestType = data["requestType"] ?? "security request";
 
-      if (requestType == "panic_alert") {
+      if (requestType == "panic_alert" || requestType == "smoke_alert") {
         await PanicChannel.stopSiren();
       }
 
@@ -630,7 +630,7 @@ class _SecurityRequestDetailPageState extends State<SecurityRequestDetailPage> {
     try {
       final requestType = data["requestType"] ?? "security request";
 
-      if (requestType == "panic_alert") {
+      if (requestType == "panic_alert" || requestType == "smoke_alert") {
         await PanicChannel.stopSiren();
       }
 
