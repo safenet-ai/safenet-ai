@@ -3,7 +3,6 @@ import './resident_complaint.dart';
 import './resident_service.dart';
 import './resident_waste.dart';
 import './water_supply.dart';
-import './resident_ai_alerts.dart';
 import './resident_chat.dart';
 import './resident_security_requests_list.dart';
 import '../../../notice_board.dart';
@@ -576,8 +575,12 @@ class _ResidentDashboardPageState extends State<ResidentDashboardPage> {
                             if (flatNum != null) {
                               deviceId = "room$flatNum";
                             }
+                            print('🔍 Dashboard: flatNum=$flatNum, deviceId=$deviceId');
                           }
-                          return SmokeDetectorCard(deviceId: deviceId);
+                          return SmokeDetectorCard(
+                            key: ValueKey(deviceId),
+                            deviceId: deviceId,
+                          );
                         },
                       ),
 
@@ -710,61 +713,6 @@ class _ResidentDashboardPageState extends State<ResidentDashboardPage> {
                             ),
                           ),
                         ],
-                      ),
-
-                      const SizedBox(height: 26),
-
-                      // AI Alerts (kept separate as it may need special styling)
-                      InkWell(
-                        onTap: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (_) => const ResidentAIAlertsPage(),
-                            ),
-                          );
-                        },
-                        child: Container(
-                          height: cardSize * 0.85,
-                          decoration: BoxDecoration(
-                            color: const Color(0xFFD9F4F6),
-                            borderRadius: BorderRadius.circular(28),
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.black.withOpacity(0.12),
-                                offset: const Offset(6, 6),
-                                blurRadius: 14,
-                                spreadRadius: 1,
-                              ),
-                              BoxShadow(
-                                color: Colors.white.withOpacity(0.05),
-                                offset: const Offset(-6, -6),
-                                blurRadius: 14,
-                                spreadRadius: 1,
-                              ),
-                            ],
-                          ),
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Icon(
-                                Icons.shield_moon_outlined,
-                                size: 42,
-                                color: Colors.black54,
-                              ),
-                              const SizedBox(width: 14),
-                              Text(
-                                "AI Security Alerts",
-                                textAlign: TextAlign.center,
-                                style: TextStyle(
-                                  fontSize: 18,
-                                  fontWeight: FontWeight.w700,
-                                  color: Colors.black87,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
                       ),
 
                       const SizedBox(height: 40),

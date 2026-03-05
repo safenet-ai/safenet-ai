@@ -60,7 +60,10 @@ class NotificationService {
   static final FirebaseMessaging _fcm = FirebaseMessaging.instance;
   static final FlutterLocalNotificationsPlugin _localNotifications =
       FlutterLocalNotificationsPlugin();
-  static final FirebaseDatabase _rtdb = FirebaseDatabase.instance;
+  static final FirebaseDatabase _rtdb = FirebaseDatabase.instanceFor(
+    app: Firebase.app(),
+    databaseURL: 'https://safenet-og-default-rtdb.asia-southeast1.firebasedatabase.app',
+  );
   static StreamSubscription<QuerySnapshot>? _notificationSubscription;
   static StreamSubscription<RemoteMessage>? _onMessageSubscription;
   static StreamSubscription<RemoteMessage>? _onMessageOpenedAppSubscription;
@@ -243,7 +246,14 @@ class NotificationService {
   }
 
   static Future<void> _initializeBackgroundService() async {
-    final service = FlutterBackgroundService();
+    try {
+      final service = FlutterBackgroundService();
+
+      // Guard: don't start a duplicate isolate if already running
+      if (await service.isRunning()) {
+        print('🔔 Background service already running, skipping configure.');
+        return;
+      }
 
     const AndroidNotificationChannel channel = AndroidNotificationChannel(
       'safenet_background_service', // id
@@ -278,6 +288,9 @@ class NotificationService {
     );
 
     // service.startService() will be called automatically if autoStart is true
+    } catch (e) {
+      print('🔔 Background service init error (non-fatal): $e');
+    }
   }
 
   static Future<void> _requestPermissions() async {
@@ -580,6 +593,12 @@ class NotificationService {
                 }
 
                 final data = change.doc.data() as Map<String, dynamic>;
+
+                // Skip silentData docs — their FCM push is handled by
+                // RTDB Cloud Function (onNotificationRequestedRTDB) or
+                // the same Cloud Function that created this doc.
+                if (data['silentData'] == true) continue;
+
                 final fromUid = data['fromUid'];
 
                 // Skip if I am the one who sent it
@@ -602,11 +621,21 @@ class NotificationService {
                 }
 
                 if (isForMe) {
+                  final title = data['title'] ?? 'SafeNet AI';
+                  final body = data['message'] ?? data['body'] ?? '';
+                  final priority = (data['priority'] ?? 'normal').toString().toLowerCase();
                   print(
-                    '🔔 SILENT FIRESTORE LISTENER UPDATE: ${data['title']}',
+                    '🔔 FIRESTORE LISTENER: Showing notification: $title',
                   );
-                  // App-based local notifications removed.
-                  // Only relying on Firebase push notifications.
+                  // Show local notification as in-app fallback
+                  if (priority != 'urgent') {
+                    _showLocalNotification(
+                      id: docId.hashCode,
+                      title: title,
+                      body: body,
+                      priority: priority,
+                    );
+                  }
                 }
               }
             }
@@ -650,7 +679,7 @@ class NotificationService {
         ...?additionalData,
       };
 
-      await FirebaseFirestore.instance
+      final docRef = await FirebaseFirestore.instance
           .collection('notifications')
           .add(notificationData);
 
@@ -668,8 +697,13 @@ class NotificationService {
         print('⚡ Fast notification request sent to RTDB');
       } catch (rtdbError) {
         print(
-          '⚠️ RTDB request failed, falling back to slow Firestore trigger: $rtdbError',
+          '⚠️ RTDB request failed, falling back to Firestore trigger: $rtdbError',
         );
+        // Remove silentData so onNotificationCreated Cloud Function sends FCM
+        try {
+          await docRef.update({'silentData': FieldValue.delete()});
+          print('🔔 Removed silentData flag — Firestore trigger will send FCM.');
+        } catch (_) {}
       }
 
       // (Standard token-based fallback logic follows if needed,

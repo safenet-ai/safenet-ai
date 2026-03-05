@@ -1,5 +1,5 @@
 const { onDocumentCreated, onDocumentUpdated } = require("firebase-functions/v2/firestore");
-const { onValueUpdated } = require("firebase-functions/v2/database");
+const { onValueUpdated, onValueCreated } = require("firebase-functions/v2/database");
 const { setGlobalOptions } = require("firebase-functions");
 const admin = require("firebase-admin");
 
@@ -202,6 +202,70 @@ exports.onNotificationCreated = onDocumentCreated("notifications/{notificationId
 });
 
 /**
+ * Server-side safety net: Notify ALL authorities when a resident submits a complaint.
+ * This fires even if the client-side notification call fails or the app is killed.
+ * It does NOT re-send if the Firestore doc already has a matching notification
+ * (silentData guards inside onNotificationCreated prevent duplicates).
+ */
+exports.onComplaintCreated = onDocumentCreated("complaints/{complaintId}", async (event) => {
+    const data = event.data.data();
+    if (!data) return;
+
+    const complaintId = data.complaint_id || event.params.complaintId;
+    const username = data.username || "A Resident";
+    const title = data.title || "New Complaint";
+
+    const notifTitle = "📋 New Complaint";
+    const notifBody = `${username} submitted a complaint: ${title}`;
+
+    const payload = {
+        data: {
+            title: notifTitle,
+            body: notifBody,
+            type: "new_complaint",
+            priority: "medium",
+            complaintId: String(complaintId),
+            click_action: "FLUTTER_NOTIFICATION_CLICK",
+        },
+        android: { priority: "high", ttl: 0 },
+        apns: {
+            payload: {
+                aps: {
+                    contentAvailable: true,
+                    sound: "default",
+                    badge: 1,
+                    alert: { title: notifTitle, body: notifBody },
+                },
+            },
+        },
+        // Broadcast to every device subscribed to the 'authority' topic
+        condition: "'authority' in topics",
+    };
+
+    try {
+        const response = await admin.messaging().send(payload);
+        console.log(`✅ Complaint notification sent to authority topic. complaintId=${complaintId}. Response: ${response}`);
+
+        // Also create an in-app notification record so the bell icon shows it
+        await admin.firestore().collection("notifications").add({
+            fromUid: data.userId || null,
+            toRole: "authority",
+            title: notifTitle,
+            message: notifBody,
+            type: "new_complaint",
+            priority: "medium",
+            isRead: false,
+            timestamp: admin.firestore.FieldValue.serverTimestamp(),
+            route: "/complaints",
+            silentData: true, // FCM already sent above; don't double-fire onNotificationCreated
+            complaintId: String(complaintId),
+        });
+    } catch (error) {
+        console.error("Error sending complaint notification:", error);
+    }
+});
+
+/**
  * NEW: Cloud Function to handle Security Requests (including Panic Alerts)
  * Listens to 'security_requests' collection.
  */
@@ -279,6 +343,7 @@ exports.onSecurityRequestCreated = onDocumentCreated(
             const tasks = [];
             const batch = admin.firestore().batch();
             const notifData = {
+                fromUid: data.residentId || null, // Belt-and-suspenders: lets Flutter skip self-notifications
                 title: title,
                 message: body,
                 type: requestType,
@@ -293,7 +358,10 @@ exports.onSecurityRequestCreated = onDocumentCreated(
             tasks.push(admin.messaging().send(payload));
 
             // 2. Send direct alert to the resident (if UID available)
-            if (data.residentId) {
+            //    BUG-FIX: For panic_alert the RESIDENT triggered the alert themselves —
+            //    do NOT send the siren back to them. Only smoke_alert (IoT-triggered)
+            //    needs to warn the resident with an urgent evacuation notice.
+            if (data.residentId && !isPanic) {
                 const residentTask = (async () => {
                     const residentDoc = await admin.firestore().collection("users").doc(data.residentId).get();
                     if (residentDoc.exists && residentDoc.data().fcmToken) {
@@ -303,7 +371,7 @@ exports.onSecurityRequestCreated = onDocumentCreated(
                         };
                         delete resPayload.condition;
 
-                        // Customize message for resident
+                        // Customize message for resident (smoke_alert only)
                         if (requestType === "smoke_alert") {
                             resPayload.data.title = "🔥 EVACUATE IMMEDIATELY 🔥";
                             resPayload.data.body = "Smoke detected in your unit. Please leave the building now!";
@@ -315,13 +383,13 @@ exports.onSecurityRequestCreated = onDocumentCreated(
                 })();
                 tasks.push(residentTask);
 
-                // Add resident's in-app notification record
+                // Add resident's in-app notification record (smoke_alert only)
                 const resRef = admin.firestore().collection('notifications').doc();
                 batch.set(resRef, {
                     ...notifData,
                     toUid: data.residentId,
-                    title: requestType === "smoke_alert" ? "🔥 EMERGENCY: EVACUATE 🔥" : notifData.title,
-                    message: requestType === "smoke_alert" ? "Smoke detected. Please evacuate immediately!" : notifData.message
+                    title: "🔥 EMERGENCY: EVACUATE 🔥",
+                    message: "Smoke detected. Please evacuate immediately!"
                 });
             }
 
@@ -517,8 +585,8 @@ exports.onSmokeDetectedRTDB = onValueUpdated("/devices/{deviceId}", async (event
  * OPTIMIZED: Global Notification Trigger via Realtime Database.
  * Processes all generic app notifications with sub-second speed.
  */
-exports.onNotificationRequestedRTDB = onValueUpdated("/notification_requests/{requestId}", async (event) => {
-    const data = event.data.after.val();
+exports.onNotificationRequestedRTDB = onValueCreated("/notification_requests/{requestId}", async (event) => {
+    const data = event.data.val();
     if (!data) return;
 
     const title = data.title || "New Message";
@@ -584,7 +652,7 @@ exports.onNotificationRequestedRTDB = onValueUpdated("/notification_requests/{re
         }
 
         // Cleanup the request from RTDB after processing
-        await event.data.after.ref.remove();
+        await event.data.ref.remove();
 
     } catch (e) {
         console.error("Error in fast notification dispatch:", e);

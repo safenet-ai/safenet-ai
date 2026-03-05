@@ -61,6 +61,8 @@ class DefaultFirebaseOptions {
     messagingSenderId: '230545955082',
     projectId: 'safenet-og',
     storageBucket: 'safenet-og.firebasestorage.app',
+    databaseURL:
+        'https://safenet-og-default-rtdb.asia-southeast1.firebasedatabase.app',
   );
 
   static const FirebaseOptions ios = FirebaseOptions(
@@ -69,6 +71,8 @@ class DefaultFirebaseOptions {
     messagingSenderId: '230545955082',
     projectId: 'safenet-og',
     storageBucket: 'safenet-og.firebasestorage.app',
+    databaseURL:
+        'https://safenet-og-default-rtdb.asia-southeast1.firebasedatabase.app',
     iosBundleId: 'com.example.safenetai',
   );
 

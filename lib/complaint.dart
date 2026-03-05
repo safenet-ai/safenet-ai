@@ -155,25 +155,23 @@ class _NewComplaintPageState extends State<NewComplaintPage> {
         "timestamp": Timestamp.now(),
       });
 
-      // Notify authority about new complaint
+      // Notify ALL authorities about new complaint via FCM topic broadcast.
+      // Using toRole instead of a specific userId ensures every authority device
+      // receives the push even if the RTDB path is slow, and avoids the silent-data
+      // fallback being blocked when only one UID was targeted.
       try {
-        final authorities = await FirebaseFirestore.instance
-            .collection('authorities')
-            .limit(1)
-            .get();
-        
-        if (authorities.docs.isNotEmpty) {
-          await NotificationService.sendNotification(
-            userId: authorities.docs.first.id,
-            userRole: 'authority',
-            title: 'New Complaint',
-            body: '$username submitted a complaint: ${titleController.text.trim()}',
-            type: 'new_complaint',
-            additionalData: {'complaintId': complaintId},
-          );
-        }
+        await NotificationService.sendNotification(
+          toRole: 'authority',
+          userRole: 'resident',
+          title: '📋 New Complaint',
+          body:
+              '$username submitted a complaint: ${titleController.text.trim()}',
+          type: 'new_complaint',
+          priority: 'medium',
+          additionalData: {'complaintId': complaintId},
+        );
       } catch (e) {
-        print('Error sending notification: $e');
+        print('Error sending complaint notification: $e');
       }
 
       if (!mounted) return;
