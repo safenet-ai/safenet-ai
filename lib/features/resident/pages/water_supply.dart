@@ -29,7 +29,7 @@ class _WaterSupplyPageState extends State<WaterSupplyPage> {
   String? _selectedType;
   int _quantity = 1;
   DateTime _selectedDate = DateTime.now();
-  
+
   // NEW: selected worker
   Map<String, dynamic>? selectedWorker;
 
@@ -38,7 +38,10 @@ class _WaterSupplyPageState extends State<WaterSupplyPage> {
     return FirebaseFirestore.instance
         .collection("workers")
         .where("isActive", isEqualTo: true)
-        .where("profession", isEqualTo: "Water Supplier") // Filter for Water Suppliers
+        .where(
+          "profession",
+          isEqualTo: "Water Supplier",
+        ) // Filter for Water Suppliers
         .snapshots();
   }
 
@@ -48,10 +51,7 @@ class _WaterSupplyPageState extends State<WaterSupplyPage> {
       body: Stack(
         children: [
           Positioned.fill(
-            child: Image.asset(
-              'assets/bg1_img.png',
-              fit: BoxFit.cover,
-            ),
+            child: Image.asset('assets/bg1_img.png', fit: BoxFit.cover),
           ),
 
           SafeArea(
@@ -77,7 +77,8 @@ class _WaterSupplyPageState extends State<WaterSupplyPage> {
                             NotificationDropdown(role: "user"),
                             const SizedBox(width: 15),
                             GestureDetector(
-                              onTap: () => setState(() => _isProfileOpen = true),
+                              onTap: () =>
+                                  setState(() => _isProfileOpen = true),
                               child: _circleIcon(Icons.person),
                             ),
                           ],
@@ -251,7 +252,9 @@ class _WaterSupplyPageState extends State<WaterSupplyPage> {
             ),
             decoration: BoxDecoration(
               color: Colors.white,
-              borderRadius: const BorderRadius.vertical(top: Radius.circular(25)),
+              borderRadius: const BorderRadius.vertical(
+                top: Radius.circular(25),
+              ),
             ),
             child: Column(
               mainAxisSize: MainAxisSize.min,
@@ -275,7 +278,10 @@ class _WaterSupplyPageState extends State<WaterSupplyPage> {
                 const SizedBox(height: 20),
 
                 // TYPE DROPDOWN
-                const Text("Select Type", style: TextStyle(fontWeight: FontWeight.w600)),
+                const Text(
+                  "Select Type",
+                  style: TextStyle(fontWeight: FontWeight.w600),
+                ),
                 const SizedBox(height: 8),
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 12),
@@ -291,20 +297,27 @@ class _WaterSupplyPageState extends State<WaterSupplyPage> {
                       items: waterTypes.map((type) {
                         return DropdownMenuItem(value: type, child: Text(type));
                       }).toList(),
-                      onChanged: (val) => setStateSheet(() => _selectedType = val),
+                      onChanged: (val) =>
+                          setStateSheet(() => _selectedType = val),
                     ),
                   ),
                 ),
-                
+
                 const SizedBox(height: 20),
-                
+
                 // WORKER SELECTION
-                const Text("Select Supplier", style: TextStyle(fontWeight: FontWeight.w600)),
+                const Text(
+                  "Select Supplier",
+                  style: TextStyle(fontWeight: FontWeight.w600),
+                ),
                 const SizedBox(height: 8),
                 GestureDetector(
                   onTap: () => _openWorkerPicker(setStateSheet),
                   child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 14,
+                      vertical: 12,
+                    ),
                     decoration: BoxDecoration(
                       color: Colors.grey[100],
                       borderRadius: BorderRadius.circular(12),
@@ -313,13 +326,15 @@ class _WaterSupplyPageState extends State<WaterSupplyPage> {
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
                         Text(
-                          selectedWorker != null 
-                            ? selectedWorker!['name'] 
-                            : "Choose Water Supplier",
+                          selectedWorker != null
+                              ? selectedWorker!['name']
+                              : "Choose Water Supplier",
                           style: TextStyle(
                             fontSize: 16,
                             fontWeight: FontWeight.w600,
-                            color: selectedWorker != null ? Colors.black87 : Colors.black54
+                            color: selectedWorker != null
+                                ? Colors.black87
+                                : Colors.black54,
                           ),
                         ),
                         const Icon(Icons.chevron_right, color: Colors.grey),
@@ -334,7 +349,10 @@ class _WaterSupplyPageState extends State<WaterSupplyPage> {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    const Text("Quantity", style: TextStyle(fontWeight: FontWeight.w600)),
+                    const Text(
+                      "Quantity",
+                      style: TextStyle(fontWeight: FontWeight.w600),
+                    ),
                     Row(
                       children: [
                         IconButton(
@@ -345,7 +363,10 @@ class _WaterSupplyPageState extends State<WaterSupplyPage> {
                         ),
                         Text(
                           "$_quantity",
-                          style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                          style: const TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                          ),
                         ),
                         IconButton(
                           onPressed: () {
@@ -361,7 +382,10 @@ class _WaterSupplyPageState extends State<WaterSupplyPage> {
                 const SizedBox(height: 20),
 
                 // DATE PICKER
-                const Text("Select Date", style: TextStyle(fontWeight: FontWeight.w600)),
+                const Text(
+                  "Select Date",
+                  style: TextStyle(fontWeight: FontWeight.w600),
+                ),
                 const SizedBox(height: 8),
                 GestureDetector(
                   onTap: () async {
@@ -376,7 +400,10 @@ class _WaterSupplyPageState extends State<WaterSupplyPage> {
                     }
                   },
                   child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 14,
+                    ),
                     decoration: BoxDecoration(
                       color: Colors.grey[100],
                       borderRadius: BorderRadius.circular(12),
@@ -389,7 +416,11 @@ class _WaterSupplyPageState extends State<WaterSupplyPage> {
                           DateFormat('EEE, MMM d, yyyy').format(_selectedDate),
                           style: const TextStyle(fontSize: 16),
                         ),
-                        const Icon(Icons.calendar_today, size: 20, color: Colors.grey),
+                        const Icon(
+                          Icons.calendar_today,
+                          size: 20,
+                          color: Colors.grey,
+                        ),
                       ],
                     ),
                   ),
@@ -405,11 +436,17 @@ class _WaterSupplyPageState extends State<WaterSupplyPage> {
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Colors.blueAccent,
                       padding: const EdgeInsets.symmetric(vertical: 16),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(15),
+                      ),
                     ),
                     child: const Text(
                       "Submit Order",
-                      style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
                   ),
                 ),
@@ -419,7 +456,6 @@ class _WaterSupplyPageState extends State<WaterSupplyPage> {
         },
       ),
     );
-
   }
 
   // WORKER PICKER
@@ -450,7 +486,7 @@ class _WaterSupplyPageState extends State<WaterSupplyPage> {
                 ),
               ),
               const SizedBox(height: 20),
-              
+
               const Text(
                 "Select Water Supplier",
                 style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
@@ -464,10 +500,12 @@ class _WaterSupplyPageState extends State<WaterSupplyPage> {
                     if (!snapshot.hasData) {
                       return const Center(child: CircularProgressIndicator());
                     }
-                    
+
                     final docs = snapshot.data!.docs;
                     if (docs.isEmpty) {
-                      return const Center(child: Text("No water suppliers available"));
+                      return const Center(
+                        child: Text("No water suppliers available"),
+                      );
                     }
 
                     // SORT: On Duty first
@@ -485,7 +523,7 @@ class _WaterSupplyPageState extends State<WaterSupplyPage> {
                       separatorBuilder: (_, __) => const SizedBox(height: 12),
                       itemBuilder: (context, index) {
                         final data = docs[index].data() as Map<String, dynamic>;
-                        
+
                         return _workerListTile(
                           {
                             "id": docs[index].id,
@@ -551,8 +589,15 @@ class _WaterSupplyPageState extends State<WaterSupplyPage> {
               ),
               child: Center(
                 child: Text(
-                  (w['name'] as String).split(' ').map((s) => s.isNotEmpty ? s[0] : '').take(2).join(),
-                  style: const TextStyle(fontWeight: FontWeight.w800, color: Colors.white),
+                  (w['name'] as String)
+                      .split(' ')
+                      .map((s) => s.isNotEmpty ? s[0] : '')
+                      .take(2)
+                      .join(),
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w800,
+                    color: Colors.white,
+                  ),
                 ),
               ),
             ),
@@ -561,19 +606,37 @@ class _WaterSupplyPageState extends State<WaterSupplyPage> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(w['name'], style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800)),
+                  Text(
+                    w['name'],
+                    style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
                   const SizedBox(height: 6),
-                  Text(w['role'], style: const TextStyle(fontSize: 13, color: Colors.black54)),
+                  Text(
+                    w['role'],
+                    style: const TextStyle(fontSize: 13, color: Colors.black54),
+                  ),
                   const SizedBox(height: 6),
-                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 6,
+                      vertical: 2,
+                    ),
                     decoration: BoxDecoration(
-                      color: (w['isAvailable'] ?? false) ? Colors.green : Colors.grey,
+                      color: (w['isAvailable'] ?? false)
+                          ? Colors.green
+                          : Colors.grey,
                       borderRadius: BorderRadius.circular(4),
                     ),
                     child: Text(
                       (w['isAvailable'] ?? false) ? "On Duty" : "Off Duty",
-                      style: const TextStyle(fontSize: 10, color: Colors.white, fontWeight: FontWeight.bold),
+                      style: const TextStyle(
+                        fontSize: 10,
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
                   ),
                 ],
@@ -594,9 +657,9 @@ class _WaterSupplyPageState extends State<WaterSupplyPage> {
     }
 
     if (selectedWorker == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Please select a supplier")),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text("Please select a supplier")));
       return;
     }
 
@@ -605,10 +668,16 @@ class _WaterSupplyPageState extends State<WaterSupplyPage> {
 
     try {
       // Generate Order ID similar to other services
-      final counterRef = FirebaseFirestore.instance.collection('counters').doc('water_orders');
-      String orderId = await FirebaseFirestore.instance.runTransaction((transaction) async {
+      final counterRef = FirebaseFirestore.instance
+          .collection('counters')
+          .doc('water_orders');
+      String orderId = await FirebaseFirestore.instance.runTransaction((
+        transaction,
+      ) async {
         final snapshot = await transaction.get(counterRef);
-        int lastNumber = snapshot.exists ? (snapshot['lastNumber'] ?? 1000) : 1000;
+        int lastNumber = snapshot.exists
+            ? (snapshot['lastNumber'] ?? 1000)
+            : 1000;
         int newNumber = lastNumber + 1;
         transaction.set(counterRef, {'lastNumber': newNumber});
         return "WATER-$newNumber";
@@ -627,36 +696,31 @@ class _WaterSupplyPageState extends State<WaterSupplyPage> {
           "id": selectedWorker!['id'],
           "name": selectedWorker!['name'],
           "role": selectedWorker!['role'],
-        }
+        },
       });
 
-      // Notify authority about new water order
+      // Notify ALL authorities about the new water order via topic broadcast
       try {
-        final authorities = await FirebaseFirestore.instance
-            .collection('authorities')
-            .limit(1)
-            .get();
-        
-        if (authorities.docs.isNotEmpty) {
-          await NotificationService.sendNotification(
-            userId: authorities.docs.first.id,
-            userRole: 'authority',
-            title: 'New Water Order',
-            body: 'New water order for $_selectedType (Qty: $_quantity)',
-            type: 'new_water_order',
-            additionalData: {'orderId': orderId},
-          );
-        }
+        await NotificationService.sendNotification(
+          toRole: 'authority',
+          userRole: 'resident',
+          title: '💧 New Water Order',
+          body:
+              'New water order for $_selectedType (Qty: $_quantity) — Order: $orderId',
+          type: 'new_water_order',
+          priority: 'medium',
+          additionalData: {'orderId': orderId},
+        );
       } catch (e) {
-        print('Error sending notification: $e');
+        print('Error sending water order notification: $e');
       }
 
       Navigator.pop(context);
       _showSuccessDialog(orderId);
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Error: $e")),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text("Error: $e")));
     }
   }
 
@@ -665,7 +729,9 @@ class _WaterSupplyPageState extends State<WaterSupplyPage> {
       context: context,
       builder: (context) => AlertDialog(
         title: const Text("Order Placed!"),
-        content: Text("Your water order $orderId has been placed successfully."),
+        content: Text(
+          "Your water order $orderId has been placed successfully.",
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
@@ -729,18 +795,28 @@ class _WaterSupplyPageState extends State<WaterSupplyPage> {
                     children: [
                       Text(
                         data['orderId'] ?? 'ID',
-                        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                        style: const TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 16,
+                        ),
                       ),
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 10,
+                          vertical: 4,
+                        ),
                         decoration: BoxDecoration(
-                          color: data['status'] == "Pending" ? Colors.orange[100] : Colors.green[100],
+                          color: data['status'] == "Pending"
+                              ? Colors.orange[100]
+                              : Colors.green[100],
                           borderRadius: BorderRadius.circular(10),
                         ),
                         child: Text(
                           data['status'] ?? 'Unknown',
                           style: TextStyle(
-                            color: data['status'] == "Pending" ? Colors.orange[800] : Colors.green[800],
+                            color: data['status'] == "Pending"
+                                ? Colors.orange[800]
+                                : Colors.green[800],
                             fontWeight: FontWeight.bold,
                             fontSize: 12,
                           ),
@@ -751,12 +827,19 @@ class _WaterSupplyPageState extends State<WaterSupplyPage> {
                   const SizedBox(height: 8),
                   Text(
                     "${data['type']} x ${data['quantity']}",
-                    style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
+                    style: const TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
                   const SizedBox(height: 6),
                   Row(
                     children: [
-                      const Icon(Icons.calendar_today, size: 14, color: Colors.grey),
+                      const Icon(
+                        Icons.calendar_today,
+                        size: 14,
+                        color: Colors.grey,
+                      ),
                       const SizedBox(width: 6),
                       Text(
                         DateFormat('EEE, MMM d').format(date),

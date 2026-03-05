@@ -746,19 +746,4 @@ class SecurityRequestListItem extends StatelessWidget {
       ),
     );
   }
-
-  Widget _circleButton(IconData icon, {VoidCallback? onTap}) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        height: 40,
-        width: 40,
-        decoration: BoxDecoration(
-          shape: BoxShape.circle,
-          color: Colors.white.withOpacity(0.3),
-        ),
-        child: Icon(icon, size: 20),
-      ),
-    );
-  }
 }

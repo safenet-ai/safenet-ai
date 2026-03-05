@@ -6,6 +6,7 @@ import './authority_servicereq.dart';
 import './authority_announcement.dart';
 import './authority_view_announcements.dart';
 import './authority_waste.dart';
+import './authority_water_supply.dart';
 import './authority_security_alerts.dart';
 import './authority_security_requests.dart';
 import './authority_worker_monitoring.dart';
@@ -362,6 +363,28 @@ class _AuthorityDashboardPageState extends State<AuthorityDashboardPage> {
                                 color: Color(0xFFE0F7FA), // Light Cyan
                                 icon: Icons.people_alt_outlined,
                                 title: "Visitor\nLog",
+                              ),
+                            ),
+                          ),
+
+                          const SizedBox(width: 20),
+
+                          SizedBox(
+                            width: MediaQuery.of(context).size.width * 0.40,
+                            child: GestureDetector(
+                              onTap: () {
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (context) =>
+                                        const AuthorityWaterSupplyPage(),
+                                  ),
+                                );
+                              },
+                              child: DashboardTile(
+                                color: Color(0xFFB3E5FC), // Light Blue
+                                icon: Icons.water_drop_outlined,
+                                title: "Water\nSupply\nOrders",
                               ),
                             ),
                           ),

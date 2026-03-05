@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../../services/notification_service.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 
 class AuthorityChatPage extends StatefulWidget {
   final String conversationId;
@@ -53,12 +52,12 @@ class _AuthorityChatPageState extends State<AuthorityChatPage> {
           : widget.userType == "security"
           ? "security_support_requests"
           : "support_requests";
-          
+
       final requestDoc = await FirebaseFirestore.instance
           .collection(requestCollection)
           .doc(widget.conversationId)
           .get();
-          
+
       if (requestDoc.exists) {
         String? targetUid;
         if (widget.userType == "worker") {
@@ -68,7 +67,7 @@ class _AuthorityChatPageState extends State<AuthorityChatPage> {
         } else {
           targetUid = requestDoc.data()?["residentId"];
         }
-        
+
         if (targetUid != null) {
           await NotificationService.sendNotification(
             userId: targetUid,

@@ -62,7 +62,8 @@ class NotificationService {
       FlutterLocalNotificationsPlugin();
   static final FirebaseDatabase _rtdb = FirebaseDatabase.instanceFor(
     app: Firebase.app(),
-    databaseURL: 'https://safenet-og-default-rtdb.asia-southeast1.firebasedatabase.app',
+    databaseURL:
+        'https://safenet-og-default-rtdb.asia-southeast1.firebasedatabase.app',
   );
   static StreamSubscription<QuerySnapshot>? _notificationSubscription;
   static StreamSubscription<RemoteMessage>? _onMessageSubscription;
@@ -255,39 +256,39 @@ class NotificationService {
         return;
       }
 
-    const AndroidNotificationChannel channel = AndroidNotificationChannel(
-      'safenet_background_service', // id
-      'SafeNet AI Core Service', // name
-      description:
-          'Ensures instantaneous delivery of critical security alerts.', // description
-      importance: Importance.low, // importance must be at low or higher level
-    );
+      const AndroidNotificationChannel channel = AndroidNotificationChannel(
+        'safenet_background_service', // id
+        'SafeNet AI Core Service', // name
+        description:
+            'Ensures instantaneous delivery of critical security alerts.', // description
+        importance: Importance.low, // importance must be at low or higher level
+      );
 
-    await _localNotifications
-        .resolvePlatformSpecificImplementation<
-          AndroidFlutterLocalNotificationsPlugin
-        >()
-        ?.createNotificationChannel(channel);
+      await _localNotifications
+          .resolvePlatformSpecificImplementation<
+            AndroidFlutterLocalNotificationsPlugin
+          >()
+          ?.createNotificationChannel(channel);
 
-    await service.configure(
-      androidConfiguration: AndroidConfiguration(
-        // this will be executed when app is in foreground or background in separated isolate
-        onStart: onStart,
-        autoStart: true,
-        isForegroundMode: true,
-        notificationChannelId: 'safenet_background_service',
-        initialNotificationTitle: 'SafeNet AI is running',
-        initialNotificationContent: 'Monitoring for emergency alerts...',
-        foregroundServiceNotificationId: 888,
-      ),
-      iosConfiguration: IosConfiguration(
-        autoStart: true,
-        onForeground: onStart,
-        onBackground: onIosBackground,
-      ),
-    );
+      await service.configure(
+        androidConfiguration: AndroidConfiguration(
+          // this will be executed when app is in foreground or background in separated isolate
+          onStart: onStart,
+          autoStart: true,
+          isForegroundMode: true,
+          notificationChannelId: 'safenet_background_service',
+          initialNotificationTitle: 'SafeNet AI is running',
+          initialNotificationContent: 'Monitoring for emergency alerts...',
+          foregroundServiceNotificationId: 888,
+        ),
+        iosConfiguration: IosConfiguration(
+          autoStart: true,
+          onForeground: onStart,
+          onBackground: onIosBackground,
+        ),
+      );
 
-    // service.startService() will be called automatically if autoStart is true
+      // service.startService() will be called automatically if autoStart is true
     } catch (e) {
       print('🔔 Background service init error (non-fatal): $e');
     }
@@ -623,10 +624,10 @@ class NotificationService {
                 if (isForMe) {
                   final title = data['title'] ?? 'SafeNet AI';
                   final body = data['message'] ?? data['body'] ?? '';
-                  final priority = (data['priority'] ?? 'normal').toString().toLowerCase();
-                  print(
-                    '🔔 FIRESTORE LISTENER: Showing notification: $title',
-                  );
+                  final priority = (data['priority'] ?? 'normal')
+                      .toString()
+                      .toLowerCase();
+                  print('🔔 FIRESTORE LISTENER: Showing notification: $title');
                   // Show local notification as in-app fallback
                   if (priority != 'urgent') {
                     _showLocalNotification(
@@ -702,7 +703,9 @@ class NotificationService {
         // Remove silentData so onNotificationCreated Cloud Function sends FCM
         try {
           await docRef.update({'silentData': FieldValue.delete()});
-          print('🔔 Removed silentData flag — Firestore trigger will send FCM.');
+          print(
+            '🔔 Removed silentData flag — Firestore trigger will send FCM.',
+          );
         } catch (_) {}
       }
 
@@ -740,17 +743,6 @@ class NotificationService {
     } catch (e) {
       print('Error sending notification: $e');
     }
-  }
-
-  /// Check if a user belongs to a specific role
-  static Future<bool> _isUserInRole(String? uid, String role) async {
-    if (uid == null) return false;
-    final collection = _getCollectionForRole(role);
-    final doc = await FirebaseFirestore.instance
-        .collection(collection)
-        .doc(uid)
-        .get();
-    return doc.exists;
   }
 
   /// Get Firestore collection name for user role

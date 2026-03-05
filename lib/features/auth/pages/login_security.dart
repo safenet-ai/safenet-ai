@@ -113,6 +113,118 @@ class _SecurityLoginPageState extends State<SecurityLoginPage> {
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
   }
 
+  Future<void> _showForgotPasswordDialog() async {
+    // Pre-fill with the email the user already typed
+    final prefill = _emailCtrl.text.contains('@') ? _emailCtrl.text.trim() : '';
+    final emailCtrl = TextEditingController(text: prefill);
+    bool isLoading = false;
+
+    await showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (dialogCtx) => StatefulBuilder(
+        builder: (ctx, setDialogState) {
+          return AlertDialog(
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(20),
+            ),
+            title: const Text(
+              '🔑 Reset Password',
+              style: TextStyle(fontWeight: FontWeight.w700),
+            ),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Enter your registered email address. We will send you a link to reset your password.',
+                  style: TextStyle(fontSize: 13, color: Colors.black54),
+                ),
+                const SizedBox(height: 16),
+                TextField(
+                  controller: emailCtrl,
+                  keyboardType: TextInputType.emailAddress,
+                  decoration: InputDecoration(
+                    labelText: 'Email Address',
+                    prefixIcon: const Icon(Icons.email_outlined),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    contentPadding: const EdgeInsets.symmetric(
+                      horizontal: 14,
+                      vertical: 12,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            actions: [
+              TextButton(
+                onPressed: isLoading ? null : () => Navigator.pop(dialogCtx),
+                child: Text(
+                  'Cancel',
+                  style: TextStyle(color: Colors.grey.shade600),
+                ),
+              ),
+              ElevatedButton(
+                onPressed: isLoading
+                    ? null
+                    : () async {
+                        final email = emailCtrl.text.trim();
+                        if (email.isEmpty || !email.contains('@')) {
+                          _showMsg('Please enter a valid email.');
+                          return;
+                        }
+                        setDialogState(() => isLoading = true);
+                        try {
+                          await FirebaseAuth.instance.sendPasswordResetEmail(
+                            email: email,
+                          );
+                          if (mounted) Navigator.pop(dialogCtx);
+                          _showMsg(
+                            'Password reset email sent! Check your inbox. ✅',
+                          );
+                        } on FirebaseAuthException catch (e) {
+                          String msg = 'Failed to send reset email.';
+                          if (e.code == 'user-not-found') {
+                            msg = 'No account found with this email.';
+                          } else if (e.code == 'invalid-email') {
+                            msg = 'Invalid email address.';
+                          }
+                          _showMsg(msg);
+                        } catch (e) {
+                          _showMsg('Error: $e');
+                        } finally {
+                          if (mounted) {
+                            setDialogState(() => isLoading = false);
+                          }
+                        }
+                      },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF3CBDB0),
+                  foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+                child: isLoading
+                    ? const SizedBox(
+                        width: 18,
+                        height: 18,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: Colors.white,
+                        ),
+                      )
+                    : const Text('Send Reset Link'),
+              ),
+            ],
+          );
+        },
+      ),
+    );
+  }
+
   // ------------------------------------------------------
 
   @override
@@ -219,11 +331,15 @@ class _SecurityLoginPageState extends State<SecurityLoginPage> {
 
                   Align(
                     alignment: Alignment.centerRight,
-                    child: Text(
-                      "Forgot password?",
-                      style: TextStyle(
-                        color: Colors.teal.shade400,
-                        fontSize: 14,
+                    child: GestureDetector(
+                      onTap: _showForgotPasswordDialog,
+                      child: Text(
+                        "Forgot password?",
+                        style: TextStyle(
+                          color: Colors.teal.shade400,
+                          fontSize: 14,
+                          decoration: TextDecoration.underline,
+                        ),
                       ),
                     ),
                   ),

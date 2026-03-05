@@ -9,7 +9,6 @@ import '../../../services/notification_service.dart'; // Added Import
 import '../../../utils/oem_autostart_utils.dart'; // OEM Background Fix
 import 'visitor_management.dart';
 import 'security_requests.dart';
-import 'ai_alerts.dart';
 import 'incident_report.dart';
 import 'security_chat.dart';
 
@@ -144,50 +143,6 @@ class _SecurityDashboardPageState extends State<SecurityDashboardPage> {
                       children: [
                         Row(
                           children: [
-                            Expanded(
-                              child: StreamBuilder<QuerySnapshot>(
-                                stream: FirebaseFirestore.instance
-                                    .collection("ai_alerts")
-                                    .where("status", isEqualTo: "active")
-                                    .snapshots(),
-                                builder: (context, snapshot) {
-                                  final count = snapshot.hasData
-                                      ? snapshot.data!.docs.length
-                                      : 0;
-                                  return GestureDetector(
-                                    onTap: () {
-                                      Navigator.push(
-                                        context,
-                                        MaterialPageRoute(
-                                          builder: (context) =>
-                                              const AIAlertsPage(),
-                                        ),
-                                      );
-                                    },
-                                    child: _GlassCard(
-                                      gradient: const LinearGradient(
-                                        colors: [
-                                          Color(0xFFE0F2FF),
-                                          Color(0xFFD7E6FF),
-                                        ],
-                                      ),
-                                      title: 'AI Alerts',
-                                      mainValue: count.toString().padLeft(
-                                        2,
-                                        '0',
-                                      ),
-                                      subtitleLines: const [
-                                        'Motion',
-                                        'Intrusion',
-                                        'Unusual Activity',
-                                      ],
-                                      valueLabel: 'Active Alerts',
-                                    ),
-                                  );
-                                },
-                              ),
-                            ),
-                            const SizedBox(width: 12),
                             Expanded(
                               child: StreamBuilder<QuerySnapshot>(
                                 stream: FirebaseFirestore.instance

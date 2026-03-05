@@ -16,7 +16,6 @@ class IndexStatusBanner extends StatefulWidget {
 }
 
 class _IndexStatusBannerState extends State<IndexStatusBanner> {
-  bool _isChecking = true;
   bool _hasError = false;
   String _errorMessage = "";
 
@@ -28,7 +27,6 @@ class _IndexStatusBannerState extends State<IndexStatusBanner> {
 
   Future<void> _checkIndexStatus() async {
     setState(() {
-      _isChecking = true;
       _hasError = false;
     });
 
@@ -39,20 +37,17 @@ class _IndexStatusBannerState extends State<IndexStatusBanner> {
           .get();
 
       setState(() {
-        _isChecking = false;
         _hasError = false;
       });
     } catch (e) {
       final error = e.toString();
       if (error.contains('index') || error.contains('FAILED_PRECONDITION')) {
         setState(() {
-          _isChecking = false;
           _hasError = true;
           _errorMessage = "Database setup in progress";
         });
       } else {
         setState(() {
-          _isChecking = false;
           _hasError = false;
         });
       }

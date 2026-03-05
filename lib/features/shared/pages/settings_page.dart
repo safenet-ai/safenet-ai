@@ -1,5 +1,7 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../../services/notification_service.dart';
@@ -193,15 +195,7 @@ class _SettingsPageState extends State<SettingsPage> {
                           _actionTile(
                             "Change Password",
                             Icons.lock_outline,
-                            onTap: () {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(
-                                  content: Text(
-                                    "Change Password feature coming soon",
-                                  ),
-                                ),
-                              );
-                            },
+                            onTap: () => _showChangePasswordDialog(),
                           ),
                           const Divider(height: 1, color: Colors.black12),
                           _actionTile(
@@ -247,6 +241,357 @@ class _SettingsPageState extends State<SettingsPage> {
               ),
             ),
           ],
+        ),
+      ),
+    );
+  }
+
+  // ──────────────────────────────────────────────────────────
+  //  Change Password dialog
+  // ──────────────────────────────────────────────────────────
+  Future<void> _showChangePasswordDialog() async {
+    final prefs = await SharedPreferences.getInstance();
+    final userRole = prefs.getString('user_role') ?? 'resident';
+
+    // Authority uses a custom unique_id stored in Firestore,
+    // not Firebase Auth — handle separately.
+    if (userRole == 'authority') {
+      _showAuthorityPasswordDialog();
+      return;
+    }
+
+    final currentPassCtrl = TextEditingController();
+    final newPassCtrl = TextEditingController();
+    final confirmPassCtrl = TextEditingController();
+    bool obscureCurrent = true;
+    bool obscureNew = true;
+    bool obscureConfirm = true;
+    bool isLoading = false;
+
+    await showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (dialogCtx) => StatefulBuilder(
+        builder: (ctx, setDialogState) {
+          return AlertDialog(
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(20),
+            ),
+            title: const Text(
+              '🔒 Change Password',
+              style: TextStyle(fontWeight: FontWeight.w700),
+            ),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                _dialogField(
+                  controller: currentPassCtrl,
+                  label: 'Current Password',
+                  obscure: obscureCurrent,
+                  toggle: () =>
+                      setDialogState(() => obscureCurrent = !obscureCurrent),
+                ),
+                const SizedBox(height: 12),
+                _dialogField(
+                  controller: newPassCtrl,
+                  label: 'New Password',
+                  obscure: obscureNew,
+                  toggle: () => setDialogState(() => obscureNew = !obscureNew),
+                ),
+                const SizedBox(height: 12),
+                _dialogField(
+                  controller: confirmPassCtrl,
+                  label: 'Confirm New Password',
+                  obscure: obscureConfirm,
+                  toggle: () =>
+                      setDialogState(() => obscureConfirm = !obscureConfirm),
+                ),
+              ],
+            ),
+            actions: [
+              TextButton(
+                onPressed: isLoading ? null : () => Navigator.pop(dialogCtx),
+                child: Text(
+                  'Cancel',
+                  style: TextStyle(color: Colors.grey.shade600),
+                ),
+              ),
+              ElevatedButton(
+                onPressed: isLoading
+                    ? null
+                    : () async {
+                        final currentPass = currentPassCtrl.text.trim();
+                        final newPass = newPassCtrl.text.trim();
+                        final confirmPass = confirmPassCtrl.text.trim();
+
+                        if (currentPass.isEmpty ||
+                            newPass.isEmpty ||
+                            confirmPass.isEmpty) {
+                          _snack('Please fill all fields.');
+                          return;
+                        }
+                        if (newPass.length < 6) {
+                          _snack('New password must be at least 6 characters.');
+                          return;
+                        }
+                        if (newPass != confirmPass) {
+                          _snack('Passwords do not match.');
+                          return;
+                        }
+
+                        setDialogState(() => isLoading = true);
+                        try {
+                          final user = FirebaseAuth.instance.currentUser;
+                          if (user == null || user.email == null) {
+                            _snack('No logged-in user found.');
+                            return;
+                          }
+
+                          // Re-authenticate first
+                          final credential = EmailAuthProvider.credential(
+                            email: user.email!,
+                            password: currentPass,
+                          );
+                          await user.reauthenticateWithCredential(credential);
+
+                          // Update password
+                          await user.updatePassword(newPass);
+
+                          if (mounted) Navigator.pop(dialogCtx);
+                          _snack(
+                            'Password changed successfully! ✅',
+                            success: true,
+                          );
+                        } on FirebaseAuthException catch (e) {
+                          String msg = 'Error changing password.';
+                          // 'wrong-password' is the legacy code; newer Firebase
+                          // SDK (v10+) returns 'invalid-credential' for the same
+                          // error, so we must handle both.
+                          if (e.code == 'wrong-password' ||
+                              e.code == 'invalid-credential' ||
+                              e.code == 'invalid-login-credentials') {
+                            msg = 'Current password is incorrect.';
+                          } else if (e.code == 'weak-password') {
+                            msg = 'New password is too weak (min 6 chars).';
+                          } else if (e.code == 'requires-recent-login') {
+                            msg =
+                                'Session expired. Please log out and log in again, then retry.';
+                          } else if (e.code == 'too-many-requests') {
+                            msg =
+                                'Too many attempts. Please wait a moment and try again.';
+                          } else if (e.code == 'network-request-failed') {
+                            msg = 'Network error. Check your connection.';
+                          }
+                          _snack(msg);
+                        } catch (e) {
+                          _snack('Error: $e');
+                        } finally {
+                          if (mounted) {
+                            setDialogState(() => isLoading = false);
+                          }
+                        }
+                      },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF3CBDB0),
+                  foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+                child: isLoading
+                    ? const SizedBox(
+                        width: 18,
+                        height: 18,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: Colors.white,
+                        ),
+                      )
+                    : const Text('Update'),
+              ),
+            ],
+          );
+        },
+      ),
+    );
+  }
+
+  /// Change password for Authority users (unique_id stored in Firestore)
+  Future<void> _showAuthorityPasswordDialog() async {
+    final prefs = await SharedPreferences.getInstance();
+    final authorityUid = prefs.getString('authority_uid');
+    if (authorityUid == null) {
+      _snack('Authority session not found. Please log in again.');
+      return;
+    }
+
+    final currentIdCtrl = TextEditingController();
+    final newIdCtrl = TextEditingController();
+    final confirmIdCtrl = TextEditingController();
+    bool obscureCurrent = true;
+    bool obscureNew = true;
+    bool obscureConfirm = true;
+    bool isLoading = false;
+
+    await showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (dialogCtx) => StatefulBuilder(
+        builder: (ctx, setDialogState) {
+          return AlertDialog(
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(20),
+            ),
+            title: const Text(
+              '🔒 Change Password',
+              style: TextStyle(fontWeight: FontWeight.w700),
+            ),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                _dialogField(
+                  controller: currentIdCtrl,
+                  label: 'Current Password',
+                  obscure: obscureCurrent,
+                  toggle: () =>
+                      setDialogState(() => obscureCurrent = !obscureCurrent),
+                ),
+                const SizedBox(height: 12),
+                _dialogField(
+                  controller: newIdCtrl,
+                  label: 'New Password',
+                  obscure: obscureNew,
+                  toggle: () => setDialogState(() => obscureNew = !obscureNew),
+                ),
+                const SizedBox(height: 12),
+                _dialogField(
+                  controller: confirmIdCtrl,
+                  label: 'Confirm New Password',
+                  obscure: obscureConfirm,
+                  toggle: () =>
+                      setDialogState(() => obscureConfirm = !obscureConfirm),
+                ),
+              ],
+            ),
+            actions: [
+              TextButton(
+                onPressed: isLoading ? null : () => Navigator.pop(dialogCtx),
+                child: Text(
+                  'Cancel',
+                  style: TextStyle(color: Colors.grey.shade600),
+                ),
+              ),
+              ElevatedButton(
+                onPressed: isLoading
+                    ? null
+                    : () async {
+                        final current = currentIdCtrl.text.trim();
+                        final newId = newIdCtrl.text.trim();
+                        final confirmId = confirmIdCtrl.text.trim();
+
+                        if (current.isEmpty ||
+                            newId.isEmpty ||
+                            confirmId.isEmpty) {
+                          _snack('Please fill all fields.');
+                          return;
+                        }
+                        if (newId != confirmId) {
+                          _snack('Passwords do not match.');
+                          return;
+                        }
+
+                        setDialogState(() => isLoading = true);
+                        try {
+                          // Verify current unique_id matches Firestore
+                          final doc = await FirebaseFirestore.instance
+                              .collection('authority')
+                              .doc(authorityUid)
+                              .get();
+
+                          if (!doc.exists) {
+                            _snack('Authority account not found.');
+                            return;
+                          }
+
+                          final storedId = doc.data()?['unique_id'] ?? '';
+                          if (storedId != current) {
+                            _snack('Current password is incorrect.');
+                            return;
+                          }
+
+                          // Update unique_id
+                          await FirebaseFirestore.instance
+                              .collection('authority')
+                              .doc(authorityUid)
+                              .update({'unique_id': newId});
+
+                          if (mounted) Navigator.pop(dialogCtx);
+                          _snack(
+                            'Password changed successfully! ✅',
+                            success: true,
+                          );
+                        } catch (e) {
+                          _snack('Error: $e');
+                        } finally {
+                          if (mounted) {
+                            setDialogState(() => isLoading = false);
+                          }
+                        }
+                      },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF3CBDB0),
+                  foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+                child: isLoading
+                    ? const SizedBox(
+                        width: 18,
+                        height: 18,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: Colors.white,
+                        ),
+                      )
+                    : const Text('Update'),
+              ),
+            ],
+          );
+        },
+      ),
+    );
+  }
+
+  void _snack(String msg, {bool success = false}) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(msg),
+        backgroundColor: success ? Colors.green.shade700 : null,
+      ),
+    );
+  }
+
+  Widget _dialogField({
+    required TextEditingController controller,
+    required String label,
+    required bool obscure,
+    required VoidCallback toggle,
+  }) {
+    return TextField(
+      controller: controller,
+      obscureText: obscure,
+      decoration: InputDecoration(
+        labelText: label,
+        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 14,
+          vertical: 12,
+        ),
+        suffixIcon: IconButton(
+          icon: Icon(obscure ? Icons.visibility : Icons.visibility_off),
+          onPressed: toggle,
         ),
       ),
     );

@@ -575,7 +575,9 @@ class _ResidentDashboardPageState extends State<ResidentDashboardPage> {
                             if (flatNum != null) {
                               deviceId = "room$flatNum";
                             }
-                            print('🔍 Dashboard: flatNum=$flatNum, deviceId=$deviceId');
+                            print(
+                              '🔍 Dashboard: flatNum=$flatNum, deviceId=$deviceId',
+                            );
                           }
                           return SmokeDetectorCard(
                             key: ValueKey(deviceId),
@@ -788,54 +790,6 @@ class _ResidentDashboardPageState extends State<ResidentDashboardPage> {
             ),
           ),
         ],
-      ),
-    );
-  }
-
-  Widget _fullCard({
-    required IconData icon,
-    required String label,
-    required Color color,
-  }) {
-    final width = MediaQuery.of(context).size.width;
-    return Container(
-      width: width - 109,
-      height: 100,
-      decoration: BoxDecoration(
-        color: color,
-        borderRadius: BorderRadius.circular(28),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.12),
-            offset: const Offset(6, 6),
-            blurRadius: 14,
-            spreadRadius: 1,
-          ),
-          BoxShadow(
-            color: Colors.white.withOpacity(0.12),
-            offset: const Offset(-6, -6),
-            blurRadius: 14,
-            spreadRadius: 1,
-          ),
-        ],
-      ),
-      child: Center(
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(icon, size: 42, color: Colors.black54),
-            const SizedBox(width: 16),
-            Text(
-              label,
-              textAlign: TextAlign.center,
-              style: const TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.w700,
-                color: Colors.black87,
-              ),
-            ),
-          ],
-        ),
       ),
     );
   }
