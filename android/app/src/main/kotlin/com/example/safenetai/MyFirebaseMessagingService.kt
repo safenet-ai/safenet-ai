@@ -27,6 +27,16 @@ class MyFirebaseMessagingService : FlutterFirebaseMessagingService() {
 
         when {
             type == "panic_alert" || type == "smoke_alert" || priority == "urgent" -> {
+                // Dedup guard: a single smoke/panic event sends TWO FCM broadcasts
+                // (one to responders, one to residents). If this device is subscribed
+                // to both topics it receives both. Use requestId to fire the siren only once.
+                val requestId = data["requestId"] ?: ""
+                if (requestId.isNotEmpty() && isDuplicateAlert(requestId)) {
+                    Log.d("SafeNet", "Dedup: skipping duplicate $type alert (requestId=$requestId)")
+                    return
+                }
+                if (requestId.isNotEmpty()) markAlertProcessed(requestId)
+
                 // Native Siren handles urgent — show full screen alarm
                 startSirenService(title, body)
             }
@@ -36,6 +46,19 @@ class MyFirebaseMessagingService : FlutterFirebaseMessagingService() {
                 showLocalNotification(title, body, priority)
             }
         }
+    }
+
+    /** Returns true if an alert with this requestId was already processed within 60 seconds. */
+    private fun isDuplicateAlert(requestId: String): Boolean {
+        val prefs = getSharedPreferences("notif_dedup", Context.MODE_PRIVATE)
+        val lastProcessedAt = prefs.getLong(requestId, 0L)
+        return System.currentTimeMillis() - lastProcessedAt < 60_000L
+    }
+
+    /** Records that the alert with this requestId has been processed. */
+    private fun markAlertProcessed(requestId: String) {
+        val prefs = getSharedPreferences("notif_dedup", Context.MODE_PRIVATE)
+        prefs.edit().putLong(requestId, System.currentTimeMillis()).apply()
     }
 
     private fun showLocalNotification(title: String, body: String, priority: String) {

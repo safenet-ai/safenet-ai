@@ -308,44 +308,48 @@ exports.onSecurityRequestCreated = onDocumentCreated(
         // - If urgent, it STAYS data-only. Android handles it in MyFirebaseMessagingService 
         //   (which calls SirenForegroundService which then builds the actual UI notification).
         // - If NOT urgent, we append the notification block so standard Android Tray handles it.
-        const payload = {
-            data: {
-                title: title,
-                body: body,
-                type: String(requestType),
-                priority: isUrgent ? 'urgent' : String(data.priority || 'normal'),
-                requestId: String(event.params.requestId),
-                residentId: String(data.residentId || ''),
-                flatNumber: String(data.flatNumber || ''),
-                buildingNumber: String(data.buildingNumber || ''),
-                block: String(data.block || ''),
-                click_action: "FLUTTER_NOTIFICATION_CLICK"
-            },
-            android: {
-                priority: "high",
-                ttl: 0, // Forces immediate delivery, bypassing battery doze
-            },
-            apns: {
-                payload: {
-                    aps: {
-                        contentAvailable: true,
-                        sound: isUrgent ? "urgent_alarm.aiff" : "default",
-                        badge: 1,
-                        alert: { title: title, body: body }
-                    },
-                },
-            },
+        const basePayloadData = {
+            type: String(requestType),
+            priority: isUrgent ? 'urgent' : String(data.priority || 'normal'),
+            requestId: String(event.params.requestId),
+            residentId: String(data.residentId || ''),
+            flatNumber: String(data.flatNumber || ''),
+            buildingNumber: String(data.buildingNumber || ''),
+            block: String(data.block || ''),
+            click_action: "FLUTTER_NOTIFICATION_CLICK"
+        };
+
+        const baseApnsAps = {
+            contentAvailable: true,
+            sound: isUrgent ? "urgent_alarm.aiff" : "default",
+            badge: 1,
+        };
+
+        // Responder payload (authority + security): operational emergency response info
+        const responderPayload = {
+            data: { ...basePayloadData, title: title, body: body },
+            android: { priority: "high", ttl: 0 },
+            apns: { payload: { aps: { ...baseApnsAps, alert: { title: title, body: body } } } },
             condition: "'authority' in topics || 'security' in topics"
         };
 
+        // For smoke_alert: residents need the "EVACUATE" message, NOT responders.
+        // For other alert types (panic, etc.): only authority + security are notified.
+        const evacuateTitle = "🔥 EVACUATE IMMEDIATELY 🔥";
+        const evacuateBody = `${data.smokeType || 'Smoke'} detected in the building. Please leave immediately via the nearest exit!`;
+        const residentPayload = requestType === "smoke_alert" ? {
+            data: { ...basePayloadData, title: evacuateTitle, body: evacuateBody },
+            android: { priority: "high", ttl: 0 },
+            apns: { payload: { aps: { ...baseApnsAps, sound: "urgent_alarm.aiff", alert: { title: evacuateTitle, body: evacuateBody } } } },
+            condition: "'resident' in topics || 'user' in topics"
+        } : null;
+
         try {
-            // CONCURRENT: Send FCM topic broadcast + direct resident alert + create in-app docs
+            // CONCURRENT: Send FCM topic broadcasts + create in-app docs
             const tasks = [];
             const batch = admin.firestore().batch();
-            const notifData = {
-                fromUid: data.residentId || null, // Belt-and-suspenders: lets Flutter skip self-notifications
-                title: title,
-                message: body,
+            const baseNotifData = {
+                fromUid: data.residentId || null,
                 type: requestType,
                 priority: isUrgent ? 'urgent' : (data.priority || 'normal'),
                 isRead: false,
@@ -354,51 +358,28 @@ exports.onSecurityRequestCreated = onDocumentCreated(
                 silentData: true // Blocks onNotificationCreated from sending a 2nd FCM push
             };
 
-            // 1. Send broadcast to security/authority topics
-            tasks.push(admin.messaging().send(payload));
+            // 1. Send broadcast to responders (authority + security)
+            tasks.push(admin.messaging().send(responderPayload));
 
-            // 2. Send direct alert to the resident (if UID available)
-            //    BUG-FIX: For panic_alert the RESIDENT triggered the alert themselves —
-            //    do NOT send the siren back to them. Only smoke_alert (IoT-triggered)
-            //    needs to warn the resident with an urgent evacuation notice.
-            if (data.residentId && !isPanic) {
-                const residentTask = (async () => {
-                    const residentDoc = await admin.firestore().collection("users").doc(data.residentId).get();
-                    if (residentDoc.exists && residentDoc.data().fcmToken) {
-                        const resPayload = {
-                            ...payload,
-                            token: residentDoc.data().fcmToken
-                        };
-                        delete resPayload.condition;
-
-                        // Customize message for resident (smoke_alert only)
-                        if (requestType === "smoke_alert") {
-                            resPayload.data.title = "🔥 EVACUATE IMMEDIATELY 🔥";
-                            resPayload.data.body = "Smoke detected in your unit. Please leave the building now!";
-                        }
-
-                        await admin.messaging().send(resPayload);
-                        console.log(`Sent direct siren alert to resident ${data.residentId}`);
-                    }
-                })();
-                tasks.push(residentTask);
-
-                // Add resident's in-app notification record (smoke_alert only)
+            // 2. For smoke_alert: broadcast EVACUATE to ALL residents (topic-based, no token lookup needed)
+            if (residentPayload) {
+                tasks.push(admin.messaging().send(residentPayload));
+                // In-app record for all residents
                 const resRef = admin.firestore().collection('notifications').doc();
                 batch.set(resRef, {
-                    ...notifData,
-                    toUid: data.residentId,
-                    title: "🔥 EMERGENCY: EVACUATE 🔥",
-                    message: "Smoke detected. Please evacuate immediately!"
+                    ...baseNotifData,
+                    toRole: 'resident',
+                    title: evacuateTitle,
+                    message: evacuateBody,
                 });
             }
 
-            // 3. Create in-app notifications for roles
+            // 3. Create in-app notifications for responder roles
             const authRef = admin.firestore().collection('notifications').doc();
-            batch.set(authRef, { ...notifData, toRole: 'authority' });
+            batch.set(authRef, { ...baseNotifData, toRole: 'authority', title: title, message: body });
 
             const secRef = admin.firestore().collection('notifications').doc();
-            batch.set(secRef, { ...notifData, toRole: 'security' });
+            batch.set(secRef, { ...baseNotifData, toRole: 'security', title: title, message: body });
 
             tasks.push(batch.commit());
 
@@ -411,86 +392,11 @@ exports.onSecurityRequestCreated = onDocumentCreated(
     });
 
 /**
- * NEW: Cloud Function to detect smoke/gas alerts from ESP32 sensor gateway.
- * Triggers when the 'devices/{deviceId}' document is updated.
- * When alertTriggered=true, it looks up the resident for that room and
- * creates a security_request document — which then triggers the existing
- * onSecurityRequestCreated function to send the urgent siren notification.
+ * REMOVED: onSmokeDetected (Firestore trigger) was causing DUPLICATE smoke alerts.
+ * The onSmokeDetectedRTDB function below handles the same task via the RTDB trigger,
+ * which fires instantly when the ESP32 writes to RTDB. Having both active meant
+ * onSecurityRequestCreated was triggered twice → 2 notifications per smoke event.
  */
-exports.onSmokeDetected = onDocumentUpdated("devices/{deviceId}", async (event) => {
-    const after = event.data.after.data();
-    const before = event.data.before.data();
-
-    if (!after) return;
-
-    // Only proceed if alertTriggered just became true
-    const alertJustTriggered = after.alertTriggered === true && before.alertTriggered !== true;
-    if (!alertJustTriggered) return;
-
-    const deviceId = event.params.deviceId;
-    const smokeType = after.type || "SMOKE"; // "SMOKE" or "GAS"
-    const smokePpm = after.Smoke_ppm ? Math.round(after.Smoke_ppm) : null;
-    const gasPpm = after.LPG_ppm ? Math.round(after.LPG_ppm) : null;
-
-    console.log(`🚨 Smoke Alert triggered for device: ${deviceId}, type: ${smokeType}`);
-
-    // 1. Look up the resident assigned to this device room
-    // We match users where their roomId / deviceId field matches this deviceId
-    let residentName = "Unknown Resident";
-    let flatNumber = "Unknown";
-    let buildingNumber = "Unknown";
-    let block = "Unknown";
-    let phone = "Unknown";
-    let residentId = null;
-
-    try {
-        // Try to find resident by flatNumber matching the deviceId
-        // e.g., deviceId = "room101" — you can also add a 'deviceId' field to user docs
-        const usersSnap = await admin.firestore().collection("users").get();
-        for (const doc of usersSnap.docs) {
-            const u = doc.data();
-            // Match if the user's flat/room matches or user has a deviceId field
-            const userDevice = u.deviceId || u.roomId || null;
-            if (userDevice === deviceId) {
-                residentId = doc.id;
-                residentName = u.username || u.name || "Unknown Resident";
-                flatNumber = u.flatNumber || u.flatNo || "Unknown";
-                buildingNumber = u.buildingNumber || u.buildingNo || "Unknown";
-                block = u.block || "Unknown";
-                phone = u.phone || "Unknown";
-                break;
-            }
-        }
-    } catch (e) {
-        console.error("Error fetching resident for smoke alert:", e);
-    }
-
-    // 2. Write a security_request document.
-    // The existing onSecurityRequestCreated function will pick this up
-    // and immediately send the urgent siren FCM notification to authority + security.
-    const ppmInfo = smokePpm ? ` (Smoke: ${smokePpm}ppm, Gas: ${gasPpm}ppm)` : "";
-    try {
-        await admin.firestore().collection("security_requests").add({
-            requestType: "smoke_alert",
-            deviceId: deviceId,
-            smokeType: smokeType,
-            smokePpm: smokePpm,
-            gasPpm: gasPpm,
-            residentId: residentId,
-            residentName: residentName,
-            flatNumber: flatNumber,
-            buildingNumber: buildingNumber,
-            block: block,
-            phone: phone,
-            status: "pending",
-            priority: "urgent",
-            timestamp: admin.firestore.FieldValue.serverTimestamp(),
-        });
-        console.log(`✅ smoke_alert security_request created for device ${deviceId} — resident: ${residentName}`);
-    } catch (e) {
-        console.error("Error creating smoke_alert security_request:", e);
-    }
-});
 
 /**
  * OPTIMIZED: Realtime Database Trigger for Ultra-Fast Notifications.

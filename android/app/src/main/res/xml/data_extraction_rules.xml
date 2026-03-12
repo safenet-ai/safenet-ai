@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Android 12+ (API 31+) backup / data-extraction rules.
+  We exclude SharedPreferences from cloud backup so that reinstalling the app
+  does NOT restore old login sessions (user_role, authority_uid, etc.).
+-->
+<data-extraction-rules>
+    <cloud-backup>
+        <!-- Exclude ALL shared preferences files -->
+        <exclude domain="sharedpref" path="." />
+    </cloud-backup>
+    <device-transfer>
+        <!-- Allow device-to-device transfer of everything EXCEPT login prefs -->
+        <exclude domain="sharedpref" path="." />
+    </device-transfer>
+</data-extraction-rules>

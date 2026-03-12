@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Android 11 and below full-backup rules.
+  Excludes SharedPreferences from Google Drive auto-backup so a fresh install
+  does NOT restore old login sessions (user_role, authority_uid, etc.).
+-->
+<full-backup-content>
+    <!-- Exclude ALL shared preferences files -->
+    <exclude domain="sharedpref" path="." />
+</full-backup-content>

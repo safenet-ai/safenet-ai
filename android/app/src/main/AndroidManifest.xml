@@ -34,7 +34,9 @@
         android:label="safenetai"
         android:name="${applicationName}"
         android:icon="@mipmap/launcher_icon"
-        android:requestLegacyExternalStorage="true">    <!-- VERY IMPORTANT -->
+        android:requestLegacyExternalStorage="true"
+        android:dataExtractionRules="@xml/data_extraction_rules"
+        android:fullBackupContent="@xml/backup_rules">    <!-- VERY IMPORTANT -->
         
         <activity
             android:name=".MainActivity"

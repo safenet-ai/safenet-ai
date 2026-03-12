@@ -60,72 +60,85 @@ class _SmokeDetectorCardState extends State<SmokeDetectorCard> {
       );
     }
 
-    _sub = db.ref(path).onValue.listen(
-      (event) {
-        if (!mounted) return;
-        final value = event.snapshot.value;
-        print(
-            '🔍 SmokeDetectorCard: Event received! value=$value, exists=${event.snapshot.exists}');
+    _sub = db
+        .ref(path)
+        .onValue
+        .listen(
+          (event) {
+            if (!mounted) return;
+            final value = event.snapshot.value;
+            print(
+              '🔍 SmokeDetectorCard: Event received! value=$value, exists=${event.snapshot.exists}',
+            );
 
-        if (value == null) {
-          setState(() {
-            _dataReceived = false;
-            _loading = false;
-          });
-          return;
-        }
+            if (value == null) {
+              setState(() {
+                _dataReceived = false;
+                _loading = false;
+              });
+              return;
+            }
 
-        String level = "SAFE";
-        String type = "NONE";
-        int deviceTs = 0;
+            String level = "SAFE";
+            String type = "NONE";
+            int deviceTs = 0;
 
-        try {
-          final raw = value as Map;
-          level = raw['level']?.toString() ?? "SAFE";
-          type = raw['type']?.toString() ?? "NONE";
+            try {
+              final raw = value as Map;
+              level = raw['level']?.toString() ?? "SAFE";
+              type = raw['type']?.toString() ?? "NONE";
 
-          // Read the ESP32's own lastUpdated timestamp (milliseconds since epoch)
-          final dynamic rawTs = raw['lastUpdated'];
-          if (rawTs is int) {
-            deviceTs = rawTs;
-          } else if (rawTs is double) {
-            deviceTs = rawTs.toInt();
-          }
+              // Read the ESP32's own lastUpdated timestamp.
+              // ESP32 typically sends Unix time in SECONDS (e.g. 1741651200),
+              // but we need milliseconds for comparison with DateTime.now().millisecondsSinceEpoch.
+              // Values < 1e12 are in seconds; values >= 1e12 are already in milliseconds.
+              final dynamic rawTs = raw['lastUpdated'];
+              if (rawTs is int) {
+                deviceTs = rawTs < 1000000000000 ? rawTs * 1000 : rawTs;
+              } else if (rawTs is double) {
+                final tsInt = rawTs.toInt();
+                deviceTs = tsInt < 1000000000000 ? tsInt * 1000 : tsInt;
+              } else if (rawTs is String) {
+                final parsed = int.tryParse(rawTs) ?? 0;
+                deviceTs = parsed < 1000000000000 ? parsed * 1000 : parsed;
+              }
 
-          final now = DateTime.now().millisecondsSinceEpoch;
-          final ageSeconds = deviceTs > 0 ? (now - deviceTs) ~/ 1000 : -1;
-          print(
-              '🔍 SmokeDetectorCard: Parsed — level=$level, type=$type, lastUpdated=$deviceTs, age=${ageSeconds}s');
-        } catch (e) {
-          print('🔍 SmokeDetectorCard: Parse error: $e');
-        }
+              final now = DateTime.now().millisecondsSinceEpoch;
+              final ageSeconds = deviceTs > 0 ? (now - deviceTs) ~/ 1000 : -1;
+              print(
+                '🔍 SmokeDetectorCard: Parsed — level=$level, type=$type, lastUpdated=$deviceTs (ms), age=${ageSeconds}s',
+              );
+            } catch (e) {
+              print('🔍 SmokeDetectorCard: Parse error: $e');
+            }
 
-        setState(() {
-          _level = level;
-          _type = type;
-          _deviceLastUpdatedMs = deviceTs;
-          _dataReceived = true;
-          _loading = false;
-        });
-      },
-      onError: (e) {
-        print('🔍 SmokeDetectorCard: onError: $e');
-        if (mounted) {
-          setState(() {
-            _dataReceived = false;
-            _loading = false;
-          });
-        }
-      },
-    );
+            setState(() {
+              _level = level;
+              _type = type;
+              _deviceLastUpdatedMs = deviceTs;
+              _dataReceived = true;
+              _loading = false;
+            });
+          },
+          onError: (e) {
+            print('🔍 SmokeDetectorCard: onError: $e');
+            if (mounted) {
+              setState(() {
+                _dataReceived = false;
+                _loading = false;
+              });
+            }
+          },
+        );
   }
 
-  /// Offline if the ESP32's lastUpdated is > 5 seconds old
+  /// Offline if the ESP32's lastUpdated is > 30 seconds old.
+  /// 30 s gives enough headroom for network and processing latency.
   bool get _isOffline {
     if (!_dataReceived) return true;
     if (_deviceLastUpdatedMs == 0) return true;
     final age = DateTime.now().millisecondsSinceEpoch - _deviceLastUpdatedMs;
-    return age > 5000; // 5 seconds in ms
+    return age > 30000; // 30 seconds in ms
   }
 
   @override

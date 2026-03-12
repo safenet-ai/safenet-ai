@@ -344,11 +344,12 @@ class NotificationService {
       await _fcm.unsubscribeFromTopic('worker');
       await _fcm.unsubscribeFromTopic('user'); // Alias
 
-      // Then subscribe to the current actual role
+      // Then subscribe to the current actual role (one role = one topic only).
+      // Security must NOT subscribe to 'worker' — doing so causes security guards
+      // to receive worker job-assignment and worker-announcement notifications.
       if (userRole.isNotEmpty) {
         await _fcm.subscribeToTopic(userRole);
-        // Standardize topics for backend ease
-        if (userRole == 'security') await _fcm.subscribeToTopic('worker');
+        // 'user' is an alias for 'resident' used by some Cloud Functions
         if (userRole == 'resident') await _fcm.subscribeToTopic('user');
 
         print('🔔 Subscribed UID ${user.uid} to FCM topic: $userRole');

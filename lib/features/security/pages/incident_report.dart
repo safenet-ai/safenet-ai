@@ -461,23 +461,27 @@ class _IncidentReportPageState extends State<IncidentReportPage> {
       }
 
       // Create incident report document
-      final docRef = await FirebaseFirestore.instance.collection("incidents").add({
-        "type": _selectedType,
-        "severity": _selectedSeverity.toLowerCase(),
-        "location": _locationController.text,
-        "description": _descriptionController.text,
-        "fileUrls": fileUrls,
-        "reportedBy": currentUser.uid,
-        "timestamp": FieldValue.serverTimestamp(),
-        "status": "pending",
-      });
+      final docRef = await FirebaseFirestore.instance
+          .collection("incidents")
+          .add({
+            "type": _selectedType,
+            "severity": _selectedSeverity.toLowerCase(),
+            "location": _locationController.text,
+            "description": _descriptionController.text,
+            "fileUrls": fileUrls,
+            "reportedBy": currentUser.uid,
+            "timestamp": FieldValue.serverTimestamp(),
+            "status": "pending",
+          });
 
-      // Send notifications to Authority and Security
+      // Send notifications to Authority and Security.
+      // userRole is always 'security' here — the sender is always a security guard.
       await NotificationService.sendNotification(
         toRole: 'authority',
-        userRole: 'authority',
+        userRole: 'security',
         title: 'New Incident Reported',
-        body: 'A new ${_selectedSeverity.toLowerCase()} severity $_selectedType incident has been reported at ${_locationController.text}',
+        body:
+            'A new ${_selectedSeverity.toLowerCase()} severity $_selectedType incident has been reported at ${_locationController.text}',
         type: 'new_incident',
         additionalData: {'incidentId': docRef.id},
       );

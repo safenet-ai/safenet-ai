@@ -70,6 +70,7 @@ class _ResidentAIAlertsPageState extends State<ResidentAIAlertsPage> {
                   child: StreamBuilder<QuerySnapshot>(
                     stream: FirebaseFirestore.instance
                         .collection("ai_alerts")
+                        .where("status", isEqualTo: "active")
                         .orderBy("timestamp", descending: true)
                         .snapshots(),
                     builder: (context, snapshot) {
